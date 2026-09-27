@@ -29,7 +29,7 @@ preserve that order (in particular the observed-checkpoint rotation reads the
 store = fcr_store.store
 fcr_store.previous_slot_head = fcr_store.current_slot_head
 fcr_store.current_slot_head = get_head(store).root
-if is_start_slot_at_epoch(Slot(get_current_slot(store) + 1)):
+if is_start_slot_at_epoch(get_current_slot(store) + 1):
     fcr_store.previous_epoch_greatest_unrealized_checkpoint = store.unrealized_justified_checkpoint
 if is_start_slot_at_epoch(get_current_slot(store)):
     fcr_store.previous_epoch_observed_justified_checkpoint = (

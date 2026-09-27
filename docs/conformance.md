@@ -18,7 +18,7 @@ Repository validation uses `scripts/validate.sh --fast` for source and
 boundary checks. With the pinned interpreter, both modes and CI also run
 `scripts/conformance/check_smoke.sh`: the example traces, a wrong-pin trace,
 and the Gloas helper comparison. Full validation builds the libraries and
-audits 39 public theorem witnesses. Neither check makes a trace match a
+audits 40 public theorem witnesses. Neither check makes a trace match a
 refinement theorem.
 
 Schema v2 records payload membership, Payload Timeliness Committee (PTC) vote maps, block deadlines, bid hashes, message slots and payload flags, and committee reads. The projection keeps a source state identity for opaque external calls. The runner checks executable configuration conditions. It does not replay block, envelope, or PTC handlers, prove `BeaconExternalsPremises`, or implement execution engine validation. Each imported payload must already have passed source validation. A trace match is an observation comparison.

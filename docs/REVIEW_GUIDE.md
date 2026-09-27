@@ -2,7 +2,7 @@
 
 Paper citations use [arXiv:2405.00549v4](https://arxiv.org/abs/2405.00549v4).
 
-`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The trust audit checks 39 public executable theorems. See the [former live theorem history](history/live-monotonicity-removed.md) and [paper library history](history/paper-side-removed.md).
+`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The trust audit checks 40 public executable theorems. See the [former live theorem history](history/live-monotonicity-removed.md) and [paper library history](history/paper-side-removed.md).
 
 The premise `ConcreteBridge.SafetyPremises` starts the run from the Python genesis
 store of the bridge setup (`ConcreteBridge.ConcreteGenesis`). The genesis state has
@@ -119,7 +119,7 @@ and handler service at the stated slot boundaries.
 
 `scripts/ReviewSurfaceShape.lean` pins the field names of 13 records, the field
 types of 17 records, the claim-type dependency closure, the definition of the
-safety claim, and the types of the 39 public witnesses.
+safety claim, and the types of the 40 public witnesses.
 
 ## Audit path
 
@@ -127,7 +127,7 @@ safety claim, and the types of the 39 public witnesses.
 2. **Statements premises:** Read the safety field of `ReviewClaims`. Expand each record in `FastConfirmationStatements/Premises/`. Check the observer, time, horizon, and successful-prefix ranges.
 3. **Externals:** Check the table below against `BeaconFunctionInterface` and `BeaconExternalsPremises`. Check the concrete bridge in `FastConfirmationModel/Execution/ConcreteBridge.lean`, its canonical inclusion relation, and its block-validity oracle. The slashing relay is a separate premise over the literal Python handler.
 4. **Claims:** Read the proof terms in `FastConfirmationProofs/`. Check `confirmed_root_safe_from_next_slot` and `review_claims`.
-5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 39 audited public theorems in `scripts/Audit.lean`.
+5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 40 audited public theorems in `scripts/Audit.lean`.
 
 ## Trusted boundary
 
@@ -209,7 +209,7 @@ This is part of the fixed-committee idealization.
 
 Paper Assumption 3.2 (explicit) can allow a two-epoch FFG inclusion delay. The executable selector can close its gates before inclusion. The [history note](history/live-monotonicity-removed.md) explains the reset branches and the removed claim.
 
-`ConcreteBridge.SafetyPremises` includes the admissible bridge, the concrete genesis store, the horizon tie to the fixed scope, scheduled execution, externals, honest behavior, delivery of body attestations, synchrony, static validators, a fault bound for each committee span, epoch arithmetic, the epoch-1 finalization scope, and checkpoint inclusion. `SafetyPremises.nextSlotSafetyPremises` computes the internal record `Execution.NextSlotSafetyPremises`: exact FFG state at each successful handler prefix, anchor alignment, checkpoint evidence, finalization delay, Phase0 source coherence, and a balance floor. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
+`ConcreteBridge.SafetyPremises` includes the admissible bridge, the concrete genesis store, the horizon tie to the fixed scope, whole seconds, scheduled execution, externals, honest behavior, delivery of body attestations, synchrony, a fault bound for each committee span, epoch arithmetic, the epoch-1 finalization scope, and checkpoint inclusion. `SafetyPremises.nextSlotSafetyPremises` computes the internal record `Execution.NextSlotSafetyPremises`: exact FFG state at each successful handler prefix, anchor alignment, checkpoint evidence, finalization delay, Phase0 source coherence, and a balance floor. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
 
 `ByzantineWeightPremises.span_fraction` and `estimate_sound` are deterministic
 events assumed on every checked span, including one slot. A global fault share
@@ -260,7 +260,7 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The `weak-synchrony` branch contains work in progress on weaker timing premises and is outside this review.
 
-`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries, replays all 307 modules through the kernel, and checks imports, reachability, surface shape, premise-field use, and the 39 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries, replays all 307 modules through the kernel, and checks imports, reachability, surface shape, premise-field use, and the 40 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Known limits
 

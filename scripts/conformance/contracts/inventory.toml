@@ -188,8 +188,8 @@ reason = "The unscheduled anchor parent is a projected-store boundary condition.
 [[field]]
 path = "HorizonVoteDeliveryLookahead.attestation_delivery"
 file = "Synchrony.lean"
-class = "E-network/behavior"
-reason = "Each honest in-horizon vote must reach every honest node by the next boundary."
+class = "E-network/behavior+I"
+reason = "Each honest in-horizon vote must reach every honest node by the next boundary. Idealization: each single-validator vote reaches every honest node at the exact next boundary second; real gossip uses subnets and aggregates."
 
 [[field]]
 path = "NextSlotSynchronyPremises.delivery_lookahead"

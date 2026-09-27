@@ -7,8 +7,11 @@ public import FastConfirmationModel.Spec.FastConfirmation.Store
 # Spec / Model / LMDHelpers
 
 The "LMD-GHOST helpers" section of `specs/phase0/fast-confirmation.md`
-(`get_block_support_between_slots` … `is_confirmed_chain_safe`), transcribed
-1:1 in document order. All slot ranges are inclusive of both endpoints
+(`get_block_support_between_slots` … `is_confirmed_chain_safe`) in document
+order, with the Gloas overrides of `specs/gloas/fast-confirmation.md`:
+`get_parent_payload_support_between_slots` and the Gloas body of
+`compute_empty_slot_support_discount`. The function docstrings name the
+source of each definition. All slot ranges are inclusive of both endpoints
 (python `range(start, end + 1)` = `Finset.Icc start end`, empty when
 `start > end`).
 -/

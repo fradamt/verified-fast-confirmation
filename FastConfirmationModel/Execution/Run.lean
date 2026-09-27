@@ -57,9 +57,9 @@ def apply_event (store : Store Root) : Event Root → Option (Store Root)
       on_payload_attestation_message cfg ext store ptc_message is_from_block
 
 /-- An execution of the protocol: the shared trusted starting store, the
-per-node message schedule, the honest-node set, the ground-truth committee
-assignment (state-independent within the spec's own `MAX_SEED_LOOKAHEAD`
-consistency window), and the record of the
+per-node message schedule, the honest-node set, one fixed ground-truth
+committee assignment (a class I idealization: real committees are
+RANDAO-seeded and can differ between branches), and the record of the
 attestation each validator casts for its per-slot assignment (`vote v s =
 some (n, a)`: validator `v` cast `a` at second `n` for slot `s`; what honest
 validators' votes look like is `HonestBehavior`'s business, when they arrive
