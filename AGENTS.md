@@ -12,7 +12,7 @@
   functions. Statements holds premises and claims; Internal holds proof
   vocabulary; Proofs is grouped by subject; Witnesses holds concrete runs and
   counterexamples.
-- The two public executable claims are in `ReviewClaims` in `FastConfirmationStatements/Review.lean`; `review_claims` is proved in `FastConfirmationProofs/ReviewTheorem.lean`.
+- The public executable claim is in `ReviewClaims` in `FastConfirmationStatements/Review.lean`; `review_claims` is proved in `FastConfirmationProofs/ReviewTheorem.lean`.
 - Start each new library `.lean` file with `module`.
 - Use `public import` to preserve the library's transitive imports.
 - Every library module needs a module docstring. Its first sentence states the
@@ -37,7 +37,7 @@
 
 # Current review documents
 
-- `README.md` states the two public claims and the premise ledger.
+- `README.md` states the public claim and the premise ledger.
 - `docs/ARCHITECTURE.md` gives the five-library layout and checks.
 - `docs/CONVENTIONS.md` gives naming, module, and import rules.
 - `docs/SPEC_MAP.md` maps Python sections and functions to Model.
