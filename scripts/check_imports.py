@@ -31,6 +31,65 @@ def closure(start: str, graph: dict[str, set[str]]) -> set[str]:
     return seen
 
 
+def external_roots() -> list[Path]:
+    """Return source roots backed by the toolchain or a pinned Lake package."""
+    prefix = Path(subprocess.check_output(["lean", "--print-prefix"], text=True).strip())
+    roots = [prefix / "src" / "lean"]
+    manifest = json.loads((ROOT / "lake-manifest.json").read_text())
+    for package in manifest["packages"]:
+        name, rev = package["name"], package.get("rev")
+        folder = ROOT / ".lake" / "packages" / name
+        if not rev or not folder.is_dir():
+            raise RuntimeError(f"missing pinned package: {name}")
+        head = subprocess.check_output(["git", "-C", str(folder), "rev-parse", "HEAD"],
+                                       text=True).strip()
+        if head != rev:
+            raise RuntimeError(f"package {name} differs from lake-manifest.json")
+        dirty = subprocess.check_output(
+            ["git", "-C", str(folder), "status", "--porcelain", "--untracked-files=no"],
+            text=True).strip()
+        if dirty:
+            raise RuntimeError(f"pinned package {name} has changed source files")
+        roots.append(folder)
+    return roots
+
+
+def resolved_external(module: str, roots: list[Path]) -> bool:
+    relative = Path(*module.split(".")).with_suffix(".lean")
+    return any((root / relative).is_file() for root in roots)
+
+
+def without_comments(source: str) -> str:
+    """Blank nested Lean comments, but retain line positions for the scan."""
+    result = list(source)
+    pos = 0
+    depth = 0
+    while pos < len(source):
+        if source.startswith("/-", pos):
+            depth += 1
+            result[pos:pos + 2] = "  "
+            pos += 2
+        elif depth and source.startswith("-/", pos):
+            depth -= 1
+            result[pos:pos + 2] = "  "
+            pos += 2
+        elif depth or source.startswith("--", pos):
+            if not depth:
+                end = source.find("\n", pos)
+                end = len(source) if end < 0 else end
+                result[pos:end] = " " * (end - pos)
+                pos = end
+            else:
+                if source[pos] != "\n":
+                    result[pos] = " "
+                pos += 1
+        else:
+            pos += 1
+    if depth:
+        raise RuntimeError("unclosed Lean comment")
+    return "".join(result)
+
+
 def audit() -> tuple[int, list[str]]:
     paths = [ROOT / "FastConfirmation.lean"]
     for lib in LIBRARIES:
@@ -55,18 +114,19 @@ def audit() -> tuple[int, list[str]]:
         raise RuntimeError("Lean returned an incomplete import graph")
     graph: dict[str, set[str]] = {}
     failures: list[str] = []
+    roots = external_roots()
     for module, entry in zip(modules, entries, strict=True):
         if entry.get("errors") or not isinstance(entry.get("result"), dict):
             raise RuntimeError(f"{module}: Lean rejected the import header: {entry.get('errors')}")
         declarations = entry["result"].get("imports")
         if not isinstance(declarations, list):
             raise RuntimeError(f"{module}: Lean returned no imports")
-        imports = {row["module"] for row in declarations
-                   if row["module"].startswith("FastConfirmation")}
-        missing = imports - modules.keys()
-        if missing:
-            failures.append(f"{module}: missing local imports {sorted(missing)}")
-        graph[module] = imports & modules.keys()
+        imports = {row["module"] for row in declarations}
+        local = imports & modules.keys()
+        for dep in sorted(imports - local):
+            if not resolved_external(dep, roots):
+                failures.append(f"{module}: import outside five libraries and pinned packages: {dep}")
+        graph[module] = local
         if module == "FastConfirmation":
             continue
         source = owner(module)
@@ -74,9 +134,7 @@ def audit() -> tuple[int, list[str]]:
             failures.append(f"{module}: outside the five libraries")
         for dep in sorted(imports):
             target = owner(dep)
-            if target is None:
-                failures.append(f"{module}: unknown project import {dep}")
-            elif source in SPEC and target in SPEC and SPEC.index(target) > SPEC.index(source):
+            if target is not None and source in SPEC and target in SPEC and SPEC.index(target) > SPEC.index(source):
                 failures.append(f"{module}: reverse library import {dep}")
     if graph["FastConfirmation"] != set(LIBRARIES):
         failures.append("root aggregate must import exactly the five library roots")
@@ -99,7 +157,7 @@ def audit() -> tuple[int, list[str]]:
     for module, path in modules.items():
         if owner(module) not in SPEC[:2]:
             continue
-        for match in theorem_pattern.finditer(path.read_text()):
+        for match in theorem_pattern.finditer(without_comments(path.read_text())):
             pair = (module, match.group(1))
             found.add(pair)
             if pair not in allowed:

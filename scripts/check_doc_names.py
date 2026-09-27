@@ -26,17 +26,40 @@ for doc in DOCS:
         raise SystemExit(f"{doc.relative_to(ROOT)}: unclosed fence")
 
 known = set()
+qualified = set()
 for file in LEAN:
-    known.update(DECL.findall(file.read_text()))
-    known.update(re.findall(r'^  ([A-Za-z_][\w₀-₉]*)\s*:', file.read_text(), re.M))
-# Names in source sometimes appear with a namespace prefix. Check their final
-# declared component, and require the cited qualification to appear in source.
-source = '\n'.join(p.read_text() for p in LEAN)
+    scope: list[tuple[str, str]] = []
+    structure = None
+    for line in file.read_text().splitlines():
+        opening = re.match(r'^\s*(namespace|section)\s+([\w.₀-₉]+)', line)
+        if opening:
+            scope.append((opening.group(1), opening.group(2)))
+            continue
+        if re.match(r'^\s*end(?:\s+[\w.₀-₉]+)?\s*$', line):
+            if scope:
+                scope.pop()
+            structure = None
+            continue
+        namespace = '.'.join(name for kind, name in scope if kind == 'namespace')
+        match = DECL.match(line)
+        if match:
+            name = match.group(1)
+            full = f'{namespace}.{name}' if namespace else name
+            qualified.add(full)
+            known.add(name.rsplit('.', 1)[-1])
+            structure = full if re.search(r'\b(?:structure|class)\s+' + re.escape(name), line) else None
+            continue
+        field = re.match(r'^\s{2,}([A-Za-z_][\w₀-₉]*)\s*:', line)
+        if field and structure:
+            known.add(field.group(1))
+            qualified.add(f'{structure}.{field.group(1)}')
 exceptions = {'module', 'public', 'Model', 'Statements', 'Internal', 'Proofs',
               'Witnesses', 'Gloas', 'VALID',
               'PENDING', 'FULL', 'EMPTY', 'Nat', 'Root', 'Bool', 'List', 'Fin',
               'Lean', 'Python', 'README', 'SUMMARY', 'end', 'propext',
               'Classical.choice', 'Quot.sound'}
+# These are expressions or Python spec fields, not Lean declaration names.
+exceptions.update({'E.committee', 'BeaconBlockBody.attestations'})
 missing = []
 checked = 0
 for doc in DOCS:
@@ -46,7 +69,7 @@ for doc in DOCS:
         if line.startswith('```'):
             fence = not fence
             continue
-        if fence:
+        if fence and not ('│' in line or (line.lstrip().startswith('|') and '`' in line)):
             continue
         for name in CODE.findall(line):
             if name == 'fradamt/consensus-specs' or name.startswith('scripts/validate.sh '):
@@ -70,7 +93,8 @@ for doc in DOCS:
             final = name.rsplit('.', 1)[-1]
             if final not in known and name not in known and not (ROOT / (name + '.lean')).exists():
                 missing.append((doc, n, name))
-            elif '.' in name and name not in source and final not in known:
+            elif '.' in name and not any(full == name or full.endswith('.' + name)
+                                             for full in qualified):
                 missing.append((doc, n, name))
 if missing:
     for doc, line, name in missing:

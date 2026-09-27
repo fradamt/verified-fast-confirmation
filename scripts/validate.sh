@@ -64,6 +64,7 @@ elif ((forbidden_status != 1)); then
   echo "exact-string scan failed with status $forbidden_status" >&2
   exit "$forbidden_status"
 fi
+python3 scripts/check_forbidden_source.py
 git diff --check
 git diff --cached --check
 set +e
@@ -93,7 +94,7 @@ if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
   lake build FastConfirmationModel.Spec.BeaconChain.ConcreteTransition
   "$consensus_repo/.venv/bin/python" scripts/conformance/contracts/check_real_bundle.py \
     --repo "$consensus_repo" --output "${TMPDIR:-/tmp}/fcr-real-bundle-$$.json"
-elif [[ "${REQUIRE_PYSPEC:-0}" == "1" ]]; then
+elif [[ "$mode" == "full" || "${REQUIRE_PYSPEC:-0}" == "1" ]]; then
   echo "pyspec interpreter is required at $consensus_repo/.venv/bin/python" >&2
   exit 1
 else
@@ -111,11 +112,17 @@ else
 fi
 
 if [[ "$mode" == "full" ]]; then
+  CONSENSUS_SPECS_REPO="$consensus_repo" python3 scripts/test_source_negative.py
   scripts/check_build.sh
   python3 scripts/check_imports.py
+  python3 scripts/test_trust_negative.py
+  python3 scripts/check_witness_lists.py
+  scripts/check_kernel.sh
+  scripts/test_kernel_negative.sh
   reachability_output="$(mktemp)"
   lake env lean scripts/StatementReachability.lean > "$reachability_output"
   cat "$reachability_output"
+  python3 scripts/test_reachability_metadata.py
   python3 scripts/conformance/contracts/check_inventory.py --inventory-only --reachable-file "$reachability_output"
   rm "$reachability_output"
   lake env lean scripts/ReviewSurfaceShape.lean

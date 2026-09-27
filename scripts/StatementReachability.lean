@@ -1,5 +1,6 @@
 import FastConfirmationStatements
 import Lean.Util.FoldConsts
+import Lean.DeclarationRange
 
 /-! Check that every authored Statements declaration is reachable from the
 safety claim type. -/
@@ -23,18 +24,14 @@ private partial def reachableFrom (env : Environment) (pending : List Name)
         | some info =>
             reachableFrom env (info.getUsedConstantsAsSet.toList ++ rest) seen
 
-private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
-  if decl.isInternalDetail || (env.getProjectionFnInfo? decl).isSome then false
+private def isSourceDeclaration (env : Environment) (decl : Name) : CommandElabM Bool := do
+  if (env.getProjectionFnInfo? decl).isSome || isAuxRecursor env decl ||
+      isNoConfusion env decl || (← isRec decl) then return false
   else
     match env.find? decl with
-    | some (.ctorInfo _) | some (.recInfo _) => false
-    | some _ =>
-        let final := decl.getString!
-        final != "casesOn" && final != "recOn" && final != "noConfusion" &&
-        final != "noConfusionType" && final != "ctorIdx" &&
-          final != "below" && final != "brecOn" &&
-          !final.startsWith "_sizeOf" && !decl.toString.contains ".mk."
-    | none => false
+    | some (.ctorInfo _) | some (.recInfo _) => return false
+    | some _ => return (← findDeclarationRanges? decl).isSome
+    | none => return false
 
 run_cmd do
   let env ← getEnv
@@ -44,7 +41,7 @@ run_cmd do
     (moduleOf? env decl).any fun m =>
       m.toString == "FastConfirmationStatements" ||
         m.toString.startsWith "FastConfirmationStatements."
-  let sources := statementDecls.filter (isSourceDeclaration env)
+  let sources ← statementDecls.filterM (isSourceDeclaration env)
   let unreachable := sources.filter fun decl =>
     !reachable.contains decl
   IO.println s!"STATEMENT_DECL_COUNT {statementDecls.length}"

@@ -91,6 +91,230 @@
       "git_blob": "d5af3708702609cedf20198de2aa18ab7a2bb2bb",
       "bytes": 20267,
       "sha256": "9fc7478f0a0746f5eddd34e175f9e95b15c509988273fab9cccbfd2d7e72107a"
+    },
+    {
+      "path": "presets/minimal/phase0.yaml",
+      "role": "Pinned inherited presets/minimal/phase0.yaml",
+      "git_blob": "e90046b7385132c6f7ec5fd37c64ffd2efd90b43",
+      "bytes": 2447,
+      "sha256": "e5adcabf45a9c7d5cbaecd42893dcaff7ada826f3e55c176bccc5aa7418710cc"
+    },
+    {
+      "path": "specs/altair/beacon-chain.md",
+      "role": "Pinned inherited specs/altair/beacon-chain.md",
+      "git_blob": "af5790f7c75df1deda372214b8fcdd09e51452c8",
+      "bytes": 31058,
+      "sha256": "480c1885ca5d3054a5f20e6435b04867910bf4dcce082c47b08f9e91810903a1"
+    },
+    {
+      "path": "specs/altair/fork-choice.md",
+      "role": "Pinned inherited specs/altair/fork-choice.md",
+      "git_blob": "bd08e6de0c6bfd6d149ac69613e103324ec70586",
+      "bytes": 842,
+      "sha256": "29e79c8f19cef5b86012d62a7bb5cc67cb7c710122e3fb8be5ec3a80dcf5144e"
+    },
+    {
+      "path": "specs/altair/validator.md",
+      "role": "Pinned inherited specs/altair/validator.md",
+      "git_blob": "73852a7b0bcd9f7693cbb01191ff0ed1734bc691",
+      "bytes": 25868,
+      "sha256": "e110114b430125c287b964d4fdba6fc67562f924ccccb6ebb8185da0ca813b66"
+    },
+    {
+      "path": "presets/mainnet/altair.yaml",
+      "role": "Pinned inherited presets/mainnet/altair.yaml",
+      "git_blob": "0d8c7a63f9a391da8e5ee1c36c6418201f545861",
+      "bytes": 726,
+      "sha256": "5a431c09ff12a259b11c04daa0a52962144fa10931047f8a9c78e3214e079bfb"
+    },
+    {
+      "path": "presets/minimal/altair.yaml",
+      "role": "Pinned inherited presets/minimal/altair.yaml",
+      "git_blob": "cbb5d7eb1354da772fd7b0d0d2a92d87fbb82c9f",
+      "bytes": 754,
+      "sha256": "b22a2eab9ae1ac23cf79c42f209d607a1d763d4a309f43de2e6be303b8e249b9"
+    },
+    {
+      "path": "specs/bellatrix/beacon-chain.md",
+      "role": "Pinned inherited specs/bellatrix/beacon-chain.md",
+      "git_blob": "06ba4aa60af2462d035ccdd062a6e2f84041396f",
+      "bytes": 15858,
+      "sha256": "2ac605a7f39b78dcf4eb1f56415d28aab0fdf0af70684f1ffb5f91a07782b5e8"
+    },
+    {
+      "path": "specs/bellatrix/fork-choice.md",
+      "role": "Pinned inherited specs/bellatrix/fork-choice.md",
+      "git_blob": "9d988980d70cb1be65928ffbfcc0d25576c61bb3",
+      "bytes": 8010,
+      "sha256": "657cd44f4e287e4cc9e0ef69369137bd0859882e683abb02d762fa36f6a0141b"
+    },
+    {
+      "path": "specs/bellatrix/validator.md",
+      "role": "Pinned inherited specs/bellatrix/validator.md",
+      "git_blob": "f4eacae51b13ffd39df5a9d82aad86ad926086a5",
+      "bytes": 7655,
+      "sha256": "2fede2dbb261d08b5d34bb4df6d72f66a0f0c7bd4e2839d41be87bb4daf9688c"
+    },
+    {
+      "path": "specs/bellatrix/fast-confirmation.md",
+      "role": "Pinned inherited specs/bellatrix/fast-confirmation.md",
+      "git_blob": "4bfcb939e0ce2b0620238553fdef4b9b9501ddf6",
+      "bytes": 974,
+      "sha256": "f2bafa051a09b64b2d6ed7bbf19f2b8c6cf385d7bced18299d13653182e4fd9a"
+    },
+    {
+      "path": "presets/mainnet/bellatrix.yaml",
+      "role": "Pinned inherited presets/mainnet/bellatrix.yaml",
+      "git_blob": "268a0e75f40e019c223efed98bf32f2926a8c333",
+      "bytes": 613,
+      "sha256": "ad30262a50a0781e711edba465911a67ebb9d1ad1b0a910e1d091af5a5283529"
+    },
+    {
+      "path": "presets/minimal/bellatrix.yaml",
+      "role": "Pinned inherited presets/minimal/bellatrix.yaml",
+      "git_blob": "79b5002e84861624c7dc78f848c65fb5c11da6ef",
+      "bytes": 613,
+      "sha256": "96b8fbfa1a4af173be05f0dc5563af3b9df9e8327277d8f1957a4fdfa49b7cd9"
+    },
+    {
+      "path": "specs/capella/beacon-chain.md",
+      "role": "Pinned inherited specs/capella/beacon-chain.md",
+      "git_blob": "0745a78a2eeed6ae220a23d9efcf07918cf5f6b0",
+      "bytes": 21118,
+      "sha256": "22aa6bdf0b71c77e302f1f7fc44041206743e4bc3f1bffb00f5a54d622bfd4da"
+    },
+    {
+      "path": "specs/capella/fork-choice.md",
+      "role": "Pinned inherited specs/capella/fork-choice.md",
+      "git_blob": "cfa1ca80c0f3f7f38186604ad03fc6dc99a76b91",
+      "bytes": 3579,
+      "sha256": "b8c2ebbda0bc23174a7388c7854132ee929660a9dc808baaa0a5eb79cf44b3c4"
+    },
+    {
+      "path": "specs/capella/validator.md",
+      "role": "Pinned inherited specs/capella/validator.md",
+      "git_blob": "95295710812bc436e5ed80093649239e3cc97137",
+      "bytes": 7432,
+      "sha256": "d5321218d453b3b73077e6213d1e70ea9dd3d7dfc33287fbd9097aefe6f0fe57"
+    },
+    {
+      "path": "presets/mainnet/capella.yaml",
+      "role": "Pinned inherited presets/mainnet/capella.yaml",
+      "git_blob": "bb7eb8e00a5f382f741e68c5d4ff10d32c1d4a80",
+      "bytes": 490,
+      "sha256": "52c9f3d1423280965ad7207968839e56ab2b30c32b32da9b9e7d1f68195d2110"
+    },
+    {
+      "path": "presets/minimal/capella.yaml",
+      "role": "Pinned inherited presets/minimal/capella.yaml",
+      "git_blob": "979f4118c2a057941434c7a002f0e6d0ae2fb052",
+      "bytes": 506,
+      "sha256": "23fa8aeb37009976ba3f88959f91024f6dd19bde3c999011d7d6eff4ab61e523"
+    },
+    {
+      "path": "specs/deneb/beacon-chain.md",
+      "role": "Pinned inherited specs/deneb/beacon-chain.md",
+      "git_blob": "4fddbf135b1e1a72bb3a8e6a591c89d2ff6c9b58",
+      "bytes": 21809,
+      "sha256": "edb4d96a3c0f8d0eab0128319a4758b9d2756101caedc4aba06627feb5b08793"
+    },
+    {
+      "path": "specs/deneb/fork-choice.md",
+      "role": "Pinned inherited specs/deneb/fork-choice.md",
+      "git_blob": "6e71d12685d857dc4a33b395bfa7385df882a68c",
+      "bytes": 4921,
+      "sha256": "b5c69621856a4f78878d96c31c804e02b0727499226d6e1e294fcc7f7b0c5fde"
+    },
+    {
+      "path": "specs/deneb/validator.md",
+      "role": "Pinned inherited specs/deneb/validator.md",
+      "git_blob": "9b7f12cdf1cc8b0ec3bffcc50b4ec01b380d5c4e",
+      "bytes": 7306,
+      "sha256": "298be38e7433777f47d6f65691b8e8b44288601040610698adf04d1c78603d3d"
+    },
+    {
+      "path": "presets/mainnet/deneb.yaml",
+      "role": "Pinned inherited presets/mainnet/deneb.yaml",
+      "git_blob": "dd78388646de86746f89b22def72b6ffb0142c72",
+      "bytes": 572,
+      "sha256": "4fd03435b10dba4ae9d04f0924bdf7f32722b7d083bc53bd3ce81874949d8640"
+    },
+    {
+      "path": "presets/minimal/deneb.yaml",
+      "role": "Pinned inherited presets/minimal/deneb.yaml",
+      "git_blob": "9a9ab3ca4858650e65c5ee173b2bb45d3768bb6e",
+      "bytes": 572,
+      "sha256": "c80127f8479d94e572d26ff2bee8540648378830209ac2a1f9d91adfafeefef1"
+    },
+    {
+      "path": "specs/electra/beacon-chain.md",
+      "role": "Pinned inherited specs/electra/beacon-chain.md",
+      "git_blob": "3eb89e4db2fc6e3dcf0e1555c85c489d1990f5aa",
+      "bytes": 76419,
+      "sha256": "d6b871aa67cb073b376bbeb645eec55360b806673500df483274e0c0ac65d16f"
+    },
+    {
+      "path": "specs/electra/validator.md",
+      "role": "Pinned inherited specs/electra/validator.md",
+      "git_blob": "0f092d873021f95173bff9c2f31f9777dc94740a",
+      "bytes": 9984,
+      "sha256": "fd65bda6744c2917a1f09ba0ec0aad8206f697fe7fb295f0c09908089e3a194f"
+    },
+    {
+      "path": "presets/mainnet/electra.yaml",
+      "role": "Pinned inherited presets/mainnet/electra.yaml",
+      "git_blob": "55308d5b1ca3476a96bcc675ce9ef6c0003bfabc",
+      "bytes": 1679,
+      "sha256": "98d9d23a2bb9e9b776536c1c37eb714b9f5b91f0a3bbe9c9d441b13cf4cd477a"
+    },
+    {
+      "path": "presets/minimal/electra.yaml",
+      "role": "Pinned inherited presets/minimal/electra.yaml",
+      "git_blob": "f1161e175c0f2d53f6ed411498eb5fee358891a1",
+      "bytes": 1691,
+      "sha256": "94f957bdc7da6cd562fa888d066688109427657ee064c8afeb3af567d3f50b0b"
+    },
+    {
+      "path": "specs/fulu/beacon-chain.md",
+      "role": "Pinned inherited specs/fulu/beacon-chain.md",
+      "git_blob": "5a42d24d13da10f1232020eb0cbe19c26c5617ac",
+      "bytes": 17559,
+      "sha256": "e85b189189312496d28a40ebb4efd6b9764b5c587aa46ac5d543f51804f2c566"
+    },
+    {
+      "path": "specs/fulu/fork-choice.md",
+      "role": "Pinned inherited specs/fulu/fork-choice.md",
+      "git_blob": "ce107758e448dea31557dc15b48d51317b57bb81",
+      "bytes": 5995,
+      "sha256": "0ecf7eb2e3d794f691f8d36022766dbfa4de63817c73a5a78fa2439a2e59fcdf"
+    },
+    {
+      "path": "specs/fulu/validator.md",
+      "role": "Pinned inherited specs/fulu/validator.md",
+      "git_blob": "62a66dbf2810c3c57594e82123c1530efa2b7671",
+      "bytes": 12302,
+      "sha256": "aa99deb8924ddeeb0bd9abf25c3decfa7fabb7176b1fa6127761fc800d75ac6f"
+    },
+    {
+      "path": "presets/mainnet/fulu.yaml",
+      "role": "Pinned inherited presets/mainnet/fulu.yaml",
+      "git_blob": "762feb7ada704934abd4a888a7da9e75fb9df44b",
+      "bytes": 605,
+      "sha256": "7b73bcfb577a01381fcc1a3a356d5a1325c20a439c762e2325743f95ee678016"
+    },
+    {
+      "path": "presets/minimal/fulu.yaml",
+      "role": "Pinned inherited presets/minimal/fulu.yaml",
+      "git_blob": "8b7c8d082046b05dfe85646667ad9fbf3dcb888d",
+      "bytes": 605,
+      "sha256": "55f04fa5fce548d37710c94fa984815d237dd77417375a9d419367d058b38c57"
+    },
+    {
+      "path": "configs/minimal.yaml",
+      "role": "Pinned inherited configs/minimal.yaml",
+      "git_blob": "d1f8aeb00256befc03d53bb48ad42c5b6c047c5a",
+      "bytes": 6675,
+      "sha256": "e72e8de12feb4f580b9f591b308f62a1579fc256881655300c15e705cc9242fb"
     }
   ]
 }

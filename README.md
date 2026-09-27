@@ -197,9 +197,14 @@ do not stop validation.
 
 ## Verify
 
-Install Python 3 and Elan. Use the pinned Lean toolchain from `lean-toolchain`. Check out the Python fork at tag `fcr-gloas-fix` locally. On a fresh checkout, `lake exe cache get` downloads Mathlib artifacts. Then run:
+Install Python 3 and Elan. Use the pinned Lean toolchain from `lean-toolchain`. Make a full clone of the Python fork. The source check reads an earlier Git object, so a shallow clone does not work. Set up its interpreter and generate the Gloas pyspec before validation:
 
 ```sh
+git clone https://github.com/fradamt/consensus-specs.git /path/to/fradamt-consensus-specs
+git -C /path/to/fradamt-consensus-specs checkout fcr-gloas-fix
+python3 -m venv /path/to/fradamt-consensus-specs/.venv
+/path/to/fradamt-consensus-specs/.venv/bin/python -m pip install -e '/path/to/fradamt-consensus-specs[test]'
+(cd /path/to/fradamt-consensus-specs && .venv/bin/python -m pysetup.generate_specs --all-forks)
 export PATH="$HOME/.elan/bin:$PATH"
 lake exe cache get
 lake build
@@ -209,8 +214,9 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 39 public executable theorems. The Python
-path must name the pinned local checkout.
+and audits 39 public executable theorems. Full validation requires the pinned
+Python interpreter. The source check rejects changed source files and stale
+generated Gloas pyspec modules.
 
 ## Premise ledger
 

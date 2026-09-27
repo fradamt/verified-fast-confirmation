@@ -38,6 +38,40 @@ EXPECTED_ROLES = {
         "Mainnet Phase 0 preset values consumed by Config",
     "configs/mainnet.yaml": "Mainnet configuration values consumed by Config",
 }
+EXPECTED_ROLES.update({
+    'presets/minimal/phase0.yaml': 'Pinned inherited presets/minimal/phase0.yaml',
+    'specs/altair/beacon-chain.md': 'Pinned inherited specs/altair/beacon-chain.md',
+    'specs/altair/fork-choice.md': 'Pinned inherited specs/altair/fork-choice.md',
+    'specs/altair/validator.md': 'Pinned inherited specs/altair/validator.md',
+    'presets/mainnet/altair.yaml': 'Pinned inherited presets/mainnet/altair.yaml',
+    'presets/minimal/altair.yaml': 'Pinned inherited presets/minimal/altair.yaml',
+    'specs/bellatrix/beacon-chain.md': 'Pinned inherited specs/bellatrix/beacon-chain.md',
+    'specs/bellatrix/fork-choice.md': 'Pinned inherited specs/bellatrix/fork-choice.md',
+    'specs/bellatrix/validator.md': 'Pinned inherited specs/bellatrix/validator.md',
+    'specs/bellatrix/fast-confirmation.md': 'Pinned inherited specs/bellatrix/fast-confirmation.md',
+    'presets/mainnet/bellatrix.yaml': 'Pinned inherited presets/mainnet/bellatrix.yaml',
+    'presets/minimal/bellatrix.yaml': 'Pinned inherited presets/minimal/bellatrix.yaml',
+    'specs/capella/beacon-chain.md': 'Pinned inherited specs/capella/beacon-chain.md',
+    'specs/capella/fork-choice.md': 'Pinned inherited specs/capella/fork-choice.md',
+    'specs/capella/validator.md': 'Pinned inherited specs/capella/validator.md',
+    'presets/mainnet/capella.yaml': 'Pinned inherited presets/mainnet/capella.yaml',
+    'presets/minimal/capella.yaml': 'Pinned inherited presets/minimal/capella.yaml',
+    'specs/deneb/beacon-chain.md': 'Pinned inherited specs/deneb/beacon-chain.md',
+    'specs/deneb/fork-choice.md': 'Pinned inherited specs/deneb/fork-choice.md',
+    'specs/deneb/validator.md': 'Pinned inherited specs/deneb/validator.md',
+    'presets/mainnet/deneb.yaml': 'Pinned inherited presets/mainnet/deneb.yaml',
+    'presets/minimal/deneb.yaml': 'Pinned inherited presets/minimal/deneb.yaml',
+    'specs/electra/beacon-chain.md': 'Pinned inherited specs/electra/beacon-chain.md',
+    'specs/electra/validator.md': 'Pinned inherited specs/electra/validator.md',
+    'presets/mainnet/electra.yaml': 'Pinned inherited presets/mainnet/electra.yaml',
+    'presets/minimal/electra.yaml': 'Pinned inherited presets/minimal/electra.yaml',
+    'specs/fulu/beacon-chain.md': 'Pinned inherited specs/fulu/beacon-chain.md',
+    'specs/fulu/fork-choice.md': 'Pinned inherited specs/fulu/fork-choice.md',
+    'specs/fulu/validator.md': 'Pinned inherited specs/fulu/validator.md',
+    'presets/mainnet/fulu.yaml': 'Pinned inherited presets/mainnet/fulu.yaml',
+    'presets/minimal/fulu.yaml': 'Pinned inherited presets/minimal/fulu.yaml',
+    'configs/minimal.yaml': 'Pinned inherited configs/minimal.yaml',
+})
 HEX40 = re.compile(r"[0-9a-f]{40}\Z")
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -156,6 +190,9 @@ def verify_objects(repo: Path, entries: list[dict[str, Any]]) -> None:
             f"checkout HEAD differs from pinned fork commit: "
             f"{head} != {EXPECTED_FORK_COMMIT}"
         )
+    dirty = str(run_git(repo, ["status", "--porcelain"]))
+    if dirty.strip():
+        raise ManifestError(f"consensus-specs source tree is dirty: {dirty.strip()}")
     object_type = str(run_git(repo, ["cat-file", "-t", EXPECTED_COMMIT])).strip()
     if object_type != "commit":
         raise ManifestError(f"{EXPECTED_COMMIT} is not a commit object")
@@ -228,6 +265,25 @@ def verify_objects(repo: Path, entries: list[dict[str, Any]]) -> None:
                 )
 
 
+def verify_generated_pyspec(repo: Path) -> None:
+    """Compare used Gloas modules with fresh output from the pinned source."""
+    python = repo / ".venv" / "bin" / "python"
+    if not python.is_file():
+        return
+    from tempfile import TemporaryDirectory
+    with TemporaryDirectory(prefix="fcr-pyspec-") as folder:
+        result = subprocess.run(
+            [str(python), "-m", "pysetup.generate_specs", "--fork", "gloas",
+             "--out-dir", folder], cwd=repo, capture_output=True, text=True, timeout=300)
+        if result.returncode:
+            raise ManifestError(f"pyspec generation failed: {result.stderr.strip()}")
+        for preset in ("minimal", "mainnet"):
+            generated = Path(folder) / f"{preset}.py"
+            current = repo / "tests/core/pyspec/eth_consensus_specs/gloas" / f"{preset}.py"
+            if not current.is_file() or current.read_bytes() != generated.read_bytes():
+                raise ManifestError(f"stale generated pyspec: {current}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -244,6 +300,7 @@ def main() -> int:
     try:
         entries = validate_manifest(load_manifest())
         verify_objects(args.repo.resolve(), entries)
+        verify_generated_pyspec(args.repo.resolve())
     except ManifestError as exc:
         print(f"consensus source audit failed: {exc}", file=sys.stderr)
         return 1
