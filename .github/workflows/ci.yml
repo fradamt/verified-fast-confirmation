@@ -140,6 +140,7 @@ jobs:
           repository: fradamt/consensus-specs
           ref: fcr-gloas-fix
           path: .source/consensus-specs
+          fetch-depth: 0 # the source audit and the trace smoke check read upstream 6b9bd532
           persist-credentials: false
 
       - name: Verify fork commit
