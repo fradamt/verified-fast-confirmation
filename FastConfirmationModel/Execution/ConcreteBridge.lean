@@ -357,7 +357,10 @@ to the previous one, so both have epoch 0 and `process_attestation` rejects
 the vote. Python can still finalize epoch `GENESIS_EPOCH + 1` at the end of
 epoch 3 or later through `weigh_justification_and_finalization`,
 when epoch-2 justification needs votes included in epoch 3. Such runs are
-outside the verified scope. The pyspec check
+outside the verified scope. `no_finalizationLink_epoch_one_to_two` and
+`epochOneFinalizationScope_finalized_ne_one`
+(`FastConfirmationProofs/FFG/Concrete/EpochOneLinks.lean`) prove that no
+link exists and that no such state finalizes epoch 1. The pyspec check
 `finding.epoch_two_target_source_is_genesis` in
 `scripts/conformance/contracts/test_realized_gap.py` tests the source epochs. -/
 def EpochOneFinalizationScope (E : Execution Root) : Prop :=
