@@ -1,307 +1,315 @@
-# Direct fields of structures in FastConfirmationStatements/Premises.
+# Proof-valued input fields and premise fields of the safety claim.
+# The rows are exact in full validation: scripts/StatementReachability.lean derives
+# (a) every direct field of a claim-reachable structure in FastConfirmationStatements/Premises, and
+# (b) every proposition-valued field of an input structure of the claim, recursively: the binder
+#     types of ConfirmedRootSafeFromNextSlot, closed under the result types of their fields. This
+#     includes the Model records and the conditions of the configuration, preset, scope and
+#     commitment data.
+# `file` is the path of the declaring file. A key is `<structure>.<field>`; two structures with the
+# same last name component keep two components (ConcreteBridge.Admissible, FFGSetup.Admissible).
 # T: reachable generated-state law; E-scope: execution limit; E-network/behavior: delivery or actor condition.
 # E-interpretation: supplied FFG or external-state obligation; I: idealization. A + joins mixed labels.
 # definition: a field fixed by a definition (the A3.2 view) or part of the A3.2 antecedent; not an assumption.
-# record: a field whose type is a listed premise record; its own fields carry the classes.
-version = 1
+# record: a proof-valued field whose type is an input record; its own fields carry the classes.
+version = 2
 
 [[field]]
 path = "HonestBehavior.votes_head"
-file = "Behavior.lean"
+file = "FastConfirmationStatements/Premises/Behavior.lean"
 class = "E-network/behavior"
 reason = "Honest committee voters must use their local fork-choice head."
 
 [[field]]
 path = "HonestBehavior.vote_deadline"
-file = "Behavior.lean"
+file = "FastConfirmationStatements/Premises/Behavior.lean"
 class = "E-network/behavior"
 reason = "Honest votes must be sent by the attestation deadline."
 
 [[field]]
 path = "HonestBehavior.votes_assigned"
-file = "Behavior.lean"
+file = "FastConfirmationStatements/Premises/Behavior.lean"
 class = "E-network/behavior"
 reason = "Only validators assigned to the slot may cast the modeled honest vote."
 
 [[field]]
 path = "HonestBehavior.no_forgery"
-file = "Behavior.lean"
+file = "FastConfirmationStatements/Premises/Behavior.lean"
 class = "I"
 reason = "The model assumes honest signing history cannot be forged by another actor."
 
 [[field]]
 path = "HonestBehavior.not_slashable"
-file = "Behavior.lean"
+file = "FastConfirmationStatements/Premises/Behavior.lean"
 class = "E-network/behavior"
 reason = "Scheduled honest votes must remain pairwise non-slashable."
 
 [[field]]
 path = "HonestBehavior.honest_unslashed"
-file = "Behavior.lean"
+file = "FastConfirmationStatements/Premises/Behavior.lean"
 class = "E-network/behavior"
 reason = "Honest validators must remain unslashed in the fixed registry."
 
 [[field]]
 path = "ByzantineWeightPremises.effective_balance_quantized"
-file = "Economics.lean"
+file = "FastConfirmationStatements/Premises/Economics.lean"
 class = "T"
 test = "ByzantineWeightPremises.effective_balance_quantized"
 
 [[field]]
 path = "ByzantineWeightPremises.estimate_sound"
-file = "Economics.lean"
+file = "FastConfirmationStatements/Premises/Economics.lean"
 class = "I"
 reason = "Committee sampling is idealized: the premise takes the high-probability committee-weight estimate of the specification as exact. Part (i): equal slot-committee weights inside an epoch. Part (ii): a perfectly mixed reshuffle across an epoch boundary, so a cross-boundary span weighs at most the pro-rated estimate (the expected overlap). Sampling statistics are out of scope by design."
 
 [[field]]
 path = "ByzantineWeightPremises.span_fraction"
-file = "Economics.lean"
+file = "FastConfirmationStatements/Premises/Economics.lean"
 class = "E-network/behavior"
 reason = "Non-honest stake must stay under the bound for each in-horizon slot span."
 
 [[field]]
 path = "CheckpointInclusionView.BlockAt"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Fixed by the bridge: the accepted blocks of scheduled prefixes."
 
 [[field]]
 path = "CheckpointInclusionView.Included"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Fixed by the bridge: indexed body attestations of accepted blocks; modeling choice: indices come from the fixed committee schedule."
 
 [[field]]
 path = "CheckpointInclusionView.formed"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Fixed by the bridge: the checkpoints that an accepted block carries; modeling choice: AU reads only the four carried selectors."
 
 [[field]]
 path = "CheckpointInclusionView.C"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Fixed by the bridge: the committed ancestor at the epoch start slot, as get_checkpoint_block reads it."
 
 [[field]]
 path = "CheckpointInclusionView.GJ"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Fixed by the bridge: realized justification of the committed state; modeling choice: a genesis-epoch checkpoint reads as the anchor (CheckpointReadsAs)."
 
 [[field]]
 path = "CheckpointInclusionView.GU"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Fixed by the bridge: justification after one eager PJF copy; modeling choice: a genesis-epoch checkpoint reads as the anchor (CheckpointReadsAs)."
 
 [[field]]
 path = "CheckpointInclusionView.checkpoint_epoch"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Fixed by the bridge: the selector returns the queried epoch by definition."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.view_within_horizon"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Every supporting honest view must lie within the checked horizon."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.source_before_target"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The supporting FFG source epoch must precede the target."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_epoch_within"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The supporting target epoch must lie in the checked range."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_known"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Every supporting honest view must know the target root."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_state_keyed"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The supporting target state must have an accepted keyed origin."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The support witness must select a signer set."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers_not_slashable"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Support weight must exclude slashable signers at the view."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers_in_registry"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Support signers must belong to the active registry."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signer_attestation"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Each support signer must have a matching received attestation."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.supermajority"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "definition"
 reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The exact source-to-target support weight must reach two-thirds."
 
 [[field]]
 path = "EventualCheckpointInclusion.included"
-file = "FFGState.lean"
+file = "FastConfirmationStatements/Premises/FFGState.lean"
 class = "E-network/behavior"
 reason = "A3.2 requires an accepted carrier by epoch e+2 after every-view support. Its chain carries C(b,e), or a later checkpoint that extends C(b,e), in a carried selector; one justification pass can justify epochs e and e+1 together. With the bridge view fixed, this is a vote-inclusion and delivery assumption."
 
 [[field]]
 path = "WellFormedExecution.blocks_root_injective"
-file = "ScheduledExecutionConditions.lean"
+file = "FastConfirmationStatements/Premises/ScheduledExecutionConditions.lean"
 class = "I"
 reason = "Distinct modeled blocks are assumed to have distinct hash-root labels."
 
 [[field]]
 path = "WellFormedExecution.genesis_blocks_agree"
-file = "ScheduledExecutionConditions.lean"
+file = "FastConfirmationStatements/Premises/ScheduledExecutionConditions.lean"
 class = "I"
 reason = "The anchor block and root maps are assumed to agree without a hash proof."
 
 [[field]]
 path = "WellFormedExecution.anchor_parent_unscheduled"
-file = "ScheduledExecutionConditions.lean"
+file = "FastConfirmationStatements/Premises/ScheduledExecutionConditions.lean"
 class = "I"
 reason = "The unscheduled anchor parent is a projected-store boundary condition."
 
 [[field]]
 path = "HorizonVoteDeliveryLookahead.attestation_delivery"
-file = "Synchrony.lean"
+file = "FastConfirmationStatements/Premises/Synchrony.lean"
 class = "E-network/behavior+I"
 reason = "Each honest in-horizon vote must reach every honest node by the next boundary. Idealization: each single-validator vote reaches every honest node at the exact next boundary second; real gossip uses subnets and aggregates."
 
 [[field]]
 path = "NextSlotSynchronyPremises.delivery_lookahead"
-file = "Synchrony.lean"
+file = "FastConfirmationStatements/Premises/Synchrony.lean"
 class = "record"
 reason = "Record field: its fields are listed under HorizonVoteDeliveryLookahead with their own classes. The first vote receipt beyond the public horizon must still be scheduled."
 
 [[field]]
 path = "NextSlotSynchronyPremises.deadline_block_relay"
-file = "Synchrony.lean"
+file = "FastConfirmationStatements/Premises/Synchrony.lean"
 class = "E-network/behavior"
 reason = "Cutoff blocks must be serviced and retained by the next slot unless permanently excluded."
 
 [[field]]
 path = "NextSlotSynchronyPremises.boundary_block_prefix"
-file = "Synchrony.lean"
+file = "FastConfirmationStatements/Premises/Synchrony.lean"
 class = "E-network/behavior"
 reason = "Ready blocks must be processed before a boundary attestation handler."
 
 [[field]]
 path = "NextSlotSynchronyPremises.boundary_envelope_prefix"
-file = "Synchrony.lean"
+file = "FastConfirmationStatements/Premises/Synchrony.lean"
 class = "E-network/behavior+I"
 reason = "Ready envelopes must be processed before a boundary attestation handler, so that handler reads a store with the verified payload. Engine validity remains idealized."
 
 [[field]]
 path = "NextSlotSynchronyPremises.attester_slashing_relay"
-file = "Synchrony.lean"
+file = "FastConfirmationStatements/Premises/Synchrony.lean"
 class = "E-network/behavior"
 reason = "Accepted equivocation indices must reach every honest store by the next boundary."
 
 [[field]]
 path = "SafetyPremises.admissible"
-file = "ConcreteSafety.lean"
-class = "E-scope"
-reason = "The fixed setup must start at genesis, keep a registry weight floor, let the root ring cover two epochs, fit uint64 root reads, and have a uint64 genesis time."
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
+class = "record"
+reason = "Record field: its fields are listed under ConcreteBridge.Admissible with their own classes. The setup starts at genesis, keeps a registry weight floor, lets the root ring cover two epochs, fits uint64 root reads, and has a uint64 genesis time."
 
 [[field]]
 path = "SafetyPremises.genesis"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "E-scope+I"
 reason = "The run must start from the Python genesis store of the setup, and the state commitment must open the genesis state root."
 
 [[field]]
 path = "SafetyPremises.horizon_scope"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "E-scope"
 reason = "The verification horizon must be the epoch after the last epoch of the fixed scope."
 
 [[field]]
 path = "SafetyPremises.whole_seconds"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "E-scope"
 reason = "The slot duration must map exactly to whole-second schedule ticks."
 
 [[field]]
 path = "SafetyPremises.wellFormed"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "record"
 reason = "Record field: its fields are listed under WellFormedExecution with their own classes. Scheduled stores require injective roots and the anchor parent condition."
 
 [[field]]
 path = "SafetyPremises.externals_coherence"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "record"
 reason = "Record field: its fields are listed under ConcreteExternalsPremises with their own classes. The bridge proves the other contracts of the internal record BeaconExternalsPremises (ExternalsLaws.lean)."
 
 [[field]]
 path = "SafetyPremises.honest_behavior"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "record"
 reason = "Record field: its fields are listed under HonestBehavior with their own classes. Scheduled validator actions must follow the honest voting and deadline rules."
 
 [[field]]
 path = "SafetyPremises.body_attestations_delivered"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "E-network/behavior"
 reason = "Every attestation in an accepted block body must reach some node as a block attestation at a positive second, as in the pyspec fork-choice test steps. The run does not process events at second 0."
 
 [[field]]
 path = "SafetyPremises.synchrony"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "record"
-reason = "Record field: its fields are listed under NextSlotSynchronyPremises with their own classes. The run needs positive delay and the stated next-slot delivery laws."
+reason = "Record field: its fields are listed under NextSlotSynchronyPremises with their own classes. Each delivery law states its own cutoff and later receiver time; there is no numerical delay field."
 
 [[field]]
 path = "SafetyPremises.byzantine_bound"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "record"
 reason = "Record field: its fields are listed under ByzantineWeightPremises with their own classes. The run needs quantized balances, exact estimates, and per-span fault bounds."
 
 [[field]]
 path = "SafetyPremises.epoch_ends_fit"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "E-scope"
 reason = "SLOTS_PER_EPOCH must divide 2^64, so each epoch that starts in the uint64 slot range ends in it. This is a configuration condition; it does not bound the horizon."
 
 [[field]]
 path = "SafetyPremises.slots_per_epoch_gt_one"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "E-scope"
 reason = "The configuration must have more than one slot per epoch."
 
 [[field]]
 path = "SafetyPremises.epoch_one_finalization_scope"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "E-scope"
-reason = "No in-scope state finalizes epoch 1 only through the two-epoch link from epoch 1 to epoch 3."
+reason = "No accepted committed state, and no eager process_justification_and_finalization copy of it, finalizes epoch 1 except through a link to epoch 2. This excludes the two-epoch link from epoch 1 to epoch 3."
 
 [[field]]
 path = "SafetyPremises.checkpoint_inclusion"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "record"
 reason = "Record field: its fields are listed under EventualCheckpointInclusion with their own classes. Paper A3.2 over the fixed bridge view: after sustained honest link support, proposers include the votes and the network delivers a carrier block by epoch e+2."
 
@@ -319,54 +327,150 @@ reason = "The concrete bridge fixes the anchor commitment: the anchor block is a
 
 [[field]]
 path = "ConcreteExternalsPremises.committees_agree"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "I"
 reason = "One fixed committee map stands for branch-dependent RANDAO committee reads."
 
 [[field]]
 path = "ConcreteExternalsPremises.honest_attestation_valid"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "I"
 reason = "The opaque BLS and index check must accept each honestly signed singleton vote."
 
 [[field]]
 path = "ConcreteExternalsPremises.valid_attestation_honest"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "I"
 reason = "The opaque BLS check must reject forged data naming an honest signer."
 
 [[field]]
 path = "ConcreteExternalsPremises.on_attestation_committee"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "I"
 reason = "Indexed wire attestations are assumed to come from the modeled fixed slot committee."
 
 [[field]]
 path = "ConcreteExternalsPremises.committee_assignment_unique"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "T"
 test = "BeaconExternalsPremises.committee_assignment_unique"
 
 [[field]]
 path = "ConcreteExternalsPremises.committee_coverage"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "T"
 test = "BeaconExternalsPremises.committee_coverage"
 
 [[field]]
 path = "ConcreteExternalsPremises.committee_members_active"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "T"
 test = "BeaconExternalsPremises.committee_members_active"
 
 [[field]]
 path = "ConcreteExternalsPremises.process_slots_attestation_valid"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "I"
 reason = "The supplied base is_valid_indexed_attestation oracle includes a signature check. The structural Python probe uses BLS-off mode and does not test that oracle contract."
 
 [[field]]
 path = "ConcreteExternalsPremises.verify_envelope_deterministic"
-file = "ConcreteSafety.lean"
+file = "FastConfirmationStatements/Premises/ConcreteSafety.lean"
 class = "I"
 reason = "Engine and availability verdicts are assumed stable for fixed state and envelope inputs."
+
+[[field]]
+path = "ConcreteBridge.Admissible.setup"
+file = "FastConfirmationModel/Execution/ConcreteBridge.lean"
+class = "record"
+reason = "Record field: its fields are listed under FFGSetup.Admissible with their own classes."
+
+[[field]]
+path = "ConcreteBridge.Admissible.numeric"
+file = "FastConfirmationModel/Execution/ConcreteBridge.lean"
+class = "E-scope"
+reason = "The uint64 range must cover every root-ring read of the fixed scope: (last_epoch + 1) * SLOTS_PER_EPOCH + SLOTS_PER_HISTORICAL_ROOT is at most 2^64 - 1."
+
+[[field]]
+path = "ConcreteBridge.Admissible.genesis_time"
+file = "FastConfirmationModel/Execution/ConcreteBridge.lean"
+class = "E-scope"
+reason = "The genesis time must fit uint64, its Python type."
+
+[[field]]
+path = "FFGSetup.Admissible.ring_covers_two_epochs"
+file = "FastConfirmationModel/Spec/BeaconChain/ConcreteRun.lean"
+class = "E-scope"
+reason = "The block-root ring must cover the two epochs that process_justification_and_finalization reads: 2 * SLOTS_PER_EPOCH is at most SLOTS_PER_HISTORICAL_ROOT (mainnet 64 and 8192, minimal 16 and 64)."
+
+[[field]]
+path = "FFGSetup.Admissible.scope_from_genesis"
+file = "FastConfirmationModel/Spec/BeaconChain/ConcreteRun.lean"
+class = "E-scope"
+reason = "The fixed scope must start at epoch 0, because the run starts from genesis. Checkpoint sync is outside the scope."
+
+[[field]]
+path = "FFGSetup.Admissible.balance_floor"
+file = "FastConfirmationModel/Spec/BeaconChain/ConcreteRun.lean"
+class = "E-scope"
+reason = "The active weight of the fixed registry must be at least two effective-balance increments."
+
+[[field]]
+path = "Config.slots_per_epoch_pos"
+file = "FastConfirmationModel/Spec/Config.lean"
+class = "E-scope"
+reason = "SLOTS_PER_EPOCH must be positive. The pinned presets satisfy it (mainnet 32, minimal 8)."
+
+[[field]]
+path = "Config.slot_duration_ms_pos"
+file = "FastConfirmationModel/Spec/Config.lean"
+class = "E-scope"
+reason = "SLOT_DURATION_MS must be positive. The pinned configurations satisfy it (mainnet 12000, minimal 6000)."
+
+[[field]]
+path = "Config.confirmation_byzantine_threshold_le"
+file = "FastConfirmationModel/Spec/Config.lean"
+class = "E-scope"
+reason = "CONFIRMATION_BYZANTINE_THRESHOLD must be at most 25, the maximum value in the specification table."
+
+[[field]]
+path = "Config.effective_balance_increment_pos"
+file = "FastConfirmationModel/Spec/Config.lean"
+class = "E-scope"
+reason = "EFFECTIVE_BALANCE_INCREMENT must be positive. Both pinned presets use 10^9 Gwei."
+
+[[field]]
+path = "Config.hundred_dvd_effective_balance_increment"
+file = "FastConfirmationModel/Spec/Config.lean"
+class = "E-scope"
+reason = "100 must divide EFFECTIVE_BALANCE_INCREMENT, so the division by 100 in the FCR weight estimates has no remainder on registry weights. Both pinned presets use 10^9 Gwei."
+
+[[field]]
+path = "FFGPreset.ring_pos"
+file = "FastConfirmationModel/Spec/BeaconChain/ConcreteTypes.lean"
+class = "E-scope"
+reason = "SLOTS_PER_HISTORICAL_ROOT must be positive. The pinned presets satisfy it (mainnet 8192, minimal 64)."
+
+[[field]]
+path = "FFGPreset.min_delay_pos"
+file = "FastConfirmationModel/Spec/BeaconChain/ConcreteTypes.lean"
+class = "E-scope"
+reason = "MIN_ATTESTATION_INCLUSION_DELAY must be positive. Both pinned presets use 1."
+
+[[field]]
+path = "FixedFFGScope.epoch_order"
+file = "FastConfirmationModel/Spec/BeaconChain/ConcreteTypes.lean"
+class = "E-scope"
+reason = "The first epoch of the fixed scope must be at or before its last epoch. The safety proof does not read this field; scripts/PremiseFieldUse.lean lists it as an allowed unread input."
+
+[[field]]
+path = "FixedFFGScope.activity_fixed"
+file = "FastConfirmationModel/Spec/BeaconChain/ConcreteTypes.lean"
+class = "E-scope"
+reason = "Each validator of the fixed registry must keep its is_active_validator result from the first to the last scope epoch. An activation, exit or ejection in the horizon is outside the scope."
+
+[[field]]
+path = "StateCommitment.open_sound"
+file = "FastConfirmationModel/Execution/ConcreteBridge.lean"
+class = "I"
+reason = "The state commitment opens a root only to a state with that root, as hash_tree_root with a partial inverse. The model does not prove this for a hash function."

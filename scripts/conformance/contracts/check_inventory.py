@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check claim-reachable premise fields and run pinned contract probes."""
+"""Check the premise and input field inventory and run pinned contract probes."""
 from __future__ import annotations
 
 import argparse
@@ -21,33 +21,74 @@ PROJECTED = ("AcceptedBlockFFGState", "FFGStateReadAgreement",
              "EpochCheckpointProjectionLaws", "IncludedLinkCheckpointAgreement")
 
 
+STRUCTURE = re.compile(
+    r"(?:^|\n)structure\s+([A-Za-z_][\w.]*)[\s\S]*?\bwhere\n"
+    r"([\s\S]*?)(?=\n(?:end|namespace|structure|/-!|section|def |abbrev |variable )|\Z)")
+
+
+def declared_fields(path: Path) -> dict[str, set[str]]:
+    """Map each structure name (last component) in a Lean file to its fields."""
+    found: dict[str, set[str]] = {}
+    for name, body in STRUCTURE.findall(path.read_text()):
+        fields = found.setdefault(name.rsplit(".", 1)[-1], set())
+        fields.update(re.findall(r"(?m)^  ([A-Za-z_][\w]*)\s*:", body))
+    return found
+
+
 def source_fields(reachable: set[str] | None = None,
                   folder: Path = PREMISES) -> dict[str, str]:
+    """Regex scan: direct fields of the structures in `folder`, with their files."""
     fields = {}
     for path in sorted(folder.glob("*.lean")):
-        source = path.read_text()
-        for name, body in re.findall(
-            r"(?:^|\n)structure\s+([A-Za-z_][\w]*)[\s\S]*?\bwhere\n"
-            r"([\s\S]*?)(?=\n(?:end|namespace|structure|/-!|section|def |abbrev |variable )|\Z)",
-            source,
-        ):
+        for name, body in STRUCTURE.findall(path.read_text()):
             if reachable is not None and name not in reachable:
                 continue
             for field in re.findall(r"(?m)^  ([A-Za-z_][\w]*)\s*:", body):
                 key = f"{name}.{field}"
                 if key in fields:
                     raise ValueError(f"duplicate Lean field: {key}")
-                fields[key] = path.name
+                fields[key] = path.relative_to(ROOT).as_posix()
     return fields
+
+
+def lean_rows(audit: str) -> tuple[dict[str, str], set[str]]:
+    """Inventory keys of the Lean PF rows, with files, and the REC keys.
+
+    A key is `<structure>.<field>`, with the last component of the structure
+    name, or its last two components when two PF structures share the last one
+    (for example `ConcreteBridge.Admissible` and `FFGSetup.Admissible`)."""
+    declarations = {}
+    for line in audit.splitlines():
+        if line.startswith("PF\t"):
+            _, module, declaration = line.split("\t")
+            declarations[declaration] = module.replace(".", "/") + ".lean"
+    structures = {declaration.rsplit(".", 1)[0] for declaration in declarations}
+    last = {}
+    for structure in structures:
+        last.setdefault(structure.rsplit(".", 1)[-1], set()).add(structure)
+
+    def key(declaration: str) -> str:
+        structure, field = declaration.rsplit(".", 1)
+        parts = structure.split(".")
+        short = parts[-1] if len(last[parts[-1]]) == 1 else ".".join(parts[-2:])
+        return f"{short}.{field}"
+
+    keys = {key(declaration): file for declaration, file in declarations.items()}
+    if len(keys) != len(declarations):
+        raise ValueError("Lean PF rows do not have distinct inventory keys")
+    records = {key(line.split("\t", 1)[1]) for line in audit.splitlines()
+               if line.startswith("REC\t")}
+    if not records <= keys.keys():
+        raise ValueError(f"REC rows without PF rows: {sorted(records - keys.keys())}")
+    return keys, records
 
 
 def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
     data = tomllib.loads((HERE / "inventory.toml").read_text())
-    if data.get("version") != 1:
+    if data.get("version") != 2:
         raise ValueError("unknown inventory version")
     rows = data["field"]
     boundaries = data.get("boundary", [])
-    generated = data.get("generated", [])
     for row in boundaries:
         source = (ROOT / row["file"]).read_text()
         name = row["path"].rsplit(".", 1)[-1]
@@ -64,58 +105,59 @@ def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
         if not labels or len(set(labels)) != len(labels) or any(label not in ("T", "E-scope", "E-network/behavior", "E-interpretation", "I", "definition", "record") for label in labels):
             raise ValueError(f"invalid class: {key}")
         if any(label in ("T", "definition", "record") for label in labels) and len(labels) != 1:
-            raise ValueError(f"T, definition, record, and bridge cannot be mixed: {key}")
-        if row["class"] == "bridge":
-            proof = row.get("proof", "")
-            name = proof.rsplit(".", 1)[-1]
-            if not name or not re.search(r"(?m)^theorem " + re.escape(name) + r"\b", BRIDGE_LAWS.read_text()):
-                raise ValueError(f"missing bridge proof: {key}")
+            raise ValueError(f"T, definition, and record cannot be mixed: {key}")
         if row["class"] == "T" and not row.get("test"):
             raise ValueError(f"missing test: {key}")
         if row["class"] != "T" and not row.get("reason"):
             raise ValueError(f"missing reason: {key}")
+        # Every row names a field that its file declares.
+        structure, field = key.rsplit(".", 1)
+        path = ROOT / row["file"]
+        if not path.is_file() or field not in declared_fields(path).get(
+                structure.rsplit(".", 1)[-1], set()):
+            raise ValueError(f"inventory row names no declared field: {key} in {row['file']}")
         inventory[key] = row
-    reachable = None
+    # The regex scan of the Statements premise folder needs no Lean build.
+    source = source_fields()
+    missing = set(source) - set(inventory)
+    misplaced = [k for k in source.keys() & inventory.keys() if source[k] != inventory[k]["file"]]
+    if missing or misplaced:
+        raise ValueError(f"premise fields without rows={sorted(missing)}, wrong file={sorted(misplaced)}")
     if reachable_file is not None:
+        # The Lean rows are exact: every field of a claim-reachable premise
+        # structure, and every proof-valued field of an input structure of the
+        # claim, recursively (see scripts/StatementReachability.lean).
         audit = reachable_file.read_text()
-        reachable = {line.split("\t")[-1].rsplit(".", 1)[-1]
-                     for line in audit.splitlines() if line.startswith("SR\t")}
-        if not reachable or "SafetyPremises" not in reachable:
+        if "SR\tFastConfirmationStatements.Premises.ConcreteSafety\t" not in audit:
             raise ValueError("reachability audit has no safety premise root")
-    source = source_fields(reachable)
-    if reachable_file is not None:
-        audit = reachable_file.read_text()
-        lean_fields = {}
-        for line in audit.splitlines():
-            if line.startswith("PF\t"):
-                _, module, declaration = line.split("\t")
-                parts = declaration.split(".")
-                lean_fields[".".join(parts[-2:])] = module.split(".")[-1] + ".lean"
+        lean_fields, records = lean_rows(audit)
         if not lean_fields:
             raise ValueError("Lean reachability audit has no premise fields")
-        generated_fields = {row["path"]: row for row in generated}
-        lean_only = set(lean_fields) - set(source)
-        source_only = set(source) - set(lean_fields)
-        if lean_only != set(generated_fields) or source_only:
-            raise ValueError(f"Lean/source field mismatch: Lean-only={sorted(lean_only)}, source-only={sorted(source_only)}, classified generated={sorted(generated_fields)}")
-        for key, row in generated_fields.items():
-            if lean_fields[key] != row["file"] or row["class"] != "E-interpretation" or not row.get("reason"):
-                raise ValueError(f"generated field metadata invalid: {key}")
+        without_row = set(lean_fields) - set(inventory)
+        stale = set(inventory) - set(lean_fields)
+        wrong_file = [k for k in lean_fields.keys() & inventory.keys()
+                      if lean_fields[k] != inventory[k]["file"]]
+        if without_row or stale or wrong_file:
+            raise ValueError(f"Lean fields without inventory rows={sorted(without_row)}, "
+                             f"rows without Lean fields={sorted(stale)}, wrong file={sorted(wrong_file)}")
+        classed = {k for k, row in inventory.items() if row["class"] == "record"}
+        if classed != records:
+            raise ValueError(f"record class differs from Lean record fields: {sorted(classed ^ records)}")
         lean_boundaries = {line.split("\t", 1)[1] for line in audit.splitlines()
                            if line.startswith("RB\t")}
         boundary_names = {"FastConfirmation.Spec." + row["path"] for row in boundaries}
         if lean_boundaries != boundary_names:
             raise ValueError(f"Lean boundary mismatch: {sorted(lean_boundaries ^ boundary_names)}")
-    missing = set(source) - set(inventory)
-    stale = set(inventory) - set(source)
-    misplaced = [k for k in source.keys() & inventory.keys() if source[k] != inventory[k]["file"]]
-    if missing or stale or misplaced:
-        raise ValueError(f"missing={sorted(missing)}, stale={sorted(stale)}, wrong file={sorted(misplaced)}")
-    active = [row for row in rows if row["path"] in source]
-    counts = {klass: sum(klass in row["class"].split("+") for row in active)
+    premise_rows = sum(row["file"].startswith("FastConfirmationStatements/Premises/")
+                       for row in rows)
+    counts = {klass: sum(klass in row["class"].split("+") for row in rows)
               for klass in ("T", "E-scope", "E-network/behavior", "E-interpretation", "I",
                             "definition", "record")}
-    print(f"contract inventory passed: {len(active)} authored fields, {len(generated)} inherited projections, {len(boundaries)} outside boundaries "
+    leaves = sum(row["class"] not in ("definition", "record") for row in rows)
+    print(f"contract inventory passed: {len(rows)} fields ({premise_rows} Statements premise "
+          f"fields, {len(rows) - premise_rows} Model input fields; {leaves} assumed leaves), "
+          f"{len(boundaries)} outside boundaries"
+          + ("" if reachable_file is None else ", Lean rows exact") + ": "
           + " / ".join(f"{klass} {count}" for klass, count in counts.items()))
     return inventory
 

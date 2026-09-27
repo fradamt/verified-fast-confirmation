@@ -128,8 +128,10 @@ if [[ "$mode" == "full" ]]; then
   cat "$reachability_output"
   python3 scripts/test_reachability_metadata.py
   python3 scripts/conformance/contracts/check_inventory.py --inventory-only --reachable-file "$reachability_output"
+  python3 scripts/test_input_discovery.py --reachable-file "$reachability_output"
   rm "$reachability_output"
   lake env lean scripts/ReviewSurfaceShape.lean
+  python3 scripts/test_witness_fingerprint.py
   lake env lean scripts/PremiseFieldUse.lean
   lake env lean scripts/Audit.lean
   python3 scripts/test_audit_negative.py

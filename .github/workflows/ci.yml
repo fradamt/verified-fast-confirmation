@@ -133,11 +133,13 @@ jobs:
           cat "$RUNNER_TEMP/reachable.txt"
           python3 scripts/test_reachability_metadata.py
           python3 scripts/conformance/contracts/check_inventory.py --inventory-only --reachable-file "$RUNNER_TEMP/reachable.txt"
+          python3 scripts/test_input_discovery.py --reachable-file "$RUNNER_TEMP/reachable.txt"
 
       - name: Audit review surface shape
         run: |
           python3 scripts/check_witness_lists.py
           lake env lean scripts/ReviewSurfaceShape.lean
+          python3 scripts/test_witness_fingerprint.py
 
       - name: Require a stable dependency manifest
         run: git diff --exit-code -- lake-manifest.json

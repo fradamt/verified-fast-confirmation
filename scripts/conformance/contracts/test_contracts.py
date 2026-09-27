@@ -103,8 +103,9 @@ def lean_statement(name: str) -> str | None:
     row = next((x for x in inventory["field"] if x["path"] == name), None)
     if row is None:
         return None
-    source = (root / "FastConfirmationStatements/Premises" / row["file"]).read_text()
-    structure, field = name.split(".", 1)
+    source = (root / row["file"]).read_text()
+    structure, field = name.rsplit(".", 1)
+    structure = structure.rsplit(".", 1)[-1]
     body = re.search(r"(?m)^structure " + re.escape(structure) + r"\b[\s\S]*?\bwhere\n([\s\S]*?)(?=\n(?:end|namespace|structure|/-!|section|def |abbrev |variable )|\Z)", source)
     match = None if body is None else re.search(r"(?m)^  " + re.escape(field) + r"\s*:", body.group(1))
     if match is None:
