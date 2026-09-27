@@ -97,7 +97,7 @@ private theorem justified_epoch_le_on_tick_per_slot
   let currentSlot := get_current_slot cfg timed
   let reset : Store Root :=
     if currentSlot > previousSlot then
-      { timed with proposer_boost_root := (default : Root) }
+      { timed with proposer_boost_root := none }
     else timed
   have hresetJ : reset.justified_checkpoint =
       store.justified_checkpoint := by

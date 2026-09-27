@@ -14,6 +14,8 @@ Each row states a choice in the executable model, why it is used, and the proper
 │                                       │                                                                  │ have defaults.                                                                    │
 │ Injective block-root labels           │ WellFormedExecution.blocks_root_injective identifies blocks      │ It gives no hash_tree_root equation or cryptographic commitment.                  │
 │                                       │ with equal roots.                                                │                                                                                   │
+│ Optional proposer-boost root          │ Python stores Root(), the zero hash, when no block has the       │ Differs from Python only for a block whose root is the zero hash. No real block   │
+│                                       │ boost. Store.proposer_boost_root is an Option; none is Root().   │ root is the zero hash, so the model needs no premise for it.                      │
 │ Atomic handler rejection              │ An invalid attestation returns none and leaves the run store     │ Python can retain a target checkpoint-state cache write before indexed            │
 │                                       │ unchanged.                                                       │ validation fails. See the cache-write note below.                                 │
 │ Explicit loop fuel                    │ Makes recursive Python walks total.                              │ Equivalence needs a bound on reachable parent walks.                              │

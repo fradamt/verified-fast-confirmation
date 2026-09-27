@@ -36,7 +36,11 @@ structure Store (Root : Type*) where
   finalized_checkpoint : Checkpoint Root
   unrealized_justified_checkpoint : Checkpoint Root
   unrealized_finalized_checkpoint : Checkpoint Root
-  proposer_boost_root : Root
+  /-- Python `proposer_boost_root`. Python stores `Root()`, the zero hash, when
+      no block has the boost; `none` models that value. No real block root is
+      the zero hash, so the model does not need a premise that keeps a block
+      root off a sentinel value. -/
+  proposer_boost_root : Option Root
   equivocating_indices : Finset ValidatorIndex
   /-- Key list of the python `blocks: Dict[Root, BeaconBlock]` (python dicts
       iterate keys in insertion order, so the domain is a `List`; keys are
@@ -233,13 +237,15 @@ a proposer-boost block which selects EMPTY can prevent extension. -/
 def should_extend_payload (store : Store Root) (root : Root) : Bool :=
   if !is_payload_verified store root then false
   else
-    let proposer_root := store.proposer_boost_root
     let payload_is_timely := payload_timeliness cfg store root true
     let payload_data_is_available := payload_data_availability cfg store root true
     (payload_is_timely && payload_data_is_available) ||
-      decide (proposer_root = default) ||
-      decide ((store.blocks proposer_root).parent_root ≠ root) ||
-      is_parent_node_full store (store.blocks proposer_root)
+      -- `none` is Python `proposer_root == Root()`.
+      match store.proposer_boost_root with
+      | none => true
+      | some proposer_root =>
+        decide ((store.blocks proposer_root).parent_root ≠ root) ||
+          is_parent_node_full store (store.blocks proposer_root)
 
 /-- `get_payload_status_tiebreaker` (`specs/gloas/fork-choice.md:514`).
 Previous-slot EMPTY has priority 1. FULL has priority 2 or 0, according to
@@ -288,9 +294,11 @@ def is_head_weak (store : Store Root) (head_root : Root) : Bool :=
 For a weak parent in the previous slot, an early proposer equivocation
 disables boost. Early means timely at the PTC deadline. -/
 def should_apply_proposer_boost (store : Store Root) : Bool :=
-  if store.proposer_boost_root = default then false
-  else
-    let block := store.blocks store.proposer_boost_root
+  -- `none` is Python `store.proposer_boost_root == Root()`.
+  match store.proposer_boost_root with
+  | none => false
+  | some proposer_boost_root =>
+    let block := store.blocks proposer_boost_root
     let parent_root := block.parent_root
     let parent := store.blocks parent_root
     let slot := block.slot
@@ -313,9 +321,15 @@ def get_weight (store : Store Root) (node : ForkChoiceNode Root) : Gwei :=
     let attestation_score := get_attestation_score cfg store node state
     if !should_apply_proposer_boost cfg store then attestation_score
     else
-      let proposer_boost_node := ForkChoiceNode.mk store.proposer_boost_root .pending
+      -- `should_apply_proposer_boost` is `false` for `none`; the `none` arm
+      -- is unreachable.
       let proposer_score : Gwei :=
-        if is_ancestor store proposer_boost_node node then get_proposer_score cfg store else 0
+        match store.proposer_boost_root with
+        | none => 0
+        | some proposer_boost_root =>
+          let proposer_boost_node := ForkChoiceNode.mk proposer_boost_root .pending
+          if is_ancestor store proposer_boost_node node then get_proposer_score cfg store
+          else 0
       attestation_score + proposer_score
 
 /-- `get_voting_source`: Compute the voting source checkpoint in event that

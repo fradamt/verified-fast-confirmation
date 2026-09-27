@@ -275,14 +275,14 @@ run_cmd do
   | some (.defnInfo info) =>
       fingerprint := hash (fingerprint, info.value)
   | _ => throwError "missing claim definition"
-  unless fingerprint == (7242260387970156940 : UInt64) do
+  unless fingerprint == (13571509296887298206 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
   let mut witnessFingerprint : UInt64 := 0
   for name in publicWitnesses do
     let some info := env.find? name
       | throwError "missing public witness {name}"
     witnessFingerprint := hash (witnessFingerprint, name, info.type)
-  unless witnessFingerprint == (14189070914049255717 : UInt64) do
+  unless witnessFingerprint == (2259214320112237346 : UInt64) do
     throwError "public witness statement type changed: {witnessFingerprint}"
   IO.println s!"public witness statements passed ({witnessFingerprint})"
   IO.println s!"review surface types passed ({fingerprint})"
