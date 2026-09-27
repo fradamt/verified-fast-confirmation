@@ -21,7 +21,7 @@ faithfulness; the contract suite, projection harness, and concrete differential
 check test that behavior. Their PJF returns early in epochs 0 and 1, as Python does.
 
 This page names the finite runs that satisfy the premise bundles: a short
-next-slot safety run with one-second slots and a 500 ms delay, the same run
+next-slot safety run with one-second slots, the same run
 with the real genesis stub,
 a one-second target-edge run,
 a one-second run with Byzantine weight and a slashing, a 12-second
@@ -134,8 +134,8 @@ Byzantine run has five validators.
   proves the descendant target support of this selection.
 * Twelve-second full bundle:
   `FullTwelveWitness.full_bundle_witness` proves the public premise for the
-  run `FullTwelveBridgeRun`, with 12,000 ms slots, a 3,000 ms vote deadline,
-  and a positive 2,000 ms delay. It has the concrete setup, blocks, and states
+  run `FullTwelveBridgeRun`, with 12,000 ms slots and a 3,000 ms vote
+  deadline. It has the concrete setup, blocks, and states
   of the next-slot run. `FullTwelveWitness.delayed_receipts_are_first` proves
   the real block and vote receipt delays: node 1 receives the child block at
   second 14 while node 0 receives it at second 12, and the slot-zero vote at
@@ -149,9 +149,10 @@ Byzantine run has five validators.
   `FullTwelveEnvelopeWitness.full_bundle_witness` proves the public premise
   in a run with an accepted child payload envelope. The base interface of the
   bridge reports the child data as available and accepts exactly the child
-  envelope. Node 1 first receives the envelope two seconds after node 0. The
-  envelope and data relay antecedents hold at second 168, with boundary
-  service at second 180.
+  envelope. Node 1 receives the envelope two seconds after node 0. Each node
+  receives it once, before the boundary at second 180, and keeps the payload
+  (`single_early_envelope_receipt`). The antecedent of the envelope prefix
+  holds at second 168.
   `FullTwelveEnvelopeWitness.changed_root_safe_from_next_slot` applies the
   public safety theorem. `payload_status_branches` checks the FULL choice and
   its Gloas weight beside the EMPTY choice. `gloas_discount_sample` computes
@@ -217,6 +218,8 @@ Byzantine run has five validators.
   `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-eight carrier
   carries the unrealized justification of the slot-one child in epoch 1. It is
   in epoch 2, because Python justification returns early in epochs 0 and 1.
+  Each full-bundle family proves the first case of the consequent
+  (`AvailableCheckpointOrExtension`): a carrier carries `C(b, e)` itself.
 
 ## Counterexamples
 
@@ -232,12 +235,16 @@ Byzantine run has five validators.
 
 ## Notes
 
-The 1 s safety run (delay 500 ms) changes a stored root. The 12-second
+Each run delivers each honest vote at the first second of the next slot, as
+`HorizonVoteDeliveryLookahead` requires: one second after the vote in the
+one-second runs (A = 0), and nine seconds after it in the twelve-second runs
+(vote at second 12s + 3, receipt at second 12(s + 1)). The 1 s safety run
+changes a stored root. The 12-second
 full-bundle run adds real delayed block and vote receipts. The target-edge run
 checks current-target support as a fact about the run. The envelope run
-exercises envelope delivery and data relay through
+exercises the envelope prefix through
 `FullTwelveEnvelopeWitness.envelope_relay_exercised` and
-`FullTwelveEnvelopeWitness.data_relay_exercised`. The Byzantine run exercises
+`FullTwelveEnvelopeBridgeRun.single_early_envelope_receipt`. The Byzantine run exercises
 positive non-honest weight and the slashing relay through
 `ByzantinePremiseWitness.byzantine_weight_exercised` and
 `ByzantinePremiseWitness.slashing_relay_exercised`. The Byzantine run

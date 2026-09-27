@@ -30,6 +30,11 @@ The runs are:
   slot 31 still has justified epoch 0. The run is outside the scope of
   `epoch_one_finalization_one_step`; it shows why that scope condition is
   necessary.
+* `superseded`: one chain with a block in every slot. The epoch-4 votes are
+  included only at slot 47, after the slot-46 block includes the epoch-5
+  votes. One justification pass then justifies epochs 4 and 5 together, and
+  no carried selector of any block holds the epoch-4 checkpoint. Paper
+  Assumption 3.2 holds with a later checkpoint that extends it.
 
 Names `AcceptedBlockFFGState.*` and `FFGStateReadAgreement.*` are Lean
 fields; `candidate.*` is a proposed restatement; `regression.*` records a
@@ -58,6 +63,7 @@ EXPECTED_FAILURES = {
     'regression.a32_projection_epoch_one_seed': 'cf9bf4e6974b0831a4900ca0d2030d8913d5e2280a897f6ca03208d4e4c991ec',
     'regression.fcr_confirmed_block_reorged_epoch_one': '506abd25bf20d2b58fca147dfdc9fbca8de0b469613ce1c934402d20a33492c8',
     'regression.finalized_epoch_one_two_step_above_voter_justified': 'f2d60adebda9b81be6578d5c9137580a377663a42dadf5f4cdde6c52f6e81322',
+    'regression.a32_exact_carried_superseded': 'e22a6c4e7a9ca04a9349b864197c301916e1819401e72488df05a8d053393d62',
 }
 
 GENESIS_EPOCH = 0
@@ -223,6 +229,33 @@ def voter_run(env):
             "vote_source_epochs": sorted({int(w.pool[s].data.source.epoch) for s in range(16, 32)})}
 
 
+def superseded_run(env):
+    """Votes of epochs 0-3 are included in the next slot. Blocks of slots
+    33-45 include no vote. The slot-46 block includes the epoch-5 votes of
+    slots 40-45, and the slot-47 block the epoch-4 votes of slots 32-39.
+    Blocks from slot 48 include the previous-slot vote again."""
+    run = Run(env, "superseded")
+    parent = run.anchor_root
+    roots = {0: parent}
+    for slot in range(1, 56):
+        if slot <= 32:
+            votes = [slot - 1] if slot >= 2 else []
+        elif slot < 46:
+            votes = []
+        elif slot == 46:
+            votes = list(range(40, 46))
+        elif slot == 47:
+            votes = list(range(32, 40))
+        else:
+            votes = [slot - 1]
+        parent = run.propose(slot, parent, votes)
+        roots[slot] = parent
+        run.vote(slot, parent)
+    run.tick(56)
+    run.roots = roots
+    return run
+
+
 class Projection:
     """`AcceptedBlockFFGState` read off one run."""
 
@@ -301,6 +334,14 @@ class Projection:
     def AU(self, r):
         return self.certified[r]
 
+    def carried(self, r):
+        """AU of the bridge view: the four carried selectors of the blocks on
+        `r`'s chain (`ConcreteBridge.Carried`)."""
+        return {c for x in self.chain[r] for c in (self.gj[x], self.gf[x], self.gu[x], self.guf[x])}
+
+    def root_of(self, root_hex):
+        return next(r for r in self.roots if bytes(r).hex() == root_hex)
+
     def finalized_one_step(self, r, c):
         """`IncludedCertifiedFinalized`: justified, and a link to epoch + 1."""
         return c in self.certified[r] and any(
@@ -325,7 +366,7 @@ class Projection:
         return False
 
 
-def run_checks(projections, fork, voter):
+def run_checks(projections, fork, voter, superseded):
     results = []
 
     def check(name, statement, cases, predicate, expected="PASS"):
@@ -561,6 +602,57 @@ def run_checks(projections, fork, voter):
           "finalized(w, slot 32).epoch <= justified(v, slot 31).epoch",
           [("voter:31", voter)],
           lambda d: (d["w_finalized_slot_32"] <= d["v_justified_slot_31"], dict(d)), expected="FAIL")
+
+    # Paper A3.2 on `superseded` with b = the slot-32 block and e = 4, over
+    # the view of the bridge (AU = carried selectors). Every epoch-4 vote has
+    # source vs(b, 4) = GJ(b) and target C(b, 4), all 64 validators vote, and
+    # b is on the head chain, so the antecedent holds. The view is the final
+    # store at slot 56, after the start of epoch 6.
+    P = superseded
+    spec, store = P.spec, P.run.store
+    b = P.run.roots[32]
+    e = 4
+    c = tc.cp(spec.get_checkpoint_for_block(store, b, spec.Epoch(e)))
+    pool = P.run.pool
+    head = spec.get_head(store).root
+    antecedent = {
+        "b_epoch": P.epoch[b],
+        "vote_sources_eq_GJ_b": all(P.read(pool[s].data.source) == P.gj[b] for s in range(32, 40)),
+        "vote_targets_eq_C": all(tc.cp(pool[s].data.target) == c for s in range(32, 40)),
+        "signers": len(P.links[P.run.roots[47]].get((P.gj[b], c), set())),
+        "head_descends_b": spec.is_ancestor(store, spec.get_node_for_root(head), spec.get_node_for_root(b)),
+        "certified_at_47": c in P.certified[P.run.roots[47]],
+        "view_slot": int(spec.get_current_slot(store)),
+    }
+    antecedent_ok = (antecedent["b_epoch"] == e and antecedent["vote_sources_eq_GJ_b"]
+                     and antecedent["vote_targets_eq_C"] and antecedent["signers"] == 64
+                     and antecedent["head_descends_b"] and antecedent["certified_at_47"]
+                     and antecedent["view_slot"] >= 8 * (e + 2))
+    # Descendants b' of b of an epoch below e + 2 and above GENESIS_EPOCH + 1.
+    seeds = [r for r in P.roots if b in P.chain[r] and GENESIS_EPOCH + 1 < P.epoch[r] < e + 2]
+
+    def exact(r):
+        return c in P.carried(r)
+
+    def extension(r):
+        return exact(r) or any(j[0] > c[0] and P.on_chain(P.root_of(j[1]), c[1]) for j in P.carried(r))
+
+    check("EventualCheckpointInclusion.included.superseded",
+          "A3.2 at b = slot-32 block, e = 4: a descendant b' of b with epoch b' < 6 carries C(b, 4) "
+          "or a later checkpoint J whose block descends from the block of C(b, 4)",
+          [("superseded:56", None)],
+          lambda _: (antecedent_ok and any(extension(r) for r in seeds),
+                     {**antecedent, "checkpoint": c,
+                      "witnesses": sorted((P.slot[r], sorted(j for j in P.carried(r) if j[0] > e))
+                                          for r in seeds if extension(r))[:2]}))
+    check("regression.a32_exact_carried_superseded",
+          "Old consequent: a descendant b' of b with epoch b' < 6 carries exactly C(b, 4) in a "
+          "carried selector (`superseded`: one justification pass justifies epochs 4 and 5)",
+          [("superseded:56", None)],
+          lambda _: (not antecedent_ok or any(exact(r) for r in seeds),
+                     {"checkpoint": c, "antecedent": antecedent_ok,
+                      "carried_epochs_at_seeds": sorted({j[0] for r in seeds for j in P.carried(r)})}),
+          expected="FAIL")
     return results
 
 
@@ -576,7 +668,7 @@ def main():
     env = {"spec": spec, "genesis": genesis, "build_block": build_block,
            "sign_transition": sign_transition, "attest": get_valid_attestation_at_slot}
     projections = [Projection(full_run(env)), Projection(late_run(env)), Projection(fork_run(env))]
-    results = run_checks(projections, projections[2], voter_run(env))
+    results = run_checks(projections, projections[2], voter_run(env), Projection(superseded_run(env)))
     if {r['law'] for r in results if r['expected'] == 'FAIL'} != set(EXPECTED_FAILURES):
         raise RuntimeError('known realized-gap regression set differs')
     unexpected = [r for r in results if r["status"] != r["expected"] or

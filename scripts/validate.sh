@@ -119,6 +119,7 @@ if [[ "$mode" == "full" ]]; then
   python3 scripts/conformance/contracts/check_inventory.py --inventory-only --reachable-file "$reachability_output"
   rm "$reachability_output"
   lake env lean scripts/ReviewSurfaceShape.lean
+  lake env lean scripts/PremiseFieldUse.lean
   lake env lean scripts/Audit.lean
   git diff --exit-code -- lake-manifest.json
 fi

@@ -165,7 +165,7 @@ reason = "Part of the A3.2 antecedent that the proof must supply; not an assumpt
 path = "EventualCheckpointInclusion.included"
 file = "FFGState.lean"
 class = "E-network/behavior"
-reason = "A3.2 requires an accepted AU carrier by epoch e+2 after every-view support; with the bridge view fixed, this is a vote-inclusion and delivery assumption."
+reason = "A3.2 requires an accepted carrier by epoch e+2 after every-view support. Its chain carries C(b,e), or a later checkpoint that extends C(b,e), in a carried selector; one justification pass can justify epochs e and e+1 together. With the bridge view fixed, this is a vote-inclusion and delivery assumption."
 
 [[field]]
 path = "WellFormedExecution.blocks_root_injective"
@@ -192,12 +192,6 @@ class = "E-network/behavior"
 reason = "Each honest in-horizon vote must reach every honest node by the next boundary."
 
 [[field]]
-path = "NextSlotSynchronyPremises.delta"
-file = "Synchrony.lean"
-class = "E-network/behavior"
-reason = "The positive network delay must fit after the attestation cutoff within one slot."
-
-[[field]]
 path = "NextSlotSynchronyPremises.delivery_lookahead"
 file = "Synchrony.lean"
 class = "record"
@@ -216,16 +210,10 @@ class = "E-network/behavior"
 reason = "Ready blocks must be processed before a boundary attestation handler."
 
 [[field]]
-path = "NextSlotSynchronyPremises.envelope_delivery"
+path = "NextSlotSynchronyPremises.boundary_envelope_prefix"
 file = "Synchrony.lean"
 class = "E-network/behavior+I"
-reason = "The network and client must deliver and service the verified envelope before a boundary vote; engine validity remains idealized."
-
-[[field]]
-path = "NextSlotSynchronyPremises.data_availability_relay"
-file = "Synchrony.lean"
-class = "E-network/behavior+I"
-reason = "The network must deliver matching data and the client must serve it at receipt; KZG and data service remain idealized."
+reason = "Ready envelopes must be processed before a boundary attestation handler, so that handler reads a store with the verified payload. Engine validity remains idealized."
 
 [[field]]
 path = "NextSlotSynchronyPremises.attester_slashing_relay"

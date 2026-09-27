@@ -1059,7 +1059,6 @@ theorem payloads_empty (w : ValidatorIndex) (n : ℕ) :
 
 theorem witnessSynchrony : Synchrony witnessConfig witnessExternals witnessExecution := by
   refine {
-    delta := ⟨2000, by decide, by decide⟩
     attestation_delivery := ?_
     deadline_block_relay := deadline_block_relay
     boundary_block_prefix := boundary_block_prefix
@@ -1086,8 +1085,6 @@ theorem witnessPaperSafetySynchrony :
       simp only [is_payload_verified, hempty, hnone, Option.isSome_none]
     rw [hfalse] at hr
     cases hr
-  · intro v hv k n signed sourceObservation hk hn hevent havailable
-    exact (schedule_no_envelope hevent signed sourceObservation rfl).elim
 
 end FullTwelveBridgeRun
 end FastConfirmation.Spec

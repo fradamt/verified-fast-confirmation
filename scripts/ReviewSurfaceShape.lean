@@ -55,14 +55,13 @@ run_cmd do
   checkFields `FastConfirmation.Spec.ConcreteFFG.ConcreteBridge
     ["setup", "states", "blocks", "base"]
   checkFields `FastConfirmation.Spec.Synchrony
-    ["delta", "attestation_delivery",
+    ["attestation_delivery",
      "deadline_block_relay", "boundary_block_prefix",
      "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.NextSlotSynchronyPremises
-    ["delta", "delivery_lookahead",
+    ["delivery_lookahead",
      "deadline_block_relay", "boundary_block_prefix",
-     "envelope_delivery",
-     "data_availability_relay", "attester_slashing_relay"]
+     "boundary_envelope_prefix", "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.ConcreteFFG.ConcreteBridge.ConcreteExternalsPremises
     ["committees_agree", "honest_attestation_valid", "valid_attestation_honest",
      "on_attestation_committee", "committee_assignment_unique", "committee_coverage",
@@ -98,8 +97,7 @@ run_cmd do
 -- These names must remain in the reviewed Statements surface.
 #check FastConfirmation.Spec.DeadlineBlockRelay
 #check FastConfirmation.Spec.DeadlineBoundaryBlockPrefix
-#check FastConfirmation.Spec.DeadlineEnvelopeDelivery
-#check FastConfirmation.Spec.DeadlineDataAvailabilityRelay
+#check FastConfirmation.Spec.DeadlineBoundaryEnvelopePrefix
 #check FastConfirmation.Spec.DeadlineAttesterSlashingRelay
 
 example (Root : Type) [LinearOrder Root] [Inhabited Root] :
@@ -233,6 +231,6 @@ run_cmd do
   | some (.defnInfo info) =>
       fingerprint := hash (fingerprint, info.value)
   | _ => throwError "missing claim definition"
-  unless fingerprint == (10074103416500337606 : UInt64) do
+  unless fingerprint == (5450425737038397445 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
   IO.println s!"review surface types passed ({fingerprint})"

@@ -291,6 +291,12 @@ theorem apply_event_getD_payloadLE (store : Store Root) (event : Event Root) :
   | none => exact PayloadLE.refl _
   | some store' => exact apply_event_payloadLE cfg ext h
 
+/-- A prefix of the events of one second preserves verified payloads. -/
+theorem foldl_apply_event_payloadLE (events : List (Event Root)) (store : Store Root) :
+    PayloadLE store
+      (events.foldl (fun store event => (apply_event cfg ext store event).getD store) store) :=
+  payloadLE_foldl (fun store event => apply_event_getD_payloadLE cfg ext store event) _ _
+
 /-- One execution second preserves locally verified payloads. -/
 theorem Execution.store_payloadLE_succ (E : Execution Root)
     (validator : ValidatorIndex) (n : ℕ) :

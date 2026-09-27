@@ -828,7 +828,6 @@ theorem witness_slot15_delivery_at_second16 (w : ValidatorIndex) :
 
 theorem witnessSynchrony : Synchrony witnessConfig witnessExternals witnessExecution := by
   refine {
-    delta := ⟨500, by decide, by decide⟩
     attestation_delivery := ?_
     deadline_block_relay := ?_
     boundary_block_prefix := ?_
@@ -949,9 +948,6 @@ theorem witnessPaperSafetySynchrony :
       simp only [is_payload_verified, hempty, hnone, Option.isSome_none]
     rw [hfalse] at hr
     cases hr
-  · intro v hv k n signed sourceObservation hk hn hevent havailable
-    have hno := witnessSchedule_no_envelope v k _ hevent signed sourceObservation
-    exact (hno rfl).elim
 
 end NextSlotBridgeRun
 end FastConfirmation.Spec

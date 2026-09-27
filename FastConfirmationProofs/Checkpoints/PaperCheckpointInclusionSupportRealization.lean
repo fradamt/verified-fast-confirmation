@@ -359,9 +359,10 @@ theorem accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum
 
 /-- Accepted end-to-end A.3.2 consumer: one concrete fixed-source quorum
 realizes the full next-epoch support antecedent over a compatible view, and
-the paper assumption for that view returns an exact AU/formed-carrier witness.
-The witness is formed in the accepted state, which gives the executable
-projection. No migration state occurs in this dependency theorem. -/
+the paper assumption for that view returns an AU/formed-carrier witness for
+`C(b, e)` or for a later extension of it.  The witness is formed in the
+accepted state, which gives the executable projection. No migration state
+occurs in this dependency theorem. -/
 theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
     (hwf : WellFormedExecution E)
     (hhb : HonestBehavior cfg ext E)
@@ -405,17 +406,20 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
       hbEpochQuery hcanonical Q hsourceQuery
   have hb : E.BlockKnownInScheduledPrefix cfg ext b ((E.store cfg ext v q).blocks b) :=
     E.acceptedBlockAt_of_store_known cfg ext v q hbQuery
-  obtain ⟨seed, hseed, _hbKnown, hseedB, hseedEpoch, hseedLate, carrier, hdesc, hcarrier⟩ :=
+  obtain ⟨seed, hseed, _hbKnown, hseedB, hseedEpoch, hseedLate, hincluded⟩ :=
     hV.included hb (by simpa only [get_block_epoch] using hbEpochQuery.le) hcanonical
       hsupport w hw m hHm hboundary
-  have hAU : (S.checkpoint_inclusion_view cfg ext).AvailableCheckpoint cfg seed
-      ((S.checkpoint_inclusion_view cfg ext).C b e) :=
-    ⟨carrier, hdesc, hformed hcarrier⟩
+  have hAU : (S.checkpoint_inclusion_view cfg ext).AvailableCheckpointOrExtension cfg seed
+      ((S.checkpoint_inclusion_view cfg ext).C b e) := by
+    rcases hincluded with ⟨carrier, hdesc, hcarrier⟩ |
+        ⟨J, hlater, hJdesc, carrier, hdesc, hcarrier⟩
+    · exact Or.inl ⟨carrier, hdesc, hformed hcarrier⟩
+    · exact Or.inr ⟨J, hlater, hJdesc, carrier, hdesc, hformed hcarrier⟩
   exact ⟨seed, {
     executable :=
       (S.paperA32RootProjectionAt cfg ext hcoh (E.store_causal cfg ext w m) hseed
         ).a32IncludedAtTip_of_existing_AU cfg ext hseedB hseedEpoch hseedLate hAU
-    exact_AU := hAU }⟩
+    included_AU := hAU }⟩
 
 end Execution
 

@@ -66,29 +66,31 @@ def check(text):
     require(not re.search(r"E\.store\s+cfg\s+ext\s+w\s+\(?n\b", code),
             "same-second cross-node store")
     ds = contracts(text)
-    for name in ("DeadlineBlockRelay", "DeadlineEnvelopeDelivery",
-                 "DeadlineDataAvailabilityRelay", "DeadlineAttesterSlashingRelay",
-                 "DeadlineBoundaryBlockPrefix"):
+    prefixes = ("DeadlineBoundaryBlockPrefix", "DeadlineBoundaryEnvelopePrefix")
+    for name in ("DeadlineBlockRelay", "DeadlineAttesterSlashingRelay", *prefixes):
         d = ds.get(name, "")
         require(bool(d), f"missing {name}")
         require("n≤E.slot_startcfg(E.slot_atcfgn)+get_attestation_due_mscfg/1000→" in d,
                 f"{name}: missing source cutoff")
-        if name == "DeadlineBoundaryBlockPrefix":
+        if name in prefixes:
             require("letboundary:=E.slot_startcfg(E.slot_atcfgn+1)" in d
                     and "n<boundary→" in d, f"{name}: missing distinct boundary")
+            require("E.schedulewboundary=before++Event.attestationafalse::after→" in d,
+                    f"{name}: must read the store before a boundary vote")
+            require("PermanentBlockExclusioncfgextEvnrw(boundary-1)" in d,
+                    f"{name}: tick-time exemption")
         else:
             require("E.slot_startcfg(E.slot_atcfgn+1)≤m→n<m→" in d,
                     f"{name}: missing later receiver gate")
-    for name in ("DeadlineBlockRelay", "DeadlineEnvelopeDelivery"):
+    for name in ("DeadlineBlockRelay",):
         require("PermanentBlockExclusioncfgextEvnrw(E.slot_startcfg(E.slot_atcfgn+1)-1)"
                 in ds.get(name, ""), f"{name}: exemption must precede tick")
-    require("PermanentBlockExclusioncfgextEvnrw(boundary-1)" in
-            ds.get("DeadlineBoundaryBlockPrefix", ""), "block prefix: tick-time exemption")
     require("PermanentBlockExclusion" not in ds.get("DeadlineAttesterSlashingRelay", ""),
             "evidence exclusion is not permitted")
-    envelope = ds.get("DeadlineEnvelopeDelivery", "")
-    require("pre=before++Event.execution_payload_envelopesignedreceiverObservation::middle"
-            in envelope, "envelope must precede boundary vote")
+    require("Event.execution_payload_envelope" not in ds.get("DeadlineBoundaryEnvelopePrefix", ""),
+            "envelope prefix must not force a receiver envelope event")
+    require("is_payload_verified(before.foldl" in ds.get("DeadlineBoundaryEnvelopePrefix", ""),
+            "envelope prefix must verify the payload before the boundary vote")
     for name in ("Synchrony", "NextSlotSynchronyPremises"):
         d = ds.get(name, "")
         require("deadline_block_relay:DeadlineBlockRelaycfgextE" in d,
@@ -100,16 +102,11 @@ def check(text):
         if name == "Synchrony":
             require("n≤E.slot_startcfgs+get_attestation_due_mscfg/1000→" in d,
                     f"{name}: missing vote cutoff")
-        require("0<delay_ms∧" in d, f"{name}: missing positive delay")
-        require("get_attestation_due_mscfg+delay_ms<cfg.slot_duration_ms" in d,
-                f"{name}: missing strict delay bound")
     next_slot = ds.get("NextSlotSynchronyPremises", "")
     require("delivery_lookahead:HorizonVoteDeliveryLookaheadcfgE" in next_slot,
             "NextSlotSynchronyPremises: missing horizon vote delivery")
-    require("envelope_delivery:DeadlineEnvelopeDeliverycfgextE" in next_slot,
-            "NextSlotSynchronyPremises: wrong envelope relay type")
-    require("data_availability_relay:DeadlineDataAvailabilityRelaycfgextE" in next_slot,
-            "NextSlotSynchronyPremises: wrong data relay type")
+    require("boundary_envelope_prefix:DeadlineBoundaryEnvelopePrefixcfgextE" in next_slot,
+            "NextSlotSynchronyPremises: wrong envelope-prefix type")
     lookahead = ds.get("HorizonVoteDeliveryLookahead", "")
     require("n≤E.slot_startcfgs+get_attestation_due_mscfg/1000→" in lookahead,
             "lookahead: missing vote cutoff")
@@ -137,13 +134,13 @@ def main():
             text.replace("(E.slot_start cfg (E.slot_at cfg n + 1) - 1)",
                          "(E.slot_start cfg (E.slot_at cfg n + 1))", 1),
             text + "\nstructure Bad where\n  block_relay : True\n",
-            text.replace("pre = before ++", "pre = middle ++", 1),
+            text.replace("is_payload_verified (before.foldl", "is_payload_verified ((before ++ after).foldl", 1),
         ]
         for i, mutant in enumerate(mutants, 1):
             if mutant == text or not check(mutant):
                 raise SystemExit(f"self-test {i} failed to reject a corner")
         print(f"synchrony corner self-test passed ({len(mutants)} rejected mutations)")
-    print("synchrony corner check passed (five cutoff contracts, no legacy projections)")
+    print("synchrony corner check passed (four cutoff contracts, no legacy projections)")
 
 
 if __name__ == "__main__":

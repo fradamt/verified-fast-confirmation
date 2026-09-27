@@ -35,7 +35,7 @@ Each row states a choice in the executable model, why it is used, and the proper
 │ Global FFG and finalization laws      │ The translation proves them from the concrete transition.        │ They range over handler-successful prefixes beyond a conclusion endpoint.         │
 │ Derived FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms follow from the joint call and endpoint-slot induction.                │
 │ Gloas payload-aware discount          │ Counts matching or PENDING parent votes in an empty slot.        │ Diverges from upstream rule; public fix at fcr-gloas-fix.                         │
-│ Envelope and data relay               │ Carries verified payload state to honest receivers.              │ The finite next-slot witness has no envelope event.                               │
+│ Envelope boundary prefix              │ Puts the verified payload before the next-slot vote handler.     │ The finite next-slot witness has no envelope event.                               │
 └───────────────────────────────────────┴──────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -60,18 +60,17 @@ the [trusted boundary](REVIEW_GUIDE.md#trusted-boundary).
 
 `DeadlineBlockRelay` is an operational store-retention condition close to the membership result. Network delivery must bring cutoff blocks and parents before the next boundary. Clients must service ready blocks, retain accepted blocks, and apply only the stated permanent finalized-guard exemption. The proof rules out that exemption for the confirmed root and establishes head ancestry.
 
-The execution records use a positive delay in milliseconds. Their strict bound
-is `get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms`. Let S be the
-slot duration and A the attestation deadline offset. This is the paper's
-`A + Δ < S`: immediate honest gossip delivers a message held by A strictly
-before the next slot. `HonestBehavior.vote_deadline` bounds each honest vote
-between its slot start and the Python due time, rounded down to whole seconds.
-Phase0 calls for a vote after the expected valid block or at the due time,
-whichever comes first. Gloas sets the offset with `attestation_due_bps`.
-`HonestBehavior.no_forgery` also retains the causal send-time order.
-The `delta` field supplies the positive timing parameter. The separate
-delivery fields state receipt and handler service. No proof derives those
-fields from `delta` alone.
+Let S be the slot duration and A the attestation deadline offset. The paper
+assumes a positive message delay Δ with `A + Δ < S`: immediate honest gossip
+delivers a message held by A strictly before the next slot. The execution
+records do not state Δ. Each delivery law states its timing directly: a source
+observation at or before `slot_start + A` (whole seconds) and a receiver fact
+from the next slot boundary on. `HonestBehavior.vote_deadline` bounds each
+honest vote between its slot start and the Python due time, rounded down to
+whole seconds. Phase0 calls for a vote after the expected valid block or at
+the due time, whichever comes first. Gloas sets the offset with
+`attestation_due_bps`. `HonestBehavior.no_forgery` also retains the causal
+send-time order.
 
 `DeadlineBlockRelay` transports only roots held by an honest node at or before
 the deadline of the source observation's slot. The receiver query is at or
@@ -95,16 +94,20 @@ retain their earlier deadline observations. These facts preserve the public
 next-slot endpoints without a new public premise field.
 
 `DeadlineBoundaryBlockPrefix` puts needed blocks before the next-slot
-attestation handler. `DeadlineEnvelopeDelivery` uses the same cutoff and
-pre-tick exemption and puts the accepted envelope occurrence before that vote
-handler. `DeadlineDataAvailabilityRelay` provides data at the matching receiver
-observation. These contracts include honest client service of ready messages,
-as required by Python's delay consideration. Raw receipt alone does not prove
-handler acceptance or data availability. The finite next-slot witness has
-one-second slots, A = 0, and a 500 ms delay witness; it has no envelope event.
+attestation handler. `DeadlineBoundaryEnvelopePrefix` uses the same cutoff
+and pre-tick exemption and puts the verified payload before that handler; one
+receipt at any earlier second is sufficient, because Python keeps
+`store.payloads`. These contracts include honest client service of ready
+messages, as required by Python's delay consideration. Raw receipt alone does
+not prove handler acceptance or data availability. No premise field states
+envelope or data delivery that the proof does not read
+(`scripts/PremiseFieldUse.lean`). The finite next-slot witness has
+one-second slots and A = 0; it has no envelope event.
 `FullTwelveWitness.full_bundle_witness` proves the full bundle at 12-second
-slots, A = 3 s and Δ = 2 s, with two real delayed first receipts; it also has
-no envelope event.
+slots and A = 3 s, with two real delayed first receipts; it also has no
+envelope event. The runs deliver each honest vote at the first second of the
+next slot: one second after the vote in the one-second runs, and nine seconds
+after it (second 12s + 3 to second 12(s + 1)) in the twelve-second runs.
 
 `DeadlineAttesterSlashingRelay` has the same source cutoff and later-slot
 receiver gate, with no exclusion branch. Slashing delivery takes at most Δ,
@@ -131,8 +134,9 @@ Evidence accepted late in a slot is included: the relay's source time is when
 the confirmer holds the index at its scheduled slot-start FCR call. The two
 margin consumers use that call's cutoff observation.
 
-These execution premises implement the paper's positive-delay timing at slot
-boundaries in the synchronous segment. They do not add a GST transition. The
+These execution premises state the paper's delivery timing at slot
+boundaries in the synchronous segment; the paper's delay Δ is their
+motivation, not a premise field. They do not add a GST transition. The
 paper's independent view model is not a refinement proof for Python handlers.
 
 The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [review guide](REVIEW_GUIDE.md), and [paper library history](history/paper-side-removed.md).
@@ -400,7 +404,12 @@ committed state of a block to a later in-scope slot. Such a checkpoint can be
 one that no selector of the block carries, for example a run from slot 15 to
 slot 24. The public Assumption 3.2 view uses only the carried checkpoints
 (`ConcreteBridge.Carried`). The proof shows that each realizable checkpoint is
-justified by the body votes on the chain of the block.
+justified by the body votes on the chain of the block. One justification pass
+can justify epochs e and e + 1 together; then no selector carries the
+epoch-e checkpoint. The consequent of Assumption 3.2 therefore accepts a
+carried checkpoint of a later epoch whose block descends from the block of
+C(b, e) (`AvailableCheckpointOrExtension`). The proof uses only its epoch
+bound.
 
 Python includes aggregates. The model reads an included aggregate as one
 single-validator vote for each signer, with the data of the aggregate. The

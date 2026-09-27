@@ -53,8 +53,8 @@ inclusion relation counts the body votes of accepted blocks that set the timely-
 flag. Python `process_attestation` accepts some votes without a target-root check;
 such votes do not count. An included aggregate stands for one single-validator vote of
 each signer, with the same data. The premise keeps eventual checkpoint inclusion (paper
-Assumption 3.2 (explicit)) over the view of the bridge. Its consequent: from the start of epoch e + 2, every honest view in the horizon stores the base block b and an accepted descendant of b, from an epoch below e + 2 (and above epoch 1 unless e = 0), that carries the checkpoint C(b, e) as an available or unrealized checkpoint. The projection harness checks the
-interpretation laws on real pyspec runs. It reports `EventualCheckpointInclusion.included` as NOT_ESTABLISHED; the every-view antecedent and the implication of paper Assumption 3.2 (explicit) remain assumed. The concrete FFG state and
+Assumption 3.2 (explicit)) over the view of the bridge. Its consequent: from the start of epoch e + 2, every honest view in the horizon stores the base block b and an accepted descendant of b, from an epoch below e + 2 (and above epoch 1 unless e = 0), that carries as an available or unrealized checkpoint either C(b, e) or a checkpoint of a later epoch whose block descends from the block of C(b, e). The second case covers one Python justification pass that justifies epochs e and e + 1 together: the state then carries only the later checkpoint (law regression.a32_exact_carried_superseded). The projection harness checks the
+interpretation laws on real pyspec runs. It reports `EventualCheckpointInclusion.included` as NOT_ESTABLISHED; the every-view antecedent and the implication of paper Assumption 3.2 (explicit) remain assumed. Where a single-view sample of the antecedent holds, it checks the consequent. The concrete FFG state and
 34 Gloas functions agree with 59 Python differential cases and with the retained fields
 of 48 accepted blocks of a 100-validator pyspec run.
 
@@ -62,9 +62,8 @@ of 48 accepted blocks of a 100-validator pyspec run.
 
 `DeadlineBlockRelay` is an operational store-retention premise close to the membership part of the conclusion. The network must deliver each cutoff block and its parents before the next boundary. Each honest client must service ready blocks, accept a valid block with a known parent, and retain accepted blocks. Only a permanent finalized-guard rejection before the tick is exempt. The proof excludes that branch for the confirmed root and proves head ancestry.
 `DeadlineBoundaryBlockPrefix` requires the block before a boundary vote handler.
-Envelope, data-availability, vote, and slashing relay fields require timely
-receipt and handler service. The positive delay bound alone does not give
-these events.
+The envelope prefix, vote, and slashing relay fields require timely receipt
+and handler service at the stated slot boundaries.
 
 ## Short glossary
 
@@ -79,7 +78,7 @@ these events.
 - **Scheduled prefix:** `Execution.ScheduledPrefixStore` is a store from the exact event fold. `Execution.RootKnownInScheduledPrefix` also covers the initial store.
 - **Selected vote support:** `SelectedPredictionVoteSupport` is an internal derived fact. Current-edge votes use the exact target. Previous-result votes may use different targets below the selected root.
 - **FFG interpretation:** `ScheduledFFGInterpretation` holds the accepted block state and its checkpoint read agreement. The translation computes it from the concrete bridge. `FFGInterpretationFidelity` checks real included votes and the external validity function.
-- **A, Δ, S:** A is the attestation deadline offset. Δ is the positive message delay. S is the slot duration. The execution premise requires `A + Δ < S`.
+- **A, Δ, S:** A is the attestation deadline offset. Δ is the paper's positive message delay. S is the slot duration. The paper's `A + Δ < S` motivates the delivery laws; no premise field states Δ.
 
 ## Review status
 
@@ -91,8 +90,9 @@ these events.
 │ Selected result         │ A spec-correspondence lemma covers the find_latest_confirmed_descendant note. It is not a review claim.      │
 │ Optional in-slot query  │ Next-slot safety remains open. The counterexamples refute same-second head agreement under the               │
 │                         │ counterexample synchrony record.                                                                             │
-│ Payload envelope        │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and data_relay_exercised under the full      │
-│                         │ safety bundle, with an accepted envelope that one node receives two seconds late.                            │
+│ Payload envelope        │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and                                          │
+│                         │ FullTwelveEnvelopeBridgeRun.single_early_envelope_receipt under the full safety bundle, with an accepted     │
+│                         │ envelope that each node receives once, one node two seconds late.                                            │
 │ Guarded target edge     │ Exercised by TargetEdgePremiseWitness.target_edge_support_exercised under the full safety bundle.            │
 │ Byzantine weight        │ Exercised by ByzantinePremiseWitness.byzantine_weight_exercised: non-honest weight 200 of 4000 under the     │
 │                         │ full safety bundle.                                                                                          │
@@ -164,9 +164,10 @@ contracts and the intended behavior of any unconstrained function it uses.
 │                                      │ConcreteBridge.ConcreteGenesis gives the genesis store. No hash theorem is proved.                      │
 │get_ptc                               │Unconstrained: the theorem holds for every choice of this function. The handler reads the ordered PTC.  │
 │is_valid_indexed_payload_attestation  │Unconstrained: the theorem holds for every choice of this function. No PTC signature contract exists.   │
-│is_data_available                     │NextSlotSynchronyPremises.data_availability_relay and envelope_delivery transport true data reads. The  │
-│                                      │handler checks the local Boolean result. No KZG soundness theorem is proved.                            │
-│verify_execution_payload_envelope     │BeaconExternalsPremises.verify_envelope_deterministic and envelope_delivery constrain verified          │
+│is_data_available                     │NextSlotSynchronyPremises.boundary_envelope_prefix gives the verified payload at honest receivers before│
+│                                      │a boundary vote; no premise field constrains the data read itself. The handler checks the local Boolean │
+│                                      │result. No KZG soundness theorem is proved.                                                             │
+│verify_execution_payload_envelope     │BeaconExternalsPremises.verify_envelope_deterministic and boundary_envelope_prefix constrain verified   │
 │                                      │observations. No execution-engine or signature refinement theorem is proved.                            │
 └──────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -240,14 +241,15 @@ counterexample to exact target agreement for a previous-epoch result.
 
 ## Delivery and evidence
 
-`NextSlotSynchronyPremises` requires positive Δ and strict `A + Δ < S`. Its
+`NextSlotSynchronyPremises` states each delivery time at a slot boundary. Its
 `delivery_lookahead` field also covers the first boundary beyond the public
 horizon and implies the in-horizon vote delivery law. A source observation
-must occur by its slot deadline. A receiver observation occurs at or after the
-next boundary. A receiver is later than the source. Honest votes use the vote
-deadline. `synchrony_and_delivery_iff_nextSlot` relates these bundles.
+must occur by its slot deadline. A receiver store or observation fact holds at
+or after the next boundary. A receiver is later than the source. Honest votes
+use the vote deadline. `synchrony_and_delivery_iff_nextSlot` relates these
+bundles.
 
-Block and envelope exclusion is checked before the next-slot tick. It permits only a permanent finalized-guard conflict with a known parent. The FFG, economic, and finalization-delay premises establish that each honest head's known ancestor path is admissible. Carrier-certificate accountability covers other required roots. Ready blocks and envelopes precede the boundary vote handler. Data service and deterministic envelope validation justify payload acceptance. `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope event.
+Block and envelope exclusion is checked before the next-slot tick. It permits only a permanent finalized-guard conflict with a known parent. The FFG, economic, and finalization-delay premises establish that each honest head's known ancestor path is admissible. Carrier-certificate accountability covers other required roots. Ready blocks and envelopes precede the boundary vote handler; the envelope prefix states the verified payload directly. `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope event.
 
 `on_attester_slashing` follows Python. It validates against `store.block_states[store.justified_checkpoint.root]`. Evidence relay is an implementation assumption that gives every honest node the indices by the next boundary. With the static registry and one fork, the missing-signer case cannot occur in scope: keyed states have the same validators and signing domain. Timely receipt and handler service remain premises. Five of six checked clients validate against a newer head state. The [modeling choices](MODELING_CHOICES.md) page records the pinned client commits. A late accepted item uses a fresh cutoff observation at the next scheduled FCR call. No validity-agreement field was added to the external contract.
 

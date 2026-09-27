@@ -590,27 +590,83 @@ def check_run(run, statements):
                           'FFGStateAndCheckpointReadAgreement.')) and r['status'] in ('FAIL','OUT_OF_SCOPE')]
     record('ScheduledFFGInterpretation.coherence', not coherence_failures,
            coherence_failures[0]['state'] if coherence_failures else {'case': run.name, 'read_agreements': 11, 'anchor_root': run.anchor_root})
+    # Paper A3.2 over the bridge view. AU at a tip is the set of the four
+    # carried selectors of the blocks on its chain (`ConcreteBridge.Carried`).
+    # The consequent holds at a descendant that carries C(b, e), or a
+    # checkpoint of a later epoch whose block descends from the block of
+    # C(b, e) (`AvailableCheckpointOrExtension`). The antecedent is sampled on
+    # this single view: b is on the head chain at each block import of epoch
+    # e + 1, and there the included body votes of the known blocks give a
+    # two-thirds link from vs(b, e) to C(b, e). No run has slashings, so the
+    # set D_b is empty.
+    selectors = ('realized_justified', 'realized_finalized', 'unrealized_justified', 'unrealized_finalized')
+    carried = {}
+    def carried_au(tip):
+        if tip not in carried:
+            carried[tip] = {run.selector(x, name) for x in run.chain(tip) for name in selectors}
+        return carried[tip]
+    def exact_form(tip, c):
+        return c in carried_au(tip)
+    def extension_form(tip, c):
+        return exact_form(tip, c) or any(j[0] > c[0] and run.ancestor(j[1], c[1]) for j in carried_au(tip))
+    anchor_state = run.states[run.anchor_root]
+    total = sum(int(v.effective_balance) for v in anchor_state.validators
+                if run.spec.is_active_validator(v, run.spec.Epoch(0)))
+    def sampled_antecedent(base, e):
+        c = run.checkpoint(base, e)
+        base_epoch = int(run.blocks[base].slot) // spe
+        source = run.selector(base, 'realized_justified' if base_epoch == e else 'unrealized_justified')
+        views = [snap for snap in run.snapshots if int(snap['slot']) // spe == e + 1]
+        if not views:
+            return False
+        for snap in views:
+            if base not in snap['known'] or not run.ancestor(snap['head'], base):
+                return False
+            signers = set()
+            for r in snap['known']:
+                for a, voters in run.votes[r]:
+                    vote_source = cp(a.data.source)
+                    if vote_source[0] == 0 and run.anchor[0] == 0:
+                        vote_source = run.anchor
+                    if vote_source == source and cp(a.data.target) == c:
+                        signers |= voters
+            if 3 * sum(int(anchor_state.validators[i].effective_balance) for i in signers) < 2 * total:
+                return False
+        return True
     consequence = []
     for base in all_roots:
         for e in range(int(run.blocks[base].slot)//8, min(6, max(int(run.blocks[r].slot) for r in all_roots)//8 - 1)):
             c = run.checkpoint(base, e)
             cutoff = 8*(e+2)
+            antecedent = sampled_antecedent(base, e)
             for snap in run.snapshots:
                 if snap['slot'] < cutoff or base not in snap['known']:
                     continue
                 # An epoch-1 checkpoint needs an inclusion block of epoch 2 or later.
                 candidates = [tip for tip in snap['known'] if run.ancestor(tip, base) and
-                              int(run.blocks[tip].slot) < cutoff and c in run.available(tip) and
+                              int(run.blocks[tip].slot) < cutoff and
                               (e == 0 or int(run.blocks[tip].slot)//8 > 1)]
                 consequence.append({'base': base, 'epoch': e, 'view_slot': snap['slot'],
-                                    'checkpoint': c, 'descendant_found': bool(candidates)})
+                                    'checkpoint': c, 'sampled_antecedent': antecedent,
+                                    'exact_carried': any(exact_form(tip, c) for tip in candidates),
+                                    'descendant_found': any(extension_form(tip, c) for tip in candidates)})
+    under_antecedent = [x for x in consequence if x['sampled_antecedent']]
     results.append({'field': 'EventualCheckpointInclusion.included', 'status': 'NOT_ESTABLISHED',
                     'scope': 'antecedent not established; sampled consequence only',
                     'state': {'case': run.name, 'sampled_consequents': len(consequence),
                               'consequents_true': sum(x['descendant_found'] for x in consequence),
+                              'exact_carried_true': sum(x['exact_carried'] for x in consequence),
+                              'sampled_antecedent_true': len(under_antecedent),
                               'first_false': next((x for x in consequence if not x['descendant_found']), None),
                               'reason': 'SourceTargetSupportThroughoutEpoch needs every honest view, received vote history, and D_b slashing state.'},
                     'statement': statements['EventualCheckpointInclusion.included']})
+    failed = [x for x in under_antecedent if not x['descendant_found']]
+    statements['EventualCheckpointInclusion.included.sampled_consequent'] = \
+        statements['EventualCheckpointInclusion.included']
+    record('EventualCheckpointInclusion.included.sampled_consequent', not failed,
+           failed[0] if failed else {'case': run.name, 'checked': len(under_antecedent),
+                                     'exact_carried_true': sum(x['exact_carried'] for x in under_antecedent)},
+           scope='checked' if under_antecedent else 'no instances')
     return results
 
 

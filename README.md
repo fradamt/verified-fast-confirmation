@@ -47,8 +47,8 @@ slashing evidence D_b of the A3.2 view: it counts every body vote of an
 accepted block, with or without that flag. Python
 `process_attestation` does not check the target root, so a vote with a wrong
 target root does not count. The premise keeps eventual checkpoint inclusion
-(paper Assumption 3.2 (explicit)) over the view of the bridge. Its consequent: from the start of epoch e + 2, every honest view in the horizon stores the base block b and an accepted descendant of b, from an epoch below e + 2 (and above epoch 1 unless e = 0), that carries the checkpoint C(b, e) as an available or unrealized checkpoint. The projection harness checks the
-interpretation laws on pinned pyspec runs. It marks `EventualCheckpointInclusion.included` (paper Assumption 3.2 (explicit)) as NOT_ESTABLISHED: its every-view antecedent and full implication are not tested. The concrete
+(paper Assumption 3.2 (explicit)) over the view of the bridge. Its consequent: from the start of epoch e + 2, every honest view in the horizon stores the base block b and an accepted descendant of b, from an epoch below e + 2 (and above epoch 1 unless e = 0), that carries as an available or unrealized checkpoint either C(b, e) or a checkpoint of a later epoch whose block descends from the block of C(b, e). The second case covers one Python justification pass that justifies epochs e and e + 1 together: the state then carries only the later checkpoint (law regression.a32_exact_carried_superseded). The projection harness checks the
+interpretation laws on pinned pyspec runs. It marks `EventualCheckpointInclusion.included` (paper Assumption 3.2 (explicit)) as NOT_ESTABLISHED: its every-view antecedent and full implication are not tested. Where a single-view sample of the antecedent holds, the harness checks the consequent (law EventualCheckpointInclusion.included.sampled_consequent); `test_realized_gap.py` checks it on a run in which the exact checkpoint is never carried. The concrete
 transition agreed with Python in 59 differential cases and on the retained
 fields of 48 accepted blocks of a 100-validator run.
 
@@ -101,9 +101,9 @@ an idealization.
 │                              │                     │ attestation.                                                                 │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
 │ synchrony                    │ E-network/behavior  │ GST-0 delivery and handler service by the next boundary for votes, blocks,   │
-│                              │                     │ envelopes, data, and slashing evidence. DeadlineBlockRelay puts every root   │
-│                              │                     │ stored by the deadline into every honest store from the next slot; it gives  │
-│                              │                     │ most of the store-membership part of the claim.                              │
+│                              │                     │ envelopes, and slashing evidence. DeadlineBlockRelay puts every root stored  │
+│                              │                     │ by the deadline into every honest store from the next slot; it gives most of │
+│                              │                     │ the store-membership part of the claim.                                      │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
 │ byzantine_bound              │ E-network/behavior  │ Quantized balances, sound committee estimates, and a fault bound on every    │
 │                              │                     │ slot span. estimate_sound (class I) takes the high-probability committee     │
@@ -123,8 +123,9 @@ an idealization.
 │ checkpoint_inclusion         │ E-network/behavior  │ Paper Assumption 3.2 (explicit) over the view of the bridge. If b is         │
 │                              │                     │ canonical and has two-thirds link support in every honest view throughout    │
 │                              │                     │ epoch e + 1, then from epoch e + 2 every honest view stores b and a          │
-│                              │                     │ descendant of b that carries C(b, e) as an available or unrealized           │
-│                              │                     │ checkpoint.                                                                  │
+│                              │                     │ descendant of b that carries, as an available or unrealized checkpoint,      │
+│                              │                     │ C(b, e) or a later checkpoint whose block descends from the block of         │
+│                              │                     │ C(b, e).                                                                     │
 └──────────────────────────────┴─────────────────────┴──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -165,12 +166,12 @@ The slashing relay is an operational premise. With the static registry and one f
 The per-span fault bound and estimate soundness are deterministic conditions on every checked span, including one slot. Their combination with coverage forces equal slot weights. Block-store membership depends closely on `DeadlineBlockRelay` store retention; the proof rules out its permanent-exclusion branch and establishes head ancestry. A global fault share does not imply
 them. This development does not calculate their probability under committee
 sampling.
-The positive `delta` value is a timing parameter. The delivery laws in
-`NextSlotSynchronyPremises` supply the network assumption. The proof does not
-derive handler service or delivery from `delta` alone.
-The attestation deadline offset A, the positive delay Δ, and the slot duration S
-obey `A + Δ < S`. This bound puts a vote sent by the deadline before the next
-slot. The delivery laws also require receipt and handler service. `DeadlineBlockRelay` requires a client to gossip each cutoff block, receive it at every honest node, accept it with known parents, and keep it by the next boundary unless the pre-boundary finalized guard rejects it permanently. The boundary prefix law requires block service before a boundary vote. Envelope, data, and slashing relay fields require receipt, handler service, and the stated validation behavior.
+The delivery laws in `NextSlotSynchronyPremises` supply the network assumption.
+Each law states its timing directly: a source observation at or before the
+attestation deadline offset A of its slot, and a receiver fact from the next
+slot boundary on. The paper's positive delay Δ with `A + Δ < S` (S is the slot
+duration) motivates these times; no premise field states Δ. The finite runs
+deliver each honest vote at the first second of the next slot. The delivery laws also require receipt and handler service. `DeadlineBlockRelay` requires a client to gossip each cutoff block, receive it at every honest node, accept it with known parents, and keep it by the next boundary unless the pre-boundary finalized guard rejects it permanently. The boundary prefix law requires block service before a boundary vote. The envelope prefix and the slashing relay require receipt, handler service, and the stated validation behavior. `scripts/PremiseFieldUse.lean` checks that the proof reads every premise field; the check has no exception.
 
 ## Trust and source
 
@@ -187,7 +188,7 @@ allows only `propext`, `Classical.choice`, and `Quot.sound`. The former paper li
 A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 76 finite fields: 10 public premise fields, 64 laws of the derived internal records, and two checks of the concrete transition (the retained fields of each block, and a negative control for an epoch-step registry change). `ByzantineWeightPremises.estimate_sound` fails on 211 of 1176 spans: 96 of 216 within-epoch spans (first at slots 0 to 1: 846e9 Gwei against an estimate of 837.5e9 Gwei) and 115 of 960 cross-boundary spans. A second genesis with 128 validators of 32 ETH checks only `estimate_sound`, in two more fields: 0 of 216 within-epoch spans fail, so a real pyspec registry meets part (i), and 120 of 960 cross-boundary spans fail (for example slots 1 to 14: 4096e9 Gwei against 4052.16e9 Gwei), because the real reshuffle is one sample. These failures are the expected result of the committee-sampling idealization. Paper Assumption 3.2 (explicit) remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
 
 The [contract conformance checks](docs/conformance.md#contract-conformance) cover
-61 claim-reachable fields. Seventeen are definitions, not assumptions: the seven fields of the A3.2 view, which the bridge fixes (its modeling choices are the fixed committee schedule, AU from the four carried selectors, and the genesis-epoch read as the anchor), and the ten parts of the A3.2 antecedent. Seven are records whose own fields are listed. The other 37 fields are the assumed leaves: tested state laws (T) 5, execution scope (E-scope) 7, network and behavior (E-network/behavior) 15, and idealizations (I) 13; three leaves have two labels, and no leaf is E-interpretation. Paper Assumption 3.2 (explicit) (`EventualCheckpointInclusion.included`) is E-network/behavior: the bridge fixes its view, so it states only that proposers include the supporting votes and that the network delivers a carrier block. Run `python3
+59 claim-reachable fields. Seventeen are definitions, not assumptions: the seven fields of the A3.2 view, which the bridge fixes (its modeling choices are the fixed committee schedule, AU from the four carried selectors, and the genesis-epoch read as the anchor), and the ten parts of the A3.2 antecedent. Seven are records whose own fields are listed. The other 35 fields are the assumed leaves: tested state laws (T) 4, execution scope (E-scope) 7, network and behavior (E-network/behavior) 13, and idealizations (I) 13; two leaves have two labels, and no leaf is E-interpretation. Paper Assumption 3.2 (explicit) (`EventualCheckpointInclusion.included`) is E-network/behavior: the bridge fixes its view, so it states only that proposers include the supporting votes and that the network delivers a carrier block. Its consequent accepts a later carried checkpoint that extends C(b, e), because one justification pass can justify C(b, e) and the next epoch together. Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the
 pinned checkout's interpreter. Three labelled expected failures show why the balance
@@ -228,8 +229,9 @@ The records in this table are in `FastConfirmationStatements/Premises/`, except 
 │              │                                      │ contracts and the static validator set.                                          │                               │
 │ Safety field │ HonestBehavior                       │ Honest head votes by the assigned committee, a vote deadline, no forgery,        │ Paper; model premise          │
 │              │                                      │ no slashable honest vote pair, and unslashed honest validators.                  │                               │
-│ Safety field │ NextSlotSynchronyPremises            │ Positive delay parameter; delivery and handler-service laws for blocks,          │ Paper synchrony; Gloas        │
-│              │                                      │ envelopes, data and evidence; pre-tick exclusion before boundary votes.          │ extension                     │
+│ Safety field │ NextSlotSynchronyPremises            │ Next-slot vote delivery; delivery and handler-service laws for blocks,           │ Paper synchrony; Gloas        │
+│              │                                      │ envelopes, and evidence at slot boundaries; pre-tick exclusion before boundary   │ extension                     │
+│              │                                      │ votes.                                                                           │                               │
 │ Safety field │ ByzantineWeightPremises              │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
 │              │                                      │ fraction bound for every span, including one slot. A global fault                │ executable estimate           │
 │              │                                      │ share does not establish this span bound.                                        │                               │
@@ -249,7 +251,7 @@ concrete source event, positive quantity, or true guard in that run. A proof of
 the full bundle does not imply that every branch occurs.
 
 - **Full safety at 1 s and 12 s:** `NextSlotPremiseWitness.finite_execution_satisfies_premises` and `FullTwelveWitness.full_bundle_witness` give stored root advances under the full safety bundle. The 12 s run has real delayed block and vote receipts.
-- **Payload envelope:** `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope. Its delivery and data relay antecedents hold.
+- **Payload envelope:** `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope. Each node receives it once, before the next boundary, and keeps the payload. The antecedent of its boundary prefix holds.
 - **Byzantine weight and slashing:** `ByzantinePremiseWitness.full_bundle_witness` has positive non-honest weight and a slashing relay that the next call reads.
 - **Previous-result proviso:** `ByzantinePremiseWitness.previous_result_proviso_exercised` selects an epoch-2 block at a non-start slot of epoch 3. `ByzantinePremiseWitness.previous_result_descendant_support_exercised` shows its descendant target support.
 - **Guarded current-target edge:** `TargetEdgePremiseWitness.target_edge_support_exercised` reaches a selected epoch crossing. A later honest vote has the exact current target.
@@ -266,7 +268,8 @@ a counterexample and does not assert the safety bundle.
 ├─────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ 1 s full safety     │ HonestBehavior.votes_head; SafetyPremises.checkpoint_inclusion; root advance.                     │
 │ 12 s full safety    │ NextSlotSynchronyPremises.attestation_delivery and deadline_block_relay; delayed receipts.        │
-│ 12 s envelope       │ NextSlotSynchronyPremises.envelope_delivery and data_availability_relay; accepted payload.        │
+│ 12 s envelope       │ NextSlotSynchronyPremises.boundary_envelope_prefix; one early receipt per node; accepted payload. │
+│                     │                                                                                                   │
 │ Byzantine run       │ ByzantineWeightPremises.span_fraction with positive fault weight;                                 │
 │                     │ NextSlotSynchronyPremises.attester_slashing_relay.                                                │
 │ Current-target edge │ Selected current-target crossing guard and exact later target vote are derived facts.             │

@@ -508,7 +508,7 @@ theorem honestVoteTarget_received_at_delivery
       rw [ha] at hi ⊢
       exact honest_attestation_index_one_payload_verified cfg ext
         (E.store cfg ext v n) s index v hi
-    have hp := E.payload_verified_at_cutoff_delivery_prefix cfg ext hwf hsyn hec
+    have hp := E.payload_verified_at_cutoff_delivery_prefix cfg ext hsyn
       hv hw hHn (by simpa only [hn] using hHdeliver) hdeadline
       (by simpa only [hn] using hnBeforeDelivery)
       hsourceWalk.root_mem hsource (hpath.not_excluded cfg ext)

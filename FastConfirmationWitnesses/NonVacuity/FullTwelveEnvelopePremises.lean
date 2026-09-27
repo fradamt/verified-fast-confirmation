@@ -13,8 +13,8 @@ public import FastConfirmationProofs.ModelFacts
 The run of `FullTwelveEnvelopeBridgeRun` satisfies the public safety premise
 `ConcreteBridge.SafetyPremises`. It adds to the twelve-second run a verified
 child envelope, which node 1 receives two seconds after the other nodes. The
-envelope delivery and data-availability relays of the synchrony premise hold
-with this envelope. The call from second 23 to 24 changes the confirmed root
+envelope boundary prefix of the synchrony premise holds with this
+envelope. The call from second 23 to 24 changes the confirmed root
 from the anchor to the child.
 -/
 
@@ -518,14 +518,14 @@ theorem witnessPaperA32Inclusion :
         · rw [hlate.anchor_epoch]
           decide
         · rw [checkpointAt_anchor_zero]
-          exact ⟨anchorRoot, .refl anchorRoot, formed_anchor_anchor⟩
+          exact Or.inl ⟨anchorRoot, .refl anchorRoot, formed_anchor_anchor⟩
       · rcases h with ⟨rfl, rfl⟩
         refine ⟨childRoot, hlate.child_known, hlate.child_known, is_ancestor_refl _ _, ?_,
           Or.inl (Nat.zero_le _), ?_⟩
         · rw [hlate.child_epoch]
           decide
         · rw [checkpointAt_child_zero]
-          exact ⟨childRoot, .refl childRoot, formed_child_anchor⟩
+          exact Or.inl ⟨childRoot, .refl childRoot, formed_child_anchor⟩
       · rcases h with ⟨rfl, rfl⟩
         norm_num [carrierSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
   | succ e =>
@@ -545,7 +545,7 @@ theorem witnessPaperA32Inclusion :
             · rw [hlate.carrier_epoch]
               decide
             · rw [checkpointAt_child_one]
-              exact ⟨carrierRoot, .refl carrierRoot, formed_carrier_child⟩
+              exact Or.inl ⟨carrierRoot, .refl carrierRoot, formed_carrier_child⟩
           · rcases h with ⟨rfl, rfl⟩
             norm_num [carrierSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
       | succ e =>
@@ -775,54 +775,39 @@ theorem payload_accepted_with_delay :
   refine ⟨by simp [witnessExecution, witnessSchedule, slotEvents], by simp [witnessExecution, witnessSchedule, slotEvents], ?_, ?_, ?_, ?_⟩
   · intro n hn h
     obtain ⟨_, _, htime⟩ := scheduled_envelope_cases h
-    rcases htime with h168 | h170 | h180
+    rcases htime with h168 | h170
     · subst n
       simp [witnessExecution, witnessSchedule, slotEvents] at h
-    · omega
     · omega
   · set_option maxRecDepth 100000 in decide +kernel
   · set_option maxRecDepth 100000 in decide +kernel
   · intro v hv
-    rcases honest_eq_zero_or_one_or_two_or_three hv with
-      rfl | rfl | rfl | rfl <;>
-        set_option maxRecDepth 100000 in decide +kernel
+    exact child_verified_after170 v (by decide)
 
 /-- The verified child satisfies every source condition of
-`DeadlineEnvelopeDelivery` at second 168. Its next boundary is second 180. -/
+`DeadlineBoundaryEnvelopePrefix` at second 168. Its next boundary is second
+180. Node 1 received the envelope once, at second 170, and has the verified
+payload at that boundary. -/
 theorem envelope_relay_exercised :
     ∃ v n r, v ∈ witnessExecution.honest ∧ witnessExecution.WithinHorizon witnessConfig n ∧
       is_payload_verified (witnessExecution.store witnessConfig witnessExternals v n) r = true ∧
       r ∈ (witnessExecution.store witnessConfig witnessExternals v n).block_roots ∧
       n ≤ witnessExecution.slot_start witnessConfig (witnessExecution.slot_at witnessConfig n) +
         get_attestation_due_ms witnessConfig / 1000 ∧
-      Event.execution_payload_envelope childEnvelope payloadObservation ∈
-        witnessExecution.schedule 1 180 := by
+      witnessExecution.slot_start witnessConfig
+        (witnessExecution.slot_at witnessConfig n + 1) = 180 ∧
+      is_payload_verified (witnessExecution.store witnessConfig witnessExternals 1 180) r = true ∧
+      (∀ k, 170 < k → ∀ (signed : SignedExecutionPayloadEnvelope WitnessRoot)
+        (observation : EnvelopeObservation WitnessRoot),
+        Event.execution_payload_envelope signed observation ∉ witnessExecution.schedule 1 k) := by
   refine ⟨0, 168, childRoot, by decide, time_within (by decide),
     payload_accepted_with_delay.2.2.2.1,
-    child_known_after14 0 (by decide), ?_, by simp [witnessExecution, witnessSchedule, slotEvents]⟩
-  rw [slot_start_eq, slot_at_eq, due_eq]
-  decide
-
-/-- The scheduled source envelope and its available data satisfy every
-source condition of `DeadlineDataAvailabilityRelay` at second 168. -/
-theorem data_relay_exercised :
-    ∃ (v k n : ℕ) (signed : SignedExecutionPayloadEnvelope WitnessRoot)
-        (sourceObservation : EnvelopeObservation WitnessRoot),
-      v ∈ witnessExecution.honest ∧ k ≤ n ∧ witnessExecution.WithinHorizon witnessConfig n ∧
-      Event.execution_payload_envelope signed sourceObservation ∈
-        witnessExecution.schedule v k ∧
-      witnessExternals.is_data_available signed.message.beacon_block_root
-        sourceObservation = true ∧
-      n ≤ witnessExecution.slot_start witnessConfig (witnessExecution.slot_at witnessConfig n) +
-        get_attestation_due_ms witnessConfig / 1000 ∧
-      Event.execution_payload_envelope signed payloadObservation ∈
-        witnessExecution.schedule 1 180 := by
-  refine ⟨0, 168, 168, childEnvelope, payloadObservation,
-    by decide, by decide, time_within (by decide),
-    by simp [witnessExecution, witnessSchedule, slotEvents], ?_, ?_, by simp [witnessExecution, witnessSchedule, slotEvents]⟩
-  · rfl
+    child_known_after14 0 (by decide), ?_, ?_, child_verified_after170 1 (by decide), ?_⟩
   · rw [slot_start_eq, slot_at_eq, due_eq]
     decide
+  · rw [slot_start_eq, slot_at_eq] <;> decide
+  · intro k hk signed observation h
+    rcases (scheduled_envelope_cases h).2.2 with rfl | rfl <;> omega
 
 /-- Payload verification adds a FULL child choice. Gloas weight gives the
 EMPTY choice 400 and the FULL choice zero in this scheduled store. -/

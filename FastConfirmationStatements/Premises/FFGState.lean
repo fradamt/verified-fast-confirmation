@@ -14,9 +14,10 @@ tip when a carrier block on the tip's chain has formed it.
 
 `EventualCheckpointInclusion` is the paper's separate liveness assumption.
 Its antecedent is the paper's link-specific support condition in every honest
-view throughout epoch `e+1`. Its conclusion is exact available-checkpoint
-inclusion in a concrete descendant, not the weaker epoch-only consequence read
-by `get_voting_source`.
+view throughout epoch `e+1`. Its conclusion is available-checkpoint inclusion
+in a concrete descendant: of `C(b, e)` itself, or of a later checkpoint that
+extends it (`AvailableCheckpointOrExtension`). This is stronger than the
+epoch-only consequence read by `get_voting_source`.
 
 None of these declarations assumes that a block is canonical, safe, retained
 by the filter, or selected by the FCR. Canonicality appears only as an
@@ -87,6 +88,20 @@ on the tip's chain. -/
 def AvailableCheckpoint (V : CheckpointInclusionView cfg E)
     (tip : Root) (c : Checkpoint Root) : Prop :=
   ∃ carrier : Root, E.RootDescends tip carrier ∧ V.formed carrier c
+
+/-- The conclusion of Assumption 3.2 at one descendant `tip`: the checkpoint
+`c` is in AU at `tip`, or a checkpoint `J` of a later epoch is in AU at `tip`
+and the block of `J` descends from (or equals) the block of `c`.
+
+The second case covers one Python justification pass that justifies the
+epochs `e` and `e+1` together. The state then carries only the epoch-`e+1`
+checkpoint, and no carried selector holds `C(b, e)`. A later checkpoint that
+extends `C(b, e)` gives the same epoch bound for `get_voting_source`. -/
+def AvailableCheckpointOrExtension (V : CheckpointInclusionView cfg E)
+    (tip : Root) (c : Checkpoint Root) : Prop :=
+  V.AvailableCheckpoint cfg tip c ∨
+    ∃ J : Checkpoint Root, c.epoch < J.epoch ∧ E.RootDescends J.root c.root ∧
+      V.AvailableCheckpoint cfg tip J
 
 /-- The concrete block-body equivocation predicate underlying `D_b`. -/
 def HasSlashablePairOnChain (V : CheckpointInclusionView cfg E)
@@ -187,8 +202,16 @@ def SourceTargetSupportThroughoutEpoch
 This is the paper's quantifier shape: if `b` is canonical and the exact fixed
 `vs(b,e)`-to-`C(b,e)` support condition holds in every honest view throughout
 epoch `e+1`, then by `st(e+2)` each honest view contains a pre-boundary
-descendant carrying `C(b,e)` in AU.  Target-only support or a free
-`A32IncludedAtTip` consequence is intentionally insufficient.
+descendant that carries in AU either `C(b,e)` or a checkpoint of a later
+epoch whose block descends from the block of `C(b,e)`.  Target-only support
+or a free `A32IncludedAtTip` consequence is intentionally insufficient.
+
+The second alternative is necessary for the fixed bridge view, in which AU
+holds the four carried selectors of the blocks on the chain. One Python
+justification pass can justify `C(b,e)` and a checkpoint of epoch `e+1`
+together; the state then carries only the later checkpoint
+(`regression.a32_exact_carried_superseded` in
+`scripts/conformance/contracts/test_realized_gap.py`).
 
 The descendant must be in an epoch above `GENESIS_EPOCH + 1` unless
 `e = GENESIS_EPOCH`.  Python `process_justification_and_finalization`
@@ -214,7 +237,7 @@ structure EventualCheckpointInclusion
           (get_node_for_root b') (get_node_for_root b) = true ∧
         get_block_epoch cfg (E.store cfg ext w m) b' < e + 2 ∧
         (e ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch cfg (E.store cfg ext w m) b') ∧
-        V.AvailableCheckpoint cfg b' (V.C b e)
+        V.AvailableCheckpointOrExtension cfg b' (V.C b e)
 
 end FastConfirmation.Spec
 

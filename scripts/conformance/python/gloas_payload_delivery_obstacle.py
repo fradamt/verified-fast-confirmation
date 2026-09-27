@@ -6,7 +6,7 @@ block/envelope application, and the complete FCR handler use unchanged source bo
 The fixture supplies projected state transitions, committee lists, root
 identities, and successful signature checks. Envelope data and execution
 verification use the model's external projection boundary. Only the sender
-receives that valid envelope event. The new payload_envelope_relay synchrony
+receives that valid envelope event. The boundary_envelope_prefix synchrony
 field excludes this missing-envelope pattern within its delivery horizon.
 No source file is changed.
 """
