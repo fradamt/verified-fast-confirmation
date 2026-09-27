@@ -176,109 +176,109 @@ reason = "Engine and availability verdicts are assumed stable for fixed state an
 path = "CheckpointInclusionView.BlockAt"
 file = "FFGState.lean"
 class = "E-interpretation"
-reason = "The A3.2 view must identify a block at each queried epoch."
+reason = "Fixed by the bridge: the accepted blocks of scheduled prefixes."
 
 [[field]]
 path = "CheckpointInclusionView.Included"
 file = "FFGState.lean"
 class = "E-interpretation"
-reason = "The A3.2 view must select the attestations in each carrier block body."
+reason = "Fixed by the bridge: indexed body attestations of accepted blocks; modeling choice: indices come from the fixed committee schedule."
 
 [[field]]
 path = "CheckpointInclusionView.formed"
 file = "FFGState.lean"
 class = "E-interpretation"
-reason = "The A3.2 view must mark checkpoints formed from included links."
+reason = "Fixed by the bridge: the checkpoints that an accepted block carries; modeling choice: AU reads only the four carried selectors."
 
 [[field]]
 path = "CheckpointInclusionView.C"
 file = "FFGState.lean"
 class = "E-interpretation"
-reason = "The A3.2 view must project the checkpoint for its epoch."
+reason = "Fixed by the bridge: the committed ancestor at the epoch start slot, as get_checkpoint_block reads it."
 
 [[field]]
 path = "CheckpointInclusionView.GJ"
 file = "FFGState.lean"
 class = "E-interpretation"
-reason = "The A3.2 view must project realized justification."
+reason = "Fixed by the bridge: realized justification of the committed state; modeling choice: a genesis-epoch checkpoint reads as the anchor (CheckpointReadsAs)."
 
 [[field]]
 path = "CheckpointInclusionView.GU"
 file = "FFGState.lean"
 class = "E-interpretation"
-reason = "The A3.2 view must project unrealized justification."
+reason = "Fixed by the bridge: justification after one eager PJF copy; modeling choice: a genesis-epoch checkpoint reads as the anchor (CheckpointReadsAs)."
 
 [[field]]
 path = "CheckpointInclusionView.checkpoint_epoch"
 file = "FFGState.lean"
 class = "E-interpretation"
-reason = "The A3.2 view checkpoint must report its queried epoch."
+reason = "Fixed by the bridge: the selector returns the queried epoch by definition."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.view_within_horizon"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "Every supporting honest view must lie within the checked horizon."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.source_before_target"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "The supporting FFG source epoch must precede the target."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_epoch_within"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "The supporting target epoch must lie in the checked range."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_known"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "Every supporting honest view must know the target root."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_state_keyed"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "The supporting target state must have an accepted keyed origin."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "The support witness must select a signer set."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers_not_slashable"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "Support weight must exclude slashable signers at the view."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers_in_registry"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "Support signers must belong to the active registry."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signer_attestation"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "Each support signer must have a matching received attestation."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.supermajority"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "E-network/behavior"
 reason = "The exact source-to-target support weight must reach two-thirds."
 
 [[field]]
 path = "EventualCheckpointInclusion.included"
 file = "FFGState.lean"
-class = "E-interpretation"
-reason = "A3.2 requires an accepted AU carrier by epoch e+2 after every-view support."
+class = "E-network/behavior"
+reason = "A3.2 requires an accepted AU carrier by epoch e+2 after every-view support; with the bridge view fixed, this is a vote-inclusion and delivery assumption."
 
 [[field]]
 path = "WellFormedExecution.blocks_root_injective"
@@ -433,8 +433,8 @@ reason = "No in-scope state finalizes epoch 1 only through the two-epoch link fr
 [[field]]
 path = "SafetyPremises.checkpoint_inclusion"
 file = "ConcreteSafety.lean"
-class = "E-interpretation"
-reason = "The safety proof assumes paper A3.2 inclusion over the bridge view after sustained link support."
+class = "E-network/behavior"
+reason = "Paper A3.2 over the fixed bridge view: after sustained honest link support, proposers include the votes and the network delivers a carrier block by epoch e+2."
 
 [[boundary]]
 path = "EpochEndsFitUint64"

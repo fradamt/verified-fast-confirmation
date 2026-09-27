@@ -135,7 +135,7 @@ There is no refinement theorem from the paper model to the executable model.
 A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 75 finite premise fields and the retained fields of the concrete transition. `ByzantineWeightPremises.estimate_sound` fails on 211 spans; A3.2 remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
 
 The [contract conformance checks](docs/conformance.md#contract-conformance) cover 72
-claim-reachable premise fields, split into tested state laws (T), execution scope (E-scope), network and behavior (E-network/behavior), supplied FFG interpretation (E-interpretation), and idealizations (I). Run `python3
+claim-reachable premise fields, split into tested state laws (T), execution scope (E-scope), network and behavior (E-network/behavior), interpretation (E-interpretation: external-state contracts and the fixed bridge view), and idealizations (I). The counts are T 11, E-scope 12, E-network/behavior 30, E-interpretation 9, and I 13; three fields have two labels. Paper A3.2 (`checkpoint_inclusion`) is E-network/behavior: the bridge fixes its view, so it states only that proposers include the supporting votes and that the network delivers a carrier block. Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the
 pinned checkout's interpreter. Three labelled expected failures show why the balance
