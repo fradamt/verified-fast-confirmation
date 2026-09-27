@@ -170,6 +170,14 @@ contracts and the intended behavior of any unconstrained function it uses.
 └──────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+Under the bridge, eight of the `BeaconExternalsPremises` fields in this table
+are theorems: `process_slots_slot`, `registry_static_in_horizon`,
+`state_transition_slot`, `state_transition_pre_slot_lt`,
+`state_transition_checkpoint_epoch`, `pjf_checkpoint_epoch`,
+`anchor_state_checkpoint_epoch`, and `valid_attestation_default`
+(`FastConfirmationProofs/FFG/Concrete/ExternalsLaws.lean`). They stay in the
+premise because the internal record is shared with the abstract interface.
+
 `Execution.schedule` is supplied. `WellFormedExecution`, `HonestBehavior`, and
 the delivery laws constrain it. The bridge computes the accepted FFG relation and
 the checkpoint reads.

@@ -26,17 +26,22 @@ The three indexed-attestation laws apply only to keyed states in honest,
 in-horizon causal stores. Default-state rejection and validity preservation
 under slot processing are separate contracts. The other fields state
 slot behavior and committee agreement; this record is not a proof
-that the external interpretation refines the full beacon-chain functions. -/
+that the external interpretation refines the full beacon-chain functions.
+For the concrete bridge, eight fields are theorems
+(`FastConfirmationProofs/FFG/Concrete/ExternalsLaws.lean`): the slot laws,
+the two checkpoint-epoch laws, the anchor checkpoint epochs, default-state
+rejection, and the static registry. They stay in this record because the
+record is shared with the abstract interface. -/
 structure BeaconExternalsPremises (E : Execution Root) : Prop where
   /-- `process_slots` targets its slot. -/
   process_slots_slot : ∀ st (s : Slot), st.slot < s → (ext.process_slots st s).slot = s
   /-- The execution-scope static-registry condition. Every keyed state in an
       honest in-horizon causal store and every in-horizon `process_slots`
       result computed from one has the anchor registry. This includes successful scheduled
-      imports at honest nodes. Under the concrete bridge the transition never
-      writes a validator record, so this field holds when the execution
-      registry is the scope registry; it does not by itself exclude a Python
-      registry change. The concrete transition rejects blocks with slashings,
+      imports at honest nodes. Under the concrete bridge this field is a
+      theorem (`ExternalsLaws.lean`): the concrete functions never write a
+      validator record. It is a fact of the model, so it does not by itself
+      exclude a Python registry change. The concrete transition rejects blocks with slashings,
       exits, or parent execution requests, and a Python run is in scope only
       if no epoch step in the horizon changes a validator record
       (`FixedFFGScope`). -/

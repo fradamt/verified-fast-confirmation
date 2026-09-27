@@ -21,7 +21,9 @@ structure StaticValidatorSet (cfg : Config) (E : Execution Root) : Prop where
   /-- Paper Assumption 1, restricted to the concrete execution segment: the
       active validator set is constant at epochs below the exclusive
       verification horizon. This places no finite upper bound on the
-      execution's unbounded `ℕ` clock. -/
+      execution's unbounded `ℕ` clock. For the concrete bridge this field is
+      a theorem (`ExternalsLaws.lean`), from the fixed activity of the scope
+      registry. -/
   activity_constant : ∀ i : ValidatorIndex, ∀ e e' : Epoch,
     e < E.verification_horizon → e' < E.verification_horizon →
       is_active_validator (E.registry.getD i default) e =

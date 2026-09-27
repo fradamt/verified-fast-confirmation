@@ -3,6 +3,7 @@
 # E-interpretation: supplied FFG or external-state obligation; I: idealization. A + joins mixed labels.
 # definition: a field fixed by a definition (the A3.2 view) or part of the A3.2 antecedent; not an assumption.
 # record: a field whose type is a listed premise record; its own fields carry the classes.
+# bridge: a field that the concrete bridge proves (the proof key names the theorem); not an assumption.
 version = 1
 
 [[field]]
@@ -50,8 +51,9 @@ reason = "The anchor second must lie before the absolute horizon."
 [[field]]
 path = "StaticValidatorSet.activity_constant"
 file = "Economics.lean"
-class = "E-scope"
-reason = "Active status must stay fixed through every in-horizon epoch."
+class = "bridge"
+proof = "ConcreteBridge.activity_constant"
+reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
 
 [[field]]
 path = "ByzantineWeightPremises.effective_balance_quantized"
@@ -74,45 +76,57 @@ reason = "Non-honest stake must stay under the bound for each in-horizon slot sp
 [[field]]
 path = "BeaconExternalsPremises.process_slots_slot"
 file = "Externals.lean"
-class = "T"
+class = "bridge"
+proof = "ConcreteBridge.interface_process_slots_slot"
+reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
 test = "BeaconExternalsPremises.process_slots_slot"
 
 [[field]]
 path = "BeaconExternalsPremises.registry_static_in_horizon"
 file = "Externals.lean"
-class = "E-scope"
-reason = "Keyed and slot-processed in-horizon states must retain the anchor validator registry. Under the bridge this holds when the execution registry is the scope registry; Python registry changes are excluded by the transition scope guard and the epoch-step condition of FixedFFGScope."
+class = "bridge"
+proof = "ConcreteBridge.registry_static_in_horizon"
+reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
 
 [[field]]
 path = "BeaconExternalsPremises.state_transition_slot"
 file = "Externals.lean"
-class = "T"
+class = "bridge"
+proof = "ConcreteBridge.interface_state_transition_slot"
+reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
 test = "BeaconExternalsPremises.state_transition_slot"
 
 [[field]]
 path = "BeaconExternalsPremises.state_transition_pre_slot_lt"
 file = "Externals.lean"
-class = "T"
+class = "bridge"
+proof = "ConcreteBridge.interface_state_transition_pre_slot_lt"
+reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
 test = "BeaconExternalsPremises.state_transition_pre_slot_lt"
 
 [[field]]
 path = "BeaconExternalsPremises.state_transition_checkpoint_epoch"
 file = "Externals.lean"
-class = "T"
+class = "bridge"
+proof = "ConcreteBridge.interface_state_transition_checkpoint_epoch"
+reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
 test = "BeaconExternalsPremises.state_transition_checkpoint_epoch"
 
 [[field]]
 path = "BeaconExternalsPremises.pjf_checkpoint_epoch"
 file = "Externals.lean"
-class = "T"
+class = "bridge"
+proof = "ConcreteBridge.interface_pjf_checkpoint_epoch"
+reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
 test = "BeaconExternalsPremises.pjf_checkpoint_epoch"
 
 [[field]]
 path = "BeaconExternalsPremises.anchor_state_checkpoint_epoch"
 file = "Externals.lean"
-class = "E-scope"
+class = "bridge"
+proof = "ConcreteBridge.anchor_state_checkpoint_epoch"
+reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
 legacy_probe = "BeaconExternalsPremises.anchor_state_checkpoint_epoch"
-reason = "The anchor state's justified and finalized checkpoints must not be in a future epoch of the anchor state. Genesis states and every state that the beacon chain reaches satisfy it; an arbitrary well-typed state need not."
 
 [[field]]
 path = "BeaconExternalsPremises.committees_agree"
@@ -159,7 +173,9 @@ test = "BeaconExternalsPremises.committee_members_active"
 [[field]]
 path = "BeaconExternalsPremises.valid_attestation_default"
 file = "Externals.lean"
-class = "T"
+class = "bridge"
+proof = "ConcreteBridge.interface_valid_attestation_default"
+reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
 test = "BeaconExternalsPremises.valid_attestation_default"
 
 [[field]]
