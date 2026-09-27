@@ -33,6 +33,7 @@ jobs:
           repository: fradamt/consensus-specs
           ref: fcr-gloas-fix
           path: .source/consensus-specs
+          fetch-depth: 0 # helper fixture reads the historical pinned Git object
           fetch-depth: 0
           persist-credentials: false
 
@@ -198,3 +199,6 @@ jobs:
 
       - name: Run concrete FFG differential
         run: .source/consensus-specs/.venv/bin/python scripts/conformance/concrete/run_differential.py --consensus-repo .source/consensus-specs
+
+      - name: Run trace and helper conformance checks
+        run: scripts/conformance/check_smoke.sh .source/consensus-specs

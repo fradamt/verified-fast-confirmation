@@ -11,6 +11,7 @@ from typing import Any
 
 
 ROOT = re.compile(r"^0x[0-9a-f]{64}$")
+SOURCE_PIN = "13f391516352f61b3ac5dcaae5be1884d104f86a"
 CONFIG_KEYS = {
     "slots_per_epoch",
     "slot_duration_ms",
@@ -281,6 +282,7 @@ def main() -> int:
                     record,
                     {
                         "schema",
+                        "source_pin",
                         "head_before",
                         "test_id",
                         "fork",
@@ -300,6 +302,8 @@ def main() -> int:
                     fail(f"line {line_number}: schema v1 describes a phase0 store; schema v2 is required")
                 if type(record["schema"]) is not int or record["schema"] != 2:
                     fail(f"line {line_number}: unsupported schema; expected v2")
+                if record["source_pin"] != SOURCE_PIN:
+                    fail(f"line {line_number}: wrong source pin")
                 if "safe_execution_block_hash_after" in record:
                     root(record["safe_execution_block_hash_after"], f"line {line_number}.safe_execution_block_hash_after")
                 exact_keys(record["head_before"], {"root", "payload_status"}, f"line {line_number}.head_before")

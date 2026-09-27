@@ -428,6 +428,8 @@ def parseRecord (j : J) : Except String Record := do
   if schema == 1 then
     throw "schema v1 describes a phase0 store; schema v2 is required"
   if schema != 2 then throw "unsupported schema; expected v2"
+  if (← stringField j "source_pin") != "13f391516352f61b3ac5dcaae5be1884d104f86a" then
+    throw "wrong source pin"
   if (← stringField j "fork") != "gloas" then throw "schema v2 requires Gloas"
   let cfg ← parseConfig (← field j "config")
   let parsedStore ← parseStore cfg (← field j "store")

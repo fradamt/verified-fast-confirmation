@@ -105,6 +105,7 @@ if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
   "$consensus_repo/.venv/bin/python" scripts/conformance/contracts/test_realized_gap.py --repo "$consensus_repo"
   PYTHONDONTWRITEBYTECODE=1 "$consensus_repo/.venv/bin/python" \
     scripts/conformance/concrete/run_differential.py --consensus-repo "$consensus_repo"
+  scripts/conformance/check_smoke.sh "$consensus_repo"
 else
   echo "realized-gap regression and concrete differential skipped: pinned pyspec interpreter is absent"
 fi
