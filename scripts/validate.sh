@@ -86,7 +86,11 @@ fi
 
 python3 scripts/check_synchrony_corners.py --self-test
 python3 scripts/check_doc_names.py
-python3 scripts/check_review_boundary.py
+if [[ "$mode" == "full" ]]; then
+  python3 scripts/check_review_boundary.py --require-resolution
+else
+  python3 scripts/check_review_boundary.py
+fi
 python3 scripts/check_review_boundary.py --self-test
 if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
   python3 scripts/conformance/contracts/check_inventory.py --repo "$consensus_repo"
@@ -128,6 +132,7 @@ if [[ "$mode" == "full" ]]; then
   lake env lean scripts/ReviewSurfaceShape.lean
   lake env lean scripts/PremiseFieldUse.lean
   lake env lean scripts/Audit.lean
+  python3 scripts/test_audit_negative.py
   git diff --exit-code -- lake-manifest.json
 fi
 

@@ -27,11 +27,12 @@ def altered(path: Path, addition: str, script: str, expected: str, root: Path) -
         path.write_text(original)
 
 
-def imported(path: Path, module: str, root: Path) -> None:
+def imported(path: Path, module: str, root: Path, script: str = "check_imports.py",
+             expected: str | None = None) -> None:
     original = path.read_text()
     try:
         path.write_text(original.replace("module\n", f"module\npublic import {module}\n", 1))
-        run(root, "check_imports.py", module)
+        run(root, script, expected or module)
     finally:
         path.write_text(original)
 
@@ -39,7 +40,8 @@ def imported(path: Path, module: str, root: Path) -> None:
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="fcr-trust-negative-") as folder:
         root = Path(folder) / "repo"
-        shutil.copytree(ROOT, root, ignore=shutil.ignore_patterns(".git", ".lake", "__pycache__"))
+        shutil.copytree(ROOT, root, ignore=shutil.ignore_patterns(
+            ".git", ".lake", ".source", "__pycache__"))
         (root / ".lake").mkdir()
         (root / ".lake/packages").symlink_to(ROOT / ".lake/packages")
         helper = root / "AuTReexport.lean"
@@ -54,9 +56,33 @@ def main() -> None:
             helper.write_text("module\n" + body)
             imported(root / "FastConfirmationModel.lean", name, root)
             helper.unlink()
-        altered(root / "FastConfirmationModel/Spec/Config.lean",
-                "\npublic theorem /- gap -/ auTUndetected : True := True.intro\n",
-                "check_imports.py", "auTUndetected", root)
+        # A local file with a package module name (the cf-audit shadow case).
+        shadow = root / "Mathlib.lean"
+        shadow.write_text("module\npublic import FastConfirmationProofs.ReviewTheorem\n"
+                          "@[expose] public section\nopaque auditExternal : Nat := 7\nend\n")
+        statements = root / "FastConfirmationStatements.lean"
+        imported(statements, "Mathlib", root, expected="Mathlib.lean: Lean file outside")
+        imported(statements, "Mathlib", root, "check_review_boundary.py",
+                 "-> Mathlib names a local file")
+        shadow.unlink()
+        # An object file whose root name shadows a pinned package on the search path.
+        build = root / ".lake/build/lib/lean"
+        build.mkdir(parents=True)
+        (build / "Mathlib.olean").write_bytes(b"")
+        imported(statements, "Mathlib", root,
+                 expected="root name in more than one search path entry")
+        shutil.rmtree(root / ".lake/build")
+        # Authored proofs in Model: the comment gap, a quoted name, a command
+        # prefix, and an `example`, which leaves no declaration.
+        for addition, expected in (
+            ("public theorem /- gap -/ auTUndetected : True := True.intro", "`theorem` keyword"),
+            ("public theorem «cfAuditQuoted» : True := True.intro", "`theorem` keyword"),
+            ("set_option linter.unusedVariables false in public theorem auTSetOption : "
+             "True := True.intro", "`theorem` keyword"),
+            ("example : True := True.intro", "`example` keyword"),
+        ):
+            altered(root / "FastConfirmationModel/Spec/Config.lean", f"\n{addition}\n",
+                    "check_imports.py", expected, root)
         altered(root / "README.md", "\nAudit probe: `NoSuchRecord.synchrony`.\n",
                 "check_doc_names.py", "NoSuchRecord.synchrony", root)
         altered(root / "docs/SPEC_MAP.md",
@@ -73,7 +99,7 @@ def main() -> None:
         finally:
             config.write_text(old_config)
             readme.write_text(old_readme)
-    print("negative trust source tests passed: 7 mutations rejected")
+    print("negative trust source tests passed: 13 mutations rejected")
 
 
 if __name__ == "__main__":
