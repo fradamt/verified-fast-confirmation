@@ -20,6 +20,16 @@ def run(repo: Path, expected: str) -> None:
         raise AssertionError(f"source audit did not reject {expected}: {result.stderr[:1000]}")
 
 
+def trace(repo: Path, out: Path, label: str) -> None:
+    result = subprocess.run(["bash", str(ROOT / "scripts/conformance/run.sh"), str(repo),
+                             "gloas", "minimal", str(out)], capture_output=True, text=True,
+                            timeout=900)
+    output = result.stdout + result.stderr
+    if (result.returncode == 0 or "trace export refused" not in output or
+            "consensus source audit failed" not in output or out.exists()):
+        raise AssertionError(f"trace runner did not refuse the {label}: {output[-1000:]}")
+
+
 def main() -> None:
     source = Path(os.environ.get("CONSENSUS_SPECS_REPO", ROOT.parent / "consensus-specs")).resolve()
     if not (source / ".venv/bin/python").is_file():
@@ -50,7 +60,23 @@ def main() -> None:
                 file.write(b"\n# stale trust negative test\n")
             run(repo, "stale generated pyspec")
             shutil.copy2(source / "tests/core/pyspec/eth_consensus_specs" / fork / "minimal.py", module)
-    print("negative source tests passed: dirty source and two stale pyspec modules rejected")
+        # The standalone trace route (cf-audit R3): a dirty Altair source and a
+        # stale generated Gloas module must stop it before any export.
+        altair = repo / "specs/altair/beacon-chain.md"
+        altair_text = altair.read_bytes()
+        gloas = repo / "tests/core/pyspec/eth_consensus_specs/gloas/minimal.py"
+        for label, path, addition in (
+            ("dirty source", altair, b"\n<!-- cf audit dirty source -->\n"),
+            ("stale generated pyspec", gloas, b"\n# cf audit stale generated module\n"),
+        ):
+            original_bytes = path.read_bytes()
+            path.write_bytes(original_bytes + addition)
+            trace(repo, Path(folder) / "trace.jsonl", label)
+            path.write_bytes(original_bytes)
+        if altair.read_bytes() != altair_text:
+            raise AssertionError("scratch source was not restored")
+    print("negative source tests passed: dirty source and two stale pyspec modules rejected; "
+          "trace export refused for a dirty source and a stale generated module")
 
 
 if __name__ == "__main__":
