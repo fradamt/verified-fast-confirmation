@@ -21,7 +21,7 @@ def run(repo: Path, expected: str) -> None:
 
 
 def main() -> None:
-    source = Path(os.environ.get("CONSENSUS_SPECS_REPO", ROOT.parent / "consensus-specs"))
+    source = Path(os.environ.get("CONSENSUS_SPECS_REPO", ROOT.parent / "consensus-specs")).resolve()
     if not (source / ".venv/bin/python").is_file():
         raise SystemExit(f"pinned pyspec interpreter is required: {source}")
     with tempfile.TemporaryDirectory(prefix="fcr-source-negative-") as folder:

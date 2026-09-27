@@ -269,6 +269,8 @@ def verify_generated_pyspec(repo: Path) -> None:
     """Compare each inherited fork module with fresh pinned output."""
     python = repo / ".venv" / "bin" / "python"
     if not python.is_file():
+        if (repo / ".venv").is_symlink() or (repo / ".venv").exists():
+            raise ManifestError(f"pinned pyspec interpreter is missing or broken: {python}")
         return
     from tempfile import TemporaryDirectory
     with TemporaryDirectory(prefix="fcr-pyspec-") as folder:
