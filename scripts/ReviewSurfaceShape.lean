@@ -51,7 +51,7 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.changed_root_safe_from_next_slot,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.payload_accepted_with_delay,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.envelope_relay_exercised,
-    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.data_relay_exercised,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeBridgeRun.single_early_envelope_receipt,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.payload_status_branches,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.fcr_branch_samples,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.fcr_guard_samples,
@@ -282,7 +282,7 @@ run_cmd do
     let some info := env.find? name
       | throwError "missing public witness {name}"
     witnessFingerprint := hash (witnessFingerprint, name, info.type)
-  unless witnessFingerprint == (16184260627327727404 : UInt64) do
+  unless witnessFingerprint == (14189070914049255717 : UInt64) do
     throwError "public witness statement type changed: {witnessFingerprint}"
   IO.println s!"public witness statements passed ({witnessFingerprint})"
   IO.println s!"review surface types passed ({fingerprint})"
