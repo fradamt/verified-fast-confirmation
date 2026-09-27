@@ -20,8 +20,11 @@ PIN = "13f391516352f61b3ac5dcaae5be1884d104f86a"
 
 def base(slot: int, count: int = 2, balance: int = 32_000_000_000) -> dict:
     return {
+        "genesis_time": 1234,
         "slot": slot,
         "header_slot": 0,
+        "header_proposer_index": 0,
+        "header_parent_root": 9,
         "header_root": 100,
         "validators": [
             {"effective_balance": balance, "slashed": False,
@@ -214,8 +217,11 @@ def repeated_root(spec, value: int):
 def pyspec_result(spec, row: dict) -> dict:
     source = row["state"]
     state = spec.BeaconState()
+    state.genesis_time = source["genesis_time"]
     state.slot = spec.Slot(source["slot"])
     state.latest_block_header.slot = spec.Slot(source["header_slot"])
+    state.latest_block_header.proposer_index = spec.ValidatorIndex(source["header_proposer_index"])
+    state.latest_block_header.parent_root = repeated_root(spec, source["header_parent_root"])
     state.validators = spec.Validators(data=[
         spec.Validator(
             effective_balance=spec.Gwei(v["effective_balance"]),
@@ -340,8 +346,15 @@ def pyspec_result(spec, row: dict) -> dict:
         return [int(value.epoch), value.root[0]]
 
     return {"ok": True, "value": {
+        "genesis_time": int(state.genesis_time),
         "slot": int(state.slot),
+        "validators": [
+            {"effective_balance": int(v.effective_balance), "slashed": bool(v.slashed),
+             "activation_epoch": int(v.activation_epoch), "exit_epoch": int(v.exit_epoch)}
+            for v in state.validators],
         "header_slot": int(state.latest_block_header.slot),
+        "header_proposer_index": int(state.latest_block_header.proposer_index),
+        "header_parent_root": state.latest_block_header.parent_root[0],
         "header_root": spec.hash_tree_root(state.latest_block_header)[0],
         "bits": [bool(x) for x in state.justification_bits],
         "previous_justified": cp(state.previous_justified_checkpoint),
@@ -511,6 +524,24 @@ def main() -> int:
         if want != got:
             differences += 1
             print(f"MISMATCH {row['name']}: pyspec={want} lean={got}", file=sys.stderr)
+    # Each retained component must be visible to the comparison. These
+    # controls also catch an accidental removal from either serializer.
+    witness = expected[0]
+    for key in ("genesis_time", "header_proposer_index", "header_parent_root",
+                "effective_balance", "slashed", "activation_epoch", "exit_epoch"):
+        changed = json.loads(json.dumps(actual[0]))
+        if key in changed.get("value", {}):
+            changed["value"][key] += 1
+        elif key in changed.get("value", {}).get("validators", [{}])[0]:
+            value = changed["value"]["validators"][0][key]
+            changed["value"]["validators"][0][key] = not value if key == "slashed" else value + 1
+        else:
+            differences += 1
+            print(f"MISMATCH retained negative control: {key}", file=sys.stderr)
+            continue
+        if changed == witness:
+            differences += 1
+            print(f"MISMATCH retained comparator control: {key}", file=sys.stderr)
     for row, got in zip(scope_rows, actual[len(rows):-1], strict=True):
         if got != {"ok": False, "error": "scope"}:
             differences += 1

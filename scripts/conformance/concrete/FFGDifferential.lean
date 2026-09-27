@@ -33,7 +33,7 @@ def parseValidator (j : J) : Except String Validator := do
 
 def parseState (j : J) : Except String (FFGBeaconState Nat) := do
   return {
-    genesis_time := 0
+    genesis_time := ← natField j "genesis_time"
     slot := ← natField j "slot"
     validators := ← list parseValidator (← field j "validators")
     justification_bits := ← list boolean (← field j "bits")
@@ -43,7 +43,8 @@ def parseState (j : J) : Except String (FFGBeaconState Nat) := do
     previous_epoch_participation := ← list nat (← field j "previous_participation")
     current_epoch_participation := ← list nat (← field j "current_participation")
     block_roots := ← list nat (← field j "block_roots")
-    latest_block_header := ⟨← natField j "header_slot", 0, 0,
+    latest_block_header := ⟨← natField j "header_slot", ← natField j "header_proposer_index",
+      ← natField j "header_parent_root",
       ← natField j "header_root"⟩
     execution_payload_availability := ← list boolean (← field j "availability")
     latest_block_hash := ← natField j "latest_block_hash"
@@ -84,9 +85,20 @@ def preset : FFGPreset := {
 def checkpointJson (cp : Checkpoint Nat) : J :=
   toJson #[cp.epoch, cp.root]
 
+def validatorJson (v : Validator) : J := Json.mkObj [
+  ("effective_balance", toJson v.effective_balance),
+  ("slashed", toJson v.slashed),
+  ("activation_epoch", toJson v.activation_epoch),
+  ("exit_epoch", toJson v.exit_epoch)
+]
+
 def stateJson (state : FFGBeaconState Nat) : J := Json.mkObj [
+  ("genesis_time", toJson state.genesis_time),
   ("slot", toJson state.slot),
+  ("validators", toJson (state.validators.map validatorJson)),
   ("header_slot", toJson state.latest_block_header.slot),
+  ("header_proposer_index", toJson state.latest_block_header.proposer_index),
+  ("header_parent_root", toJson state.latest_block_header.parent_root),
   ("header_root", toJson state.latest_block_header.root),
   ("bits", toJson state.justification_bits),
   ("previous_justified", checkpointJson state.previous_justified_checkpoint),

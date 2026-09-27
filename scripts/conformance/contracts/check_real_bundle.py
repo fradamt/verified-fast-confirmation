@@ -10,6 +10,7 @@ within-epoch and cross-boundary spans.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -21,7 +22,14 @@ import run as projection  # noqa: E402
 import run_differential as differential  # noqa: E402
 
 
-def retained_projection_rows(spec, run):
+def epoch_ends_fit(slots_per_epoch):
+    return slots_per_epoch > 0 and 2**64 % slots_per_epoch == 0
+
+
+EXPECTED_ESTIMATE_FAILURE_FINGERPRINT = 'c0247ff02146c874e9e3bbac1966a71492e71f66d9055f0e25be9563a1e2e6a5'
+
+
+def retained_projection_rows(spec, run, overrides=None):
     """Differential rows for every accepted block of the run.
 
     Each row holds the retained FFG fields of the parent post-state, the wire
@@ -45,9 +53,13 @@ def retained_projection_rows(spec, run):
 
     def retained(state):
         return {
+            'genesis_time': int(state.genesis_time),
             'slot': int(state.slot),
             'header_slot': int(state.latest_block_header.slot),
+            'header_proposer_index': int(state.latest_block_header.proposer_index),
+            'header_parent_root': label(state.latest_block_header.parent_root),
             'header_root': header_root(state),
+            'validators': registry(state),
             'bits': [bool(x) for x in state.justification_bits],
             'previous_justified': checkpoint(state.previous_justified_checkpoint),
             'current_justified': checkpoint(state.current_justified_checkpoint),
@@ -73,7 +85,7 @@ def retained_projection_rows(spec, run):
         if (body.proposer_slashings or body.attester_slashings or body.voluntary_exits
                 or body.bls_to_execution_changes or body.deposits):
             raise RuntimeError(f'block {root} has an erased operation')
-        pre = run.states[run.parents[root]]
+        pre = overrides[root][0] if overrides and root in overrides else run.states[run.parents[root]]
         at_slot = pre.copy()
         spec.process_slots(at_slot, block.slot)
         bid = body.signed_execution_payload_bid.message
@@ -110,18 +122,21 @@ def retained_projection_rows(spec, run):
                       == at_slot.latest_execution_payload_bid.execution_requests_root,
                       'deposit_count': len(body.deposits), 'attestations': votes},
         })
-        post = run.states[root]
+        post = overrides[root][1] if overrides and root in overrides else run.states[root]
         # The Lean state keeps the registry of the fixed scope, so a Python
         # registry change is a difference of the retained projection.
-        expected.append({'ok': registry(post) == registry(pre), 'value': retained(post)})
+        expected.append({'ok': True, 'value': retained(post)})
     return rows, expected
 
 
-def slot_committees(spec, state, slots):
-    """The union of the beacon committees of each slot, read from `state`."""
+def slot_committees(spec, run, slots):
+    """Read each epoch from a state in that epoch of this accepted run."""
     committees = {}
     for slot in range(slots):
         epoch = slot // int(spec.SLOTS_PER_EPOCH)
+        root = (run.anchor_root if epoch == 0 else next(root for root in run.events
+                    if int(run.states[root].slot) == epoch * int(spec.SLOTS_PER_EPOCH)))
+        state = run.states[root]
         members = set()
         for index in range(int(spec.get_committee_count_per_slot(state, spec.Epoch(epoch)))):
             members.update(map(int, spec.get_beacon_committee(
@@ -175,7 +190,8 @@ def epoch_registry_change(spec, run):
     post = pre.copy()
     spec.state_transition(post, spec.SignedBeaconBlock(message=run.blocks[root]),
                           validate_result=False)
-    return {'slot': int(run.blocks[root].slot),
+    return {'slot': int(run.blocks[root].slot), 'root': root,
+            'pre': pre, 'post': post,
             'before': int(pre.validators[0].effective_balance),
             'after': int(post.validators[0].effective_balance)}
 
@@ -220,7 +236,10 @@ def main() -> int:
           sum(int(registry[i].effective_balance) for i in active[0]) >= 2 * increment, 1)
     field('SafetyPremises.slots_per_epoch_gt_one', slots_per_epoch > 1, 1)
     field('SafetyPremises.epoch_ends_fit',
-          horizon * slots_per_epoch < 2**64, 1)
+          epoch_ends_fit(slots_per_epoch), 1)
+    if epoch_ends_fit(7) or not epoch_ends_fit(8):
+        raise RuntimeError('epoch_ends_fit boundary controls failed')
+    field('finite_horizon_within_uint64', horizon * slots_per_epoch < 2**64, 1)
     field('NextSlotSafetyPremises.anchor_boundary', int(anchor.slot) % slots_per_epoch == 0, 1)
     field('NextSlotSafetyPremises.anchor_eq', run.anchor[1] == run.anchor_root, 1)
     field('NextSlotSafetyPremises.anchor_state_checkpoints',
@@ -271,7 +290,7 @@ def main() -> int:
     ):
         failed = next((root for ok, root in cases if not ok), None)
         field(name, failed is None and bool(cases), len(cases), {'root': failed} if failed else None)
-    committees = slot_committees(spec, anchor_state, 48)
+    committees = slot_committees(spec, run, 48)
     unique = all(sum(len(committees[s]) for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch))
                  == len(set().union(*(committees[s] for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch))))
                  for e in range(6))
@@ -295,7 +314,15 @@ def main() -> int:
     # fail by part (ii): the real reshuffle is one sample, and the pro-rated
     # estimate is the expected overlap.
     uniform_state = genesis(spec, [32 * 10**9] * 128, spec.MIN_ACTIVATION_BALANCE)
-    uniform = estimate_spans(spec, uniform_state, slot_committees(spec, uniform_state, 48))
+    _, uniform_anchor = genesis_store(spec, uniform_state)
+    _, uniform_blocks, _ = next_slots(spec, uniform_state, 48, True, False)
+    uniform_run = projection.Run('uniform-128-genesis-to-epoch-6', spec,
+                                 genesis(spec, [32 * 10**9] * 128, spec.MIN_ACTIVATION_BALANCE),
+                                 uniform_anchor, uniform_blocks)
+    if uniform_run.errors or len(uniform_run.roots) != 49:
+        raise RuntimeError(f'uniform fixture did not import 48 blocks: {uniform_run.errors}')
+    uniform = estimate_spans(spec, uniform_run.states[uniform_run.anchor_root],
+                             slot_committees(spec, uniform_run, 48))
     for kind in ('within_epoch', 'cross_boundary'):
         failures = uniform[kind]['failures']
         field(f'ByzantineWeightPremises.estimate_sound.uniform_{kind}', not failures,
@@ -311,9 +338,20 @@ def main() -> int:
     field('ConcreteFFG.state_transition.retained_projection',
           mismatch is None and len(rows) == 48, len(rows), mismatch)
     control = epoch_registry_change(spec, run)
+    control_rows, control_expected = retained_projection_rows(
+        spec, run, {control['root']: (control['pre'], control['post'])})
+    control_index = next(i for i, row in enumerate(control_rows)
+                         if row['name'] == f"accepted_slot_{control['slot']}")
+    control_actual = differential.lean_evaluate([control_rows[control_index]])[0]
+    expected_value = control_expected[control_index]['value']
+    actual_value = control_actual.get('value', {})
+    detected = (control_actual.get('ok') is True and
+                control_actual != control_expected[control_index] and
+                actual_value.get('validators') != expected_value['validators'])
     field('ConcreteFFG.state_transition.epoch_registry_change_detected',
-          control['after'] != control['before'], 1,
-          None if control['after'] != control['before'] else control)
+          control['after'] != control['before'] and detected, 1,
+          None if detected else {'slot': control['slot'], 'expected': control_expected[control_index],
+                                 'lean': control_actual})
     for row in projection.check_run(run, projection.source_statements()):
         results.append({'field': row['field'], 'status': row['status'],
                         'checks': 1, 'first_failure': row['state'] if row['status'] == 'FAIL' else None})
@@ -323,6 +361,12 @@ def main() -> int:
                            'failures': len(spans[kind]['failures'])}
                     for kind in spans}
              for name, spans in (('mixed', mixed), ('uniform', uniform))}
+    failure_rows = {name: {kind: spans[kind]['failures'] for kind in spans}
+                    for name, spans in (('mixed', mixed), ('uniform', uniform))}
+    failure_fingerprint = hashlib.sha256(json.dumps(
+        failure_rows, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    if failure_fingerprint != EXPECTED_ESTIMATE_FAILURE_FINGERPRINT:
+        raise RuntimeError(f'estimate counterexample set changed: {failure_fingerprint}')
     actual_failures = {row['field'] for row in results if row['status'] == 'FAIL'}
     summary = {'run': run.name, 'validators': len(registry), 'balances_gwei': sorted(set(
                    int(v.effective_balance) for v in registry)),
@@ -330,6 +374,7 @@ def main() -> int:
                'fields': len(results), 'failures': sorted(actual_failures),
                'estimate_violations': len(estimate_failures),
                'estimate_split': split,
+               'estimate_failure_fingerprint': failure_fingerprint,
                'not_established': sorted(row['field'] for row in results if row['status'] == 'NOT_ESTABLISHED'),
                'results': results,
                'limits': ['single accepted chain and one honest view; network relay, multi-view vote behavior, BLS, engine and KZG are not evaluated',

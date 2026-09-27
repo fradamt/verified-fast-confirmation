@@ -24,6 +24,22 @@ if [[ ! -x "$consensus_specs_dir/.venv/bin/python" ]]; then
   echo "MISSING_PYSPEC: $consensus_specs_dir/.venv/bin/python; no setup or network attempted" >&2
   exit 2
 fi
+consensus_specs_dir="$(cd "$consensus_specs_dir" && pwd)"
+source_pin=13f391516352f61b3ac5dcaae5be1884d104f86a
+actual_pin=$(git -C "$consensus_specs_dir" rev-parse HEAD)
+if [[ "$actual_pin" != "$source_pin" ]]; then
+  echo "pyspec revision differs: $actual_pin" >&2
+  exit 2
+fi
+export FCR_SOURCE_PIN="$source_pin"
+source_module=$(
+  cd "$consensus_specs_dir"
+  PYTHONPATH=tests/core/pyspec .venv/bin/python -c 'from eth_consensus_specs.gloas import minimal; print(minimal.__file__)'
+)
+if [[ "$source_module" != "$consensus_specs_dir"/* ]]; then
+  echo "pyspec import is outside the pinned checkout: $source_module" >&2
+  exit 2
+fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 plugin_dir="$repo_root/scripts/conformance/python"
 mkdir -p "$(dirname "$out")"
@@ -43,7 +59,7 @@ export PYTHONDONTWRITEBYTECODE=1
 set +e
 (
   cd "$consensus_specs_dir" || exit 1
-  PYTHONPATH="$plugin_dir${PYTHONPATH:+:$PYTHONPATH}" \
+  PYTHONPATH="$plugin_dir:$consensus_specs_dir/tests/core/pyspec" \
     .venv/bin/python -m pytest "tests/core/pyspec/eth_consensus_specs/test/phase0/fast_confirmation" \
       ${pytest_parallel} --reftests --fork="$fork" --preset="$preset" -p fcr_trace_plugin -p no:cacheprovider
 ) >"$pytest_log" 2>&1

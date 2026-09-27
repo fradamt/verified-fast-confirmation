@@ -25,6 +25,7 @@ message: `schema v1 describes a phase0 store; schema v2 is required`.
 ```text
 ┌─────────────┬──────────────────────────────────────────────────────────┐
 │ schema      │ 2                                                        │
+│ source_pin  │ 13f391516352f61b3ac5dcaae5be1884d104f86a             │
 │ fork        │ "gloas"                                                  │
 │ preset      │ "minimal" or "mainnet"                                   │
 │ test_id     │ pytest node id                                           │
@@ -52,6 +53,9 @@ The optional root field `safe_execution_block_hash_after` records the source
 field. The runner compares the model helper when the field is present.
 Earlier v2 records remain valid and skip this comparison. In Gloas the
 safe execution hash is the confirmed block's `parent_block_hash`.
+The runner checks the source commit before export. Both readers require the
+`source_pin` field and reject a different value. An old v2 record without
+this field must be exported again from the pinned source.
 
 ## State projection
 

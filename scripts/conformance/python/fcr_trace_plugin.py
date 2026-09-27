@@ -347,6 +347,7 @@ def _capture(self: Any) -> None:
 
     record = {
         "schema": 2,
+        "source_pin": os.environ["FCR_SOURCE_PIN"],
         "head_before": head_before,
         "test_id": test_id,
         "fork": str(spec.fork),

@@ -374,8 +374,8 @@ test = "BeaconExternalsPremises.committee_members_active"
 [[field]]
 path = "ConcreteExternalsPremises.process_slots_attestation_valid"
 file = "ConcreteSafety.lean"
-class = "T"
-test = "BeaconExternalsPremises.process_slots_attestation_valid"
+class = "I"
+reason = "The supplied base is_valid_indexed_attestation oracle includes a signature check. The structural Python probe uses BLS-off mode and does not test that oracle contract."
 
 [[field]]
 path = "ConcreteExternalsPremises.verify_envelope_deterministic"
