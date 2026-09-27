@@ -168,9 +168,9 @@ Byzantine run has five validators.
 * The run fields of the public premise, for the next-slot run:
   `NextSlotBridgeRun.witnessWellFormedExecution`,
   `NextSlotBridgeRun.witnessHonestBehavior`,
-  `NextSlotBridgeRun.witnessExternalsCoherence`,
+  `NextSlotBridgeRun.witnessExternalsCoherence` (the internal record; the
+  public field is its residual part),
   `NextSlotBridgeRun.witnessPaperSafetySynchrony`,
-  `NextSlotBridgeRun.witnessStaticValidatorSet`,
   `NextSlotBridgeRun.witnessByzantineBound`, and
   `NextSlotPremiseWitness.witnessEpochEndsFitUint64`. The four honest nodes
   start from one anchor store and process finite schedules. Every honest vote

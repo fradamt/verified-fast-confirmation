@@ -595,6 +595,7 @@ theorem witnessAdmissible : witnessBridge.Admissible where
   setup := ⟨by decide, rfl, by decide +kernel⟩
   numeric := by norm_num [UINT64_MAX, witnessBridge, witnessSetup, witnessScope, witnessConfig,
     witnessPreset]
+  genesis_time := by norm_num [UINT64_MAX, witnessBridge, witnessSetup]
 
 theorem witnessConcreteGenesis : witnessBridge.ConcreteGenesis witnessExecution :=
   ⟨anchorSignedBlock, rfl, rfl, by decide, rfl, by decide +kernel, rfl⟩
@@ -662,9 +663,9 @@ theorem witnessSafetyPremises : witnessBridge.SafetyPremises witnessExecution wh
   horizon_scope := rfl
   whole_seconds := by decide
   wellFormed := witnessWellFormedExecution
-  externals_coherence := by
+  externals_coherence := .of_beaconExternals (by
     rw [interface_eq]
-    exact witnessExternalsCoherence
+    exact witnessExternalsCoherence)
   honest_behavior := by
     rw [interface_eq]
     exact witnessHonestBehavior
@@ -672,7 +673,6 @@ theorem witnessSafetyPremises : witnessBridge.SafetyPremises witnessExecution wh
   synchrony := by
     rw [interface_eq]
     exact witnessPaperSafetySynchrony
-  static_validators := witnessStaticValidatorSet
   byzantine_bound := witnessByzantineBound
   epoch_ends_fit := witnessEpochEndsFitUint64
   slots_per_epoch_gt_one := by decide

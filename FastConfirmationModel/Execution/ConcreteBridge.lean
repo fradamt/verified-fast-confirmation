@@ -177,12 +177,14 @@ def committedState [DecidableEq Root] (r : Root) : Option (FFGBeaconState Root) 
     | some (_, stateRoot) => B.states.open_ stateRoot
     | none => none
 
-/-- The setup conditions of the bridge laws: the admissible setup, and a
-`uint64` bound that covers every root read of the fixed scope. -/
+/-- The setup conditions of the bridge laws: the admissible setup, a
+`uint64` bound that covers every root read of the fixed scope, and a `uint64`
+genesis time (the Python type of `genesis_time`). -/
 structure Admissible (B : ConcreteBridge Root) : Prop where
   setup : B.setup.Admissible
   numeric : (B.setup.scope.last_epoch + 1) * B.setup.cfg.slots_per_epoch +
     B.setup.preset.slots_per_historical_root ≤ UINT64_MAX
+  genesis_time : B.setup.genesisTime ≤ UINT64_MAX
 
 /-- An execution starts from the Python genesis store of the setup: the
 anchor state is the projected genesis state and the anchor block is the

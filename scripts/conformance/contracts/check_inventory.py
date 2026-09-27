@@ -14,7 +14,6 @@ ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
 PREMISES = ROOT / "FastConfirmationStatements" / "Premises"
 INTERNAL_PREMISES = ROOT / "FastConfirmationInternal" / "Premises"
-BRIDGE_LAWS = ROOT / "FastConfirmationProofs" / "FFG" / "Concrete" / "ExternalsLaws.lean"
 # Internal FFG interpretation records that the pyspec projection runner probes
 # for the canonical interpretation of the concrete bridge.
 PROJECTED = ("AcceptedBlockFFGState", "FFGStateReadAgreement",
@@ -62,9 +61,9 @@ def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
         if key in inventory:
             raise ValueError(f"duplicate inventory entry: {key}")
         labels = row["class"].split("+")
-        if not labels or len(set(labels)) != len(labels) or any(label not in ("T", "E-scope", "E-network/behavior", "E-interpretation", "I", "definition", "record", "bridge") for label in labels):
+        if not labels or len(set(labels)) != len(labels) or any(label not in ("T", "E-scope", "E-network/behavior", "E-interpretation", "I", "definition", "record") for label in labels):
             raise ValueError(f"invalid class: {key}")
-        if any(label in ("T", "definition", "record", "bridge") for label in labels) and len(labels) != 1:
+        if any(label in ("T", "definition", "record") for label in labels) and len(labels) != 1:
             raise ValueError(f"T, definition, record, and bridge cannot be mixed: {key}")
         if row["class"] == "bridge":
             proof = row.get("proof", "")
@@ -115,7 +114,7 @@ def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
     active = [row for row in rows if row["path"] in source]
     counts = {klass: sum(klass in row["class"].split("+") for row in active)
               for klass in ("T", "E-scope", "E-network/behavior", "E-interpretation", "I",
-                            "definition", "record", "bridge")}
+                            "definition", "record")}
     print(f"contract inventory passed: {len(active)} authored fields, {len(generated)} inherited projections, {len(boundaries)} outside boundaries "
           + " / ".join(f"{klass} {count}" for klass, count in counts.items()))
     return inventory

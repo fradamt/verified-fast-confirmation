@@ -1,6 +1,7 @@
 module
 public import FastConfirmationProofs.FFG.Concrete.CanonicalEvidence
 public import FastConfirmationProofs.FFG.Concrete.BridgeLaws
+public import FastConfirmationProofs.FFG.Concrete.ExternalsLaws
 public import FastConfirmationProofs.FFG.Certificates.PaperCheckpointInclusionProjectionCore
 public import FastConfirmationStatements.Premises.ConcreteSafety
 public import FastConfirmationInternal.Premises.NextSlotSafety
@@ -13,8 +14,9 @@ public import FastConfirmationInternal.Premises.NextSlotSafety
 interpretation of the bridge, with the inclusion relation
 `TargetIncludedAt`. The public A3.2 view is compatible with it: the view
 marks as formed only the carried checkpoints, and every attestation in an
-accepted block body was received from the block. The Phase0 source laws and
-the balance floor are proved for the bridge. -/
+accepted block body was received from the block. The Phase0 source laws, the balance floor, the
+bridge-proved external contracts, and the static validator set are proved
+for the bridge. -/
 
 namespace FastConfirmation.Spec.ConcreteFFG
 open FastConfirmation.Spec
@@ -95,12 +97,12 @@ noncomputable def SafetyPremises.nextSlotSafetyPremises {B : ConcreteBridge Root
     scheduled_execution := {
       whole_seconds := h.whole_seconds
       wellFormed := h.wellFormed
-      externals_coherence := h.externals_coherence
+      externals_coherence := h.externals_coherence.beaconExternals h.admissible h.genesis
       honest_behavior := h.honest_behavior
       genesis := B.scheduled_genesis h.genesis }
     call_conditions := {
       synchrony := h.synchrony
-      static_validators := h.static_validators
+      static_validators := B.staticValidatorSet h.admissible h.genesis h.horizon_scope
       byzantine_bound := h.byzantine_bound
       source_coherence := B.phase0SourceCoherence h.admissible
       boundary_source_coherence := B.phase0BoundarySourceCoherence h.admissible

@@ -175,8 +175,12 @@ are theorems: `process_slots_slot`, `registry_static_in_horizon`,
 `state_transition_slot`, `state_transition_pre_slot_lt`,
 `state_transition_checkpoint_epoch`, `pjf_checkpoint_epoch`,
 `anchor_state_checkpoint_epoch`, and `valid_attestation_default`
-(`FastConfirmationProofs/FFG/Concrete/ExternalsLaws.lean`). They stay in the
-premise because the internal record is shared with the abstract interface.
+(`FastConfirmationProofs/FFG/Concrete/ExternalsLaws.lean`). They are not in
+the public premise: `SafetyPremises.externals_coherence` has the residual
+record `ConcreteExternalsPremises` (committee agreement, coverage, uniqueness
+and activity, the three signature laws, slot-processing validity, and
+envelope determinism), and the translation builds `BeaconExternalsPremises`.
+The static validator set is also proved, so it is not a premise field.
 
 `Execution.schedule` is supplied. `WellFormedExecution`, `HonestBehavior`, and
 the delivery laws constrain it. The bridge computes the accepted FFG relation and

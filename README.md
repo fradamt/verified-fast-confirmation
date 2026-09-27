@@ -58,17 +58,18 @@ The [review guide](docs/REVIEW_GUIDE.md) explains anchor states, checkpoint read
 
 ## Assumptions at a glance
 
-The premise `ConcreteBridge.SafetyPremises` has 15 fields. The class is the
+The premise `ConcreteBridge.SafetyPremises` has 14 fields. The class is the
 inventory class: E-scope limits the execution, E-network/behavior states
 delivery or behavior, E-interpretation states external contracts, and I marks
 an idealization.
 
-text
+```text
 ┌──────────────────────────────┬─────────────────────┬──────────────────────────────────────────────────────────────────────────────┐
 │ SafetyPremises field         │ Class               │ Plain meaning                                                                │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
 │ admissible                   │ E-scope             │ The fixed setup starts at genesis, has two increments of active weight, lets │
-│                              │                     │ the root ring cover two epochs, and fits uint64 root reads.                  │
+│                              │                     │ the root ring cover two epochs, fits uint64 root reads, and has a uint64     │
+│                              │                     │ genesis time.                                                                │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
 │ genesis                      │ E-scope + I         │ The run starts from the genesis store of the setup; the state commitment     │
 │                              │                     │ opens the genesis state root. The genesis state differs from Python only in  │
@@ -82,11 +83,9 @@ text
 │ wellFormed                   │ E-interpretation    │ Block root labels are injective (class I root labels), and the anchor parent │
 │                              │                     │ is unscheduled.                                                              │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
-│ externals_coherence          │ E-interpretation    │ BeaconExternalsPremises: committee, signature, and envelope contracts.       │
-│                              │                     │ Committees are one fixed ground-truth assignment (class I); RANDAO-seeded,   │
-│                              │                     │ fork-dependent committees are not modeled. Eight of its 17 fields (slot      │
-│                              │                     │ and checkpoint-epoch laws, anchor epochs, default rejection, and the static  │
-│                              │                     │ registry) are bridge theorems in ExternalsLaws.lean.                         │
+│ externals_coherence          │ E-interpretation    │ ConcreteExternalsPremises: committee, signature, and envelope contracts that │
+│                              │                     │ the bridge does not prove. Committees are one fixed ground-truth assignment  │
+│                              │                     │ (class I); RANDAO-seeded, fork-dependent committees are not modeled.         │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
 │ honest_behavior              │ E-network/behavior  │ Honest committee members vote for their head by the deadline, sign no        │
 │                              │                     │ slashable pair, and are not forged.                                          │
@@ -96,9 +95,6 @@ text
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
 │ synchrony                    │ E-network/behavior  │ GST-0 delivery and handler service by the next boundary for votes, blocks,   │
 │                              │                     │ envelopes, data, and slashing evidence.                                      │
-├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
-│ static_validators            │ E-scope             │ Active status is fixed in the horizon, and the genesis epoch is in the       │
-│                              │                     │ horizon. The first part is a bridge theorem (activity_constant).             │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
 │ byzantine_bound              │ E-network/behavior  │ Quantized balances, sound committee estimates, and a fault bound on every    │
 │                              │                     │ slot span. With coverage, estimate_sound forces each slot committee to weigh │
@@ -114,14 +110,20 @@ text
 │ checkpoint_inclusion         │ E-network/behavior  │ Paper Assumption 3.2 over the view of the bridge: after sustained honest     │
 │                              │                     │ link support, proposers include the votes by epoch e + 2.                    │
 └──────────────────────────────┴─────────────────────┴──────────────────────────────────────────────────────────────────────────────┘
+```
 
 Proved from the bridge, not assumed: the FFG interpretation
 (`ScheduledFFGInterpretation`, with its inclusion relation and checkpoint
 reads), the anchor conditions (`anchor_state_checkpoints`, `anchor_eq`,
 `anchor_boundary`), the Phase0 source laws (`Phase0SourceCoherence`,
 `Phase0BoundarySourceCoherence`), the balance floor, the finalization lag, the
-checkpoint projection, and the link agreement. `SafetyPremises.nextSlotSafetyPremises`
-computes them. The block-validity oracle of the bridge is opaque (class I): the
+checkpoint projection, the link agreement, eight of the 17 contracts of the
+internal record `BeaconExternalsPremises` (slot and checkpoint-epoch laws,
+anchor checkpoint epochs, default-state rejection, and the static registry),
+and the static validator set (`StaticValidatorSet`: the genesis epoch is in
+the horizon, and active status is fixed). `SafetyPremises.nextSlotSafetyPremises`
+computes them; `FastConfirmationProofs/FFG/Concrete/ExternalsLaws.lean` holds
+the external and static-set proofs. The block-validity oracle of the bridge is opaque (class I): the
 theorem holds for every oracle, and no oracle can accept a block outside the
 fixed scope.
 
@@ -168,10 +170,10 @@ contracts. Committees are one fixed assignment (class I). The Lean kernel checks
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
-A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 76 finite fields: 16 public premise fields, 58 laws of the derived internal records, and two checks of the concrete transition (the retained fields of each block, and a negative control for an epoch-step registry change). `ByzantineWeightPremises.estimate_sound` fails on 211 spans; A3.2 remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
+A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 76 finite fields: 10 public premise fields, 64 laws of the derived internal records, and two checks of the concrete transition (the retained fields of each block, and a negative control for an epoch-step registry change). `ByzantineWeightPremises.estimate_sound` fails on 211 spans; A3.2 remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
 
 The [contract conformance checks](docs/conformance.md#contract-conformance) cover
-72 claim-reachable fields. Seventeen are definitions, not assumptions: the seven fields of the A3.2 view, which the bridge fixes (its modeling choices are the fixed committee schedule, AU from the four carried selectors, and the genesis-epoch read as the anchor), and the ten parts of the A3.2 antecedent. Eight are records whose own fields are listed. Nine are bridge theorems: the concrete bridge proves them (`FastConfirmationProofs/FFG/Concrete/ExternalsLaws.lean`), and they stay in the premise only because the internal record is shared with the abstract interface. The other 38 fields are the assumed leaves: tested state laws (T) 5, execution scope (E-scope) 8, network and behavior (E-network/behavior) 15, and idealizations (I) 13; three leaves have two labels, and no leaf is E-interpretation. Paper A3.2 (`EventualCheckpointInclusion.included`) is E-network/behavior: the bridge fixes its view, so it states only that proposers include the supporting votes and that the network delivers a carrier block. Run `python3
+61 claim-reachable fields. Seventeen are definitions, not assumptions: the seven fields of the A3.2 view, which the bridge fixes (its modeling choices are the fixed committee schedule, AU from the four carried selectors, and the genesis-epoch read as the anchor), and the ten parts of the A3.2 antecedent. Seven are records whose own fields are listed. The other 37 fields are the assumed leaves: tested state laws (T) 5, execution scope (E-scope) 7, network and behavior (E-network/behavior) 15, and idealizations (I) 13; three leaves have two labels, and no leaf is E-interpretation. Paper A3.2 (`EventualCheckpointInclusion.included`) is E-network/behavior: the bridge fixes its view, so it states only that proposers include the supporting votes and that the network delivers a carrier block. Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the
 pinned checkout's interpreter. Three labelled expected failures show why the balance
@@ -207,13 +209,13 @@ The records in this table are in `FastConfirmationStatements/Premises/`, except 
 │ Premise      │ ConcreteBridge.SafetyPremises        │ An admissible bridge; the concrete genesis store; a horizon tied to the          │ Paper Assumption 3.2; Gloas   │
 │              │                                      │ fixed scope; whole seconds; a well formed scheduled run; delivered body          │ extension; model idealization │
 │              │                                      │ attestations; the epoch-1 finalization scope; checkpoint inclusion.              │                               │
-│ Safety field │ BeaconExternalsPremises              │ Slot and state transition coherence, committee and attestation                   │ Model idealization            │
-│              │                                      │ validity, and deterministic envelope verification.                               │                               │
+│ Safety field │ ConcreteExternalsPremises            │ Committee agreement, coverage and activity, the signature laws, slot-processing  │ Model idealization            │
+│              │                                      │ validity, and deterministic envelope verification. The bridge proves the other   │                               │
+│              │                                      │ contracts and the static validator set.                                          │                               │
 │ Safety field │ HonestBehavior                       │ Honest head votes by the assigned committee, a vote deadline, no forgery,        │ Paper; model premise          │
 │              │                                      │ no slashable honest vote pair, and unslashed honest validators.                  │                               │
 │ Safety field │ NextSlotSynchronyPremises            │ Positive delay parameter; delivery and handler-service laws for blocks,          │ Paper synchrony; Gloas        │
 │              │                                      │ envelopes, data and evidence; pre-tick exclusion before boundary votes.          │ extension                     │
-│ Safety field │ StaticValidatorSet                   │ Fixed active validators in the horizon.                                          │ Model idealization            │
 │ Safety field │ ByzantineWeightPremises              │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
 │              │                                      │ fraction bound for every span, including one slot. A global fault                │ executable estimate           │
 │              │                                      │ share does not establish this span bound.                                        │                               │
@@ -274,8 +276,7 @@ positively. The one-second runs set `attestation_due_bps` to zero. The main
 safety runs have four or five validators. Each slot committee has one
 validator, except in the Byzantine run, where validator 4 joins the
 committees of validator 3.
-Validator churn is outside
-`StaticValidatorSet`. These are
+Validator churn is outside the fixed scope. These are
 coverage limits, not claims about unreachable protocol states.
 
 ## Scope limits

@@ -4,18 +4,20 @@ public import FastConfirmationProofs.FFG.Concrete.CanonicalTiming
 public import FastConfirmationProofs.FFG.Concrete.CertificateTranslation
 public import FastConfirmationProofs.FFG.Concrete.PointwiseAttestation
 public import FastConfirmationProofs.Execution.Delivery.Registry
-public import FastConfirmationStatements.Premises.Economics
+public import FastConfirmationInternal.Premises.Externals
+public import FastConfirmationStatements.Premises.ConcreteSafety
 
 @[expose] public section
 
-/-! Proves for the concrete bridge the fields of `BeaconExternalsPremises` and
-`StaticValidatorSet` that follow from the bridge and `ConcreteGenesis`: the
-slot laws, the checkpoint-epoch laws, the anchor checkpoint epochs,
-default-state rejection, the static registry, and constant activity. The
-premise keeps these fields because the internal record is shared with the
-abstract interface; for a run with the concrete bridge they are theorems.
-The other fields (committee agreement, signature soundness, committee
-confinement, slot-processing validity and envelope determinism) read the
+/-! Proves for the concrete bridge the fields of the internal records
+`BeaconExternalsPremises` and `StaticValidatorSet` that follow from the bridge
+and `ConcreteGenesis`: the slot laws, the checkpoint-epoch laws, the anchor
+checkpoint epochs, default-state rejection, the static registry, the genesis
+horizon, and constant activity. With the residual public record
+`ConcreteBridge.ConcreteExternalsPremises` they give both internal records
+(`ConcreteExternalsPremises.beaconExternals`, `staticValidatorSet`). The
+residual fields (committee agreement, signature soundness, committee
+confinement, slot-processing validity, and envelope determinism) read the
 execution ground truth or the opaque `base` methods, so the bridge does not
 prove them. -/
 
@@ -363,6 +365,64 @@ theorem activity_constant (hB : B.Admissible) {E : Execution Root} (hg : B.Concr
     simp only [List.getD_eq_getElem?_getD, List.getElem?_eq_none (Nat.le_of_not_lt hi),
       Option.getD_none]
     simp [is_active_validator, hexit]
+
+/-- `StaticValidatorSet.genesis_within_horizon` for the bridge: the genesis
+store starts at the `uint64` genesis time and slot 0, and epoch 0 is in the
+horizon. -/
+theorem genesis_within_horizon (hB : B.Admissible) {E : Execution Root}
+    (hg : B.ConcreteGenesis E) (hh : E.verification_horizon = B.setup.scope.last_epoch + 1) :
+    E.WithinHorizon B.setup.cfg 0 := by
+  obtain ⟨ablk, -, -, -, -, -, hgs⟩ := hg
+  have htime : E.time_at 0 = B.setup.genesisTime := by
+    simp [Execution.time_at, hgs, get_forkchoice_store, project, FFGSetup.genesis,
+      FFGBeaconState.genesis, FFGBeaconState.toBeaconState]
+  have hslot : E.slot_at B.setup.cfg 0 = 0 := by
+    simp [Execution.slot_at, htime, hgs, get_forkchoice_store, project, FFGSetup.genesis,
+      FFGBeaconState.genesis, FFGBeaconState.toBeaconState, GENESIS_SLOT]
+  refine ⟨htime ▸ hB.genesis_time, by rw [hslot]; exact Nat.zero_le _, ?_⟩
+  rw [hslot, hh]
+  simp [compute_epoch_at_slot]
+
+/-- The static validator set of a run with the concrete bridge. -/
+theorem staticValidatorSet (hB : B.Admissible) {E : Execution Root} (hg : B.ConcreteGenesis E)
+    (hh : E.verification_horizon = B.setup.scope.last_epoch + 1) :
+    StaticValidatorSet B.setup.cfg E :=
+  ⟨B.genesis_within_horizon hB hg hh, B.activity_constant hB hg hh⟩
+
+/-- The internal external contracts of a run with the concrete bridge: the
+residual public contracts and the bridge theorems. -/
+theorem ConcreteExternalsPremises.beaconExternals {B : ConcreteBridge Root}
+    (hB : B.Admissible) {E : Execution Root} (hg : B.ConcreteGenesis E)
+    (h : B.ConcreteExternalsPremises E) :
+    BeaconExternalsPremises B.setup.cfg B.interface E where
+  process_slots_slot := B.interface_process_slots_slot
+  registry_static_in_horizon := B.registry_static_in_horizon hg
+  state_transition_slot := B.interface_state_transition_slot
+  state_transition_pre_slot_lt := B.interface_state_transition_pre_slot_lt
+  state_transition_checkpoint_epoch := fun st b st' _ _ hst =>
+    B.interface_state_transition_checkpoint_epoch hB st b st' hst
+  pjf_checkpoint_epoch := B.interface_pjf_checkpoint_epoch
+  anchor_state_checkpoint_epoch := B.anchor_state_checkpoint_epoch hg
+  committees_agree := h.committees_agree
+  honest_attestation_valid := h.honest_attestation_valid
+  valid_attestation_honest := h.valid_attestation_honest
+  on_attestation_committee := h.on_attestation_committee
+  committee_assignment_unique := h.committee_assignment_unique
+  committee_coverage := h.committee_coverage
+  committee_members_active := h.committee_members_active
+  valid_attestation_default := B.interface_valid_attestation_default
+  process_slots_attestation_valid := h.process_slots_attestation_valid
+  verify_envelope_deterministic := h.verify_envelope_deterministic
+
+/-- The residual public contracts are fields of the internal record. -/
+theorem ConcreteExternalsPremises.of_beaconExternals {B : ConcreteBridge Root}
+    {E : Execution Root}
+    (h : BeaconExternalsPremises B.setup.cfg B.interface E) :
+    B.ConcreteExternalsPremises E :=
+  ⟨h.committees_agree, h.honest_attestation_valid, h.valid_attestation_honest,
+    h.on_attestation_committee, h.committee_assignment_unique, h.committee_coverage,
+    h.committee_members_active, h.process_slots_attestation_valid,
+    h.verify_envelope_deterministic⟩
 
 end ConcreteBridge
 

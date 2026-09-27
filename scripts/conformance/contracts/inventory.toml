@@ -3,7 +3,6 @@
 # E-interpretation: supplied FFG or external-state obligation; I: idealization. A + joins mixed labels.
 # definition: a field fixed by a definition (the A3.2 view) or part of the A3.2 antecedent; not an assumption.
 # record: a field whose type is a listed premise record; its own fields carry the classes.
-# bridge: a field that the concrete bridge proves (the proof key names the theorem); not an assumption.
 version = 1
 
 [[field]]
@@ -43,19 +42,6 @@ class = "E-network/behavior"
 reason = "Honest validators must remain unslashed in the fixed registry."
 
 [[field]]
-path = "StaticValidatorSet.genesis_within_horizon"
-file = "Economics.lean"
-class = "E-scope"
-reason = "The anchor second must lie before the absolute horizon."
-
-[[field]]
-path = "StaticValidatorSet.activity_constant"
-file = "Economics.lean"
-class = "bridge"
-proof = "ConcreteBridge.activity_constant"
-reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
-
-[[field]]
 path = "ByzantineWeightPremises.effective_balance_quantized"
 file = "Economics.lean"
 class = "T"
@@ -72,123 +58,6 @@ path = "ByzantineWeightPremises.span_fraction"
 file = "Economics.lean"
 class = "E-network/behavior"
 reason = "Non-honest stake must stay under the bound for each in-horizon slot span."
-
-[[field]]
-path = "BeaconExternalsPremises.process_slots_slot"
-file = "Externals.lean"
-class = "bridge"
-proof = "ConcreteBridge.interface_process_slots_slot"
-reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
-test = "BeaconExternalsPremises.process_slots_slot"
-
-[[field]]
-path = "BeaconExternalsPremises.registry_static_in_horizon"
-file = "Externals.lean"
-class = "bridge"
-proof = "ConcreteBridge.registry_static_in_horizon"
-reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
-
-[[field]]
-path = "BeaconExternalsPremises.state_transition_slot"
-file = "Externals.lean"
-class = "bridge"
-proof = "ConcreteBridge.interface_state_transition_slot"
-reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
-test = "BeaconExternalsPremises.state_transition_slot"
-
-[[field]]
-path = "BeaconExternalsPremises.state_transition_pre_slot_lt"
-file = "Externals.lean"
-class = "bridge"
-proof = "ConcreteBridge.interface_state_transition_pre_slot_lt"
-reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
-test = "BeaconExternalsPremises.state_transition_pre_slot_lt"
-
-[[field]]
-path = "BeaconExternalsPremises.state_transition_checkpoint_epoch"
-file = "Externals.lean"
-class = "bridge"
-proof = "ConcreteBridge.interface_state_transition_checkpoint_epoch"
-reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
-test = "BeaconExternalsPremises.state_transition_checkpoint_epoch"
-
-[[field]]
-path = "BeaconExternalsPremises.pjf_checkpoint_epoch"
-file = "Externals.lean"
-class = "bridge"
-proof = "ConcreteBridge.interface_pjf_checkpoint_epoch"
-reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
-test = "BeaconExternalsPremises.pjf_checkpoint_epoch"
-
-[[field]]
-path = "BeaconExternalsPremises.anchor_state_checkpoint_epoch"
-file = "Externals.lean"
-class = "bridge"
-proof = "ConcreteBridge.anchor_state_checkpoint_epoch"
-reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
-legacy_probe = "BeaconExternalsPremises.anchor_state_checkpoint_epoch"
-
-[[field]]
-path = "BeaconExternalsPremises.committees_agree"
-file = "Externals.lean"
-class = "I"
-reason = "One fixed committee map stands for branch-dependent RANDAO committee reads."
-
-[[field]]
-path = "BeaconExternalsPremises.honest_attestation_valid"
-file = "Externals.lean"
-class = "I"
-reason = "The opaque BLS and index check must accept each honestly signed singleton vote."
-
-[[field]]
-path = "BeaconExternalsPremises.valid_attestation_honest"
-file = "Externals.lean"
-class = "I"
-reason = "The opaque BLS check must reject forged data naming an honest signer."
-
-[[field]]
-path = "BeaconExternalsPremises.on_attestation_committee"
-file = "Externals.lean"
-class = "I"
-reason = "Indexed wire attestations are assumed to come from the modeled fixed slot committee."
-
-[[field]]
-path = "BeaconExternalsPremises.committee_assignment_unique"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.committee_assignment_unique"
-
-[[field]]
-path = "BeaconExternalsPremises.committee_coverage"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.committee_coverage"
-
-[[field]]
-path = "BeaconExternalsPremises.committee_members_active"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.committee_members_active"
-
-[[field]]
-path = "BeaconExternalsPremises.valid_attestation_default"
-file = "Externals.lean"
-class = "bridge"
-proof = "ConcreteBridge.interface_valid_attestation_default"
-reason = "Proved for the concrete bridge in ExternalsLaws.lean. The field stays in the premise because the internal record is shared with the abstract interface; a caller discharges it with the theorem."
-test = "BeaconExternalsPremises.valid_attestation_default"
-
-[[field]]
-path = "BeaconExternalsPremises.process_slots_attestation_valid"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.process_slots_attestation_valid"
-
-[[field]]
-path = "BeaconExternalsPremises.verify_envelope_deterministic"
-file = "Externals.lean"
-class = "I"
-reason = "Engine and availability verdicts are assumed stable for fixed state and envelope inputs."
 
 [[field]]
 path = "CheckpointInclusionView.BlockAt"
@@ -368,7 +237,7 @@ reason = "Accepted equivocation indices must reach every honest store by the nex
 path = "SafetyPremises.admissible"
 file = "ConcreteSafety.lean"
 class = "E-scope"
-reason = "The fixed setup must start at genesis, keep a registry weight floor, let the root ring cover two epochs, and fit uint64 root reads."
+reason = "The fixed setup must start at genesis, keep a registry weight floor, let the root ring cover two epochs, fit uint64 root reads, and have a uint64 genesis time."
 
 [[field]]
 path = "SafetyPremises.genesis"
@@ -398,7 +267,7 @@ reason = "Record field: its fields are listed under WellFormedExecution with the
 path = "SafetyPremises.externals_coherence"
 file = "ConcreteSafety.lean"
 class = "record"
-reason = "Record field: its fields are listed under BeaconExternalsPremises with their own classes. Scheduled handlers require the beacon, committee, and signature contracts."
+reason = "Record field: its fields are listed under ConcreteExternalsPremises with their own classes. The bridge proves the other contracts of the internal record BeaconExternalsPremises (ExternalsLaws.lean)."
 
 [[field]]
 path = "SafetyPremises.honest_behavior"
@@ -417,12 +286,6 @@ path = "SafetyPremises.synchrony"
 file = "ConcreteSafety.lean"
 class = "record"
 reason = "Record field: its fields are listed under NextSlotSynchronyPremises with their own classes. The run needs positive delay and the stated next-slot delivery laws."
-
-[[field]]
-path = "SafetyPremises.static_validators"
-file = "ConcreteSafety.lean"
-class = "record"
-reason = "Record field: its fields are listed under StaticValidatorSet with their own classes. The run requires anchor coverage and fixed active status in the horizon."
 
 [[field]]
 path = "SafetyPremises.byzantine_bound"
@@ -465,3 +328,57 @@ path = "BeaconFunctionInterface.AnchorCommitsToState"
 file = "FastConfirmationModel/Execution/Externals.lean"
 class = "I"
 reason = "The concrete bridge fixes the anchor commitment: the anchor block is at slot 0 and the anchor state is the projected setup genesis state."
+
+[[field]]
+path = "ConcreteExternalsPremises.committees_agree"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "One fixed committee map stands for branch-dependent RANDAO committee reads."
+
+[[field]]
+path = "ConcreteExternalsPremises.honest_attestation_valid"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "The opaque BLS and index check must accept each honestly signed singleton vote."
+
+[[field]]
+path = "ConcreteExternalsPremises.valid_attestation_honest"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "The opaque BLS check must reject forged data naming an honest signer."
+
+[[field]]
+path = "ConcreteExternalsPremises.on_attestation_committee"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "Indexed wire attestations are assumed to come from the modeled fixed slot committee."
+
+[[field]]
+path = "ConcreteExternalsPremises.committee_assignment_unique"
+file = "ConcreteSafety.lean"
+class = "T"
+test = "BeaconExternalsPremises.committee_assignment_unique"
+
+[[field]]
+path = "ConcreteExternalsPremises.committee_coverage"
+file = "ConcreteSafety.lean"
+class = "T"
+test = "BeaconExternalsPremises.committee_coverage"
+
+[[field]]
+path = "ConcreteExternalsPremises.committee_members_active"
+file = "ConcreteSafety.lean"
+class = "T"
+test = "BeaconExternalsPremises.committee_members_active"
+
+[[field]]
+path = "ConcreteExternalsPremises.process_slots_attestation_valid"
+file = "ConcreteSafety.lean"
+class = "T"
+test = "BeaconExternalsPremises.process_slots_attestation_valid"
+
+[[field]]
+path = "ConcreteExternalsPremises.verify_envelope_deterministic"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "Engine and availability verdicts are assumed stable for fixed state and envelope inputs."

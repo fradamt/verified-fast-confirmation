@@ -14,6 +14,7 @@ public import FastConfirmationInternal.FCRRule.SelectedTraceEdges
 
 public import FastConfirmationInternal.Premises.AcceptedFFGState
 public import FastConfirmationInternal.Premises.CheckpointLinks
+public import FastConfirmationInternal.Premises.Externals
 public import FastConfirmationInternal.Premises.FFG
 public import FastConfirmationInternal.Premises.FCRCallPremises
 public import FastConfirmationInternal.Premises.NextSlotSafety

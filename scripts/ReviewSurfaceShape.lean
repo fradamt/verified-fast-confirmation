@@ -48,7 +48,7 @@ run_cmd do
   checkFields `FastConfirmation.Spec.ConcreteFFG.ConcreteBridge.SafetyPremises
     ["admissible", "genesis", "horizon_scope", "whole_seconds", "wellFormed",
      "externals_coherence", "honest_behavior", "body_attestations_delivered", "synchrony",
-     "static_validators", "byzantine_bound", "epoch_ends_fit", "slots_per_epoch_gt_one",
+     "byzantine_bound", "epoch_ends_fit", "slots_per_epoch_gt_one",
      "epoch_one_finalization_scope", "checkpoint_inclusion"]
   checkFields `FastConfirmation.Spec.CheckpointInclusionView
     ["BlockAt", "Included", "formed", "C", "GJ", "GU", "checkpoint_epoch"]
@@ -63,6 +63,11 @@ run_cmd do
      "deadline_block_relay", "boundary_block_prefix",
      "envelope_delivery",
      "data_availability_relay", "attester_slashing_relay"]
+  checkFields `FastConfirmation.Spec.ConcreteFFG.ConcreteBridge.ConcreteExternalsPremises
+    ["committees_agree", "honest_attestation_valid", "valid_attestation_honest",
+     "on_attestation_committee", "committee_assignment_unique", "committee_coverage",
+     "committee_members_active", "process_slots_attestation_valid",
+     "verify_envelope_deterministic"]
   checkFields `FastConfirmation.Spec.BeaconExternalsPremises
     ["process_slots_slot", "registry_static_in_horizon", "state_transition_slot",
      "state_transition_pre_slot_lt",
@@ -196,11 +201,10 @@ run_cmd do
     `FastConfirmation.Spec.ConcreteFFG.BlockCommitment,
     `FastConfirmation.Spec.CheckpointInclusionView,
     `FastConfirmation.Spec.NextSlotSynchronyPremises,
-    `FastConfirmation.Spec.BeaconExternalsPremises,
+    `FastConfirmation.Spec.ConcreteFFG.ConcreteBridge.ConcreteExternalsPremises,
     `FastConfirmation.Spec.ByzantineWeightPremises,
     `FastConfirmation.Spec.HonestBehavior,
     `FastConfirmation.Spec.EventualCheckpointInclusion,
-    `FastConfirmation.Spec.StaticValidatorSet,
     `FastConfirmation.Spec.WellFormedExecution,
     `FastConfirmation.Spec.HorizonVoteDeliveryLookahead,
     `FastConfirmation.Spec.SourceTargetLinkSupportAt]
@@ -229,6 +233,6 @@ run_cmd do
   | some (.defnInfo info) =>
       fingerprint := hash (fingerprint, info.value)
   | _ => throwError "missing claim definition"
-  unless fingerprint == (7590744976943499440 : UInt64) do
+  unless fingerprint == (10074103416500337606 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
   IO.println s!"review surface types passed ({fingerprint})"

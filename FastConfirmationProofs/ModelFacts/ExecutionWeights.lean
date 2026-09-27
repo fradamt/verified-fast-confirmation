@@ -1,5 +1,6 @@
 module
 public import FastConfirmationStatements.Premises.Economics
+public import FastConfirmationInternal.Premises.Externals
 
 @[expose] public section
 

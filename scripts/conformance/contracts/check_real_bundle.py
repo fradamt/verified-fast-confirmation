@@ -242,12 +242,12 @@ def main() -> int:
     unique = all(sum(len(committees[s]) for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch))
                  == len(set().union(*(committees[s] for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch))))
                  for e in range(6))
-    field('BeaconExternalsPremises.committee_assignment_unique', unique, 6)
+    field('ConcreteExternalsPremises.committee_assignment_unique', unique, 6)
     covered = all(active[e] <= set().union(*(committees[s] for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch)))
                   for e in range(6))
-    field('BeaconExternalsPremises.committee_coverage', covered, 6)
+    field('ConcreteExternalsPremises.committee_coverage', covered, 6)
     member_active = all(committees[s] <= active[s // slots_per_epoch] for s in committees)
-    field('BeaconExternalsPremises.committee_members_active', member_active, len(committees))
+    field('ConcreteExternalsPremises.committee_members_active', member_active, len(committees))
     total = int(spec.get_total_active_balance(anchor_state))
     span_checks = 0
     estimate_failures = []
