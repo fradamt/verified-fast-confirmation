@@ -151,6 +151,10 @@ def main() -> int:
         missing = expected - observed
         if missing or len(names) != len(observed):
             raise ValueError(f"test coverage missing={sorted(missing)} duplicate={len(names)!=len(observed)}")
+        bad_tests = [row['law'] for row in results if row['law'] in expected
+                     and (row['status'] != 'PASS' or row['cases'] <= 0)]
+        if bad_tests:
+            raise ValueError(f"T tests did not pass positive case counts: {sorted(bad_tests)}")
         if completed.returncode:
             raise ValueError(f"contract tests failed: exit {completed.returncode}")
         projection_path = result_path.with_name(result_path.stem + "-projection.json")
@@ -162,6 +166,14 @@ def main() -> int:
         if not projection_path.is_file():
             raise ValueError(f"projection runner produced no JSON: exit {projected.returncode}")
         projection = json.loads(projection_path.read_text())
+        expected_runs = {'full-epoch-6': 49, 'review-slot-16': 17,
+                         'late-two-thirds': 25, 'skipped-epoch': 25,
+                         'two-forks': 33, 'later-anchor-out-of-scope': 1,
+                         'two-step-finality-epoch-1-out-of-scope': 45,
+                         'two-step-finality': 45} if args.full else {
+                             'full-fast': 18, 'review-slot-16': 17}
+        if {run['name']: run['blocks'] for run in projection['runs']} != expected_runs:
+            raise ValueError('projection run set or accepted-block counts differ')
         projection_names = {row["field"] for row in projection["results"]}
         expected_projection = {row["path"] for row in inventory.values()
                                if row["path"].startswith("EventualCheckpointInclusion.")}
@@ -173,6 +185,12 @@ def main() -> int:
         missing_projection = expected_projection - projection_names
         if missing_projection:
             raise ValueError(f"projection coverage missing={sorted(missing_projection)}")
+        no_instances = {name for name in expected_projection if all(
+            row['scope'] == 'no instances' for row in projection['results']
+            if row['field'] == name)}
+        allowed_no_instances = set() if args.full else {'AcceptedBlockFFGState.realized_justified_max'}
+        if no_instances != allowed_no_instances:
+            raise ValueError(f'projection aggregate case coverage differs: {sorted(no_instances)}')
         bad_runs = [run for run in projection["runs"] if run["handler_errors"]]
         if bad_runs:
             raise ValueError(f"projection handler errors: {bad_runs}")

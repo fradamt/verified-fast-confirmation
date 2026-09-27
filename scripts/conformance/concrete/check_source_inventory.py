@@ -14,6 +14,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 INVENTORY = Path(__file__).with_name("source_inventory.toml")
 PIN = "13f391516352f61b3ac5dcaae5be1884d104f86a"
+REQUIRED_FRAMES = {
+    "process_inactivity_updates", "process_rewards_and_penalties",
+    "process_registry_updates", "process_slashings", "process_eth1_data_reset",
+    "process_pending_deposits", "process_pending_consolidations",
+    "process_builder_pending_payments", "process_effective_balance_updates",
+    "process_slashings_reset", "process_randao_mixes_reset",
+    "process_historical_summaries_update", "process_sync_committee_updates",
+    "process_proposer_lookahead", "process_ptc_window",
+}
 
 
 def check(repo: Path) -> None:
@@ -25,6 +34,14 @@ def check(repo: Path) -> None:
     names = [row["name"] for row in functions]
     if len(names) != len(set(names)):
         raise ValueError("duplicate Lean function")
+    frame_names = [row["name"] for row in frames]
+    if len(frame_names) != len(set(frame_names)):
+        raise ValueError("duplicate Lean frame")
+    if set(frame_names) != REQUIRED_FRAMES:
+        raise ValueError(f"frame set differs: missing={sorted(REQUIRED_FRAMES - set(frame_names))}, "
+                         f"extra={sorted(set(frame_names) - REQUIRED_FRAMES)}")
+    if set(names) & set(frame_names):
+        raise ValueError(f"function/frame overlap: {sorted(set(names) & set(frame_names))}")
     actual = subprocess.check_output(
         ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True
     ).strip()

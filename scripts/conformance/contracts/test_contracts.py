@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import random
 import re
@@ -20,6 +21,17 @@ from pathlib import Path
 
 PIN = "13f391516352f61b3ac5dcaae5be1884d104f86a"
 SEED = 20260926
+EXPECTED_KNOWN_FAILURES = {
+    'regression.process_slots_checkpoint_epoch_without_balance_guard': '6b95719c0291e63e89f2269031ebf8a02affdb88a0027830addd7228e42622d3',
+    'regression.process_slots_two_boundaries_from_epoch_one': '8c3576d5f6564ae543a5eaf162039e67e2017c66d6c4be3556a376d71814c6ef',
+    'regression.pjf_checkpoint_epoch_out_of_domain': '4050406d330201456dd34622ad7a28d0e565b3fde28065dd48a4f1cb014da4be',
+    'regression.state_transition_checkpoint_epoch_out_of_domain': 'ffb0e2ac7d42043a38845ef5d3856c00d9bdf68818f14c182df71324083ae3fc',
+    'regression.anchor_state_checkpoints_raw_checkpoint_sync': '4023895e6a8f95b37a96147de3a24c87a4c832f163b8c63e717945700f126896',
+}
+
+
+def failure_fingerprint(errors):
+    return hashlib.sha256(json.dumps(errors, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
 def setup(repo: Path):
@@ -154,8 +166,10 @@ def run(repo: Path):
                 errors.append({"case": label, "exception": f"{type(exc).__name__}: {exc}"})
         statement = lean_text or statement
         predicate.__doc__ = statement
-        status = "FAIL" if errors else "PASS"
-        results.append({"law": name, "status": status, "known": known, "cases": count, "counterexamples": errors[:4], "statement": statement})
+        status = "ERROR" if not count or any("exception" in error for error in errors) else "FAIL" if errors else "PASS"
+        results.append({"law": name, "status": status, "known": known, "cases": count,
+                        "counterexamples": errors[:4], "failure_fingerprint": failure_fingerprint(errors),
+                        "statement": statement})
         print(f"{status} {name} ({count} cases)", flush=True)
 
     st_samples = [(label, st) for label, st in states]
@@ -728,9 +742,15 @@ def main():
     ap.add_argument("--output",type=Path)
     args=ap.parse_args()
     data=run(args.repo)
+    if {x['law'] for x in data['results'] if x['known']} != set(EXPECTED_KNOWN_FAILURES):
+        raise RuntimeError('known contract regression set differs')
     if args.output:
         args.output.write_text(json.dumps(data,indent=2)+"\n")
-    failures=[x for x in data["results"] if x["status"]=="FAIL" and not x.get("known")]
+    failures=[x for x in data["results"] if
+              x["status"] == "ERROR" or
+              (x["known"] and (x["status"] != "FAIL" or
+                               x["failure_fingerprint"] != EXPECTED_KNOWN_FAILURES.get(x["law"]))) or
+              (x["status"] == "FAIL" and not x.get("known"))]
     print(f"contracts: {len(data['results'])} laws; {len(failures)} new failures; {data['runtime_seconds']} s",flush=True)
     return bool(failures)
 

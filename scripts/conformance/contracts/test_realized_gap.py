@@ -49,6 +49,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_contracts as tc  # noqa: E402
+EXPECTED_FAILURES = {
+    'regression.realized_justified_max_before_restatement': '13f3ef9fcfbdeab3f1e7db7b966acd822d1c5a1d16f21ed1122d89918dfc6c57',
+    'regression.realized_justified_max_seed_in_epoch_one': 'd0954f9877c402ad2062de7f4f9ca7d29644e7a5199b743dbd1766cc13d52a3e',
+    'regression.unrealized_justified_max_before_restatement': 'bc7f86ae93cde13eec7e5c917a6bcbde133ffc83c4a15a2fa255708b2f1541d6',
+    'out_of_scope.epoch_one_finalization_one_step_late_run': 'e28e443a4e52675f81a42f641c1bf0ff28a93ff7a2ea92d88a4587b0d88560f6',
+    'regression.unrealized_finalized_evidence_strict_timing': 'bcc18b8284858d5dc08664b0cc4b72dd1ab743dc5862cdc5fad61a5b5523acdf',
+    'regression.a32_projection_epoch_one_seed': 'cf9bf4e6974b0831a4900ca0d2030d8913d5e2280a897f6ca03208d4e4c991ec',
+    'regression.fcr_confirmed_block_reorged_epoch_one': '506abd25bf20d2b58fca147dfdc9fbca8de0b469613ce1c934402d20a33492c8',
+    'regression.finalized_epoch_one_two_step_above_voter_justified': 'f2d60adebda9b81be6578d5c9137580a377663a42dadf5f4cdde6c52f6e81322',
+}
 
 GENESIS_EPOCH = 0
 
@@ -332,7 +342,8 @@ def run_checks(projections, fork, voter):
         status = "ERROR" if crashes or not count else "FAIL" if errors else "PASS"
         errors = crashes + errors
         results.append({"law": name, "statement": statement, "status": status,
-                        "expected": expected, "cases": count, "counterexamples": errors[:4]})
+                        "expected": expected, "cases": count, "counterexamples": errors[:4],
+                        "failure_fingerprint": tc.failure_fingerprint(errors)})
         mark = "" if status == expected else "  <-- UNEXPECTED"
         print(f"{status} {name} ({count} cases; expected {expected}){mark}", flush=True)
 
@@ -566,7 +577,11 @@ def main():
            "sign_transition": sign_transition, "attest": get_valid_attestation_at_slot}
     projections = [Projection(full_run(env)), Projection(late_run(env)), Projection(fork_run(env))]
     results = run_checks(projections, projections[2], voter_run(env))
-    unexpected = [r for r in results if r["status"] != r["expected"]]
+    if {r['law'] for r in results if r['expected'] == 'FAIL'} != set(EXPECTED_FAILURES):
+        raise RuntimeError('known realized-gap regression set differs')
+    unexpected = [r for r in results if r["status"] != r["expected"] or
+                  (r["expected"] == "FAIL" and
+                   r["failure_fingerprint"] != EXPECTED_FAILURES.get(r["law"]))]
     elapsed = round(time.monotonic() - start, 3)
     if args.output:
         args.output.write_text(json.dumps({"pin": tc.PIN, "runtime_seconds": elapsed,
