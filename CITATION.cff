@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Verified Fast Confirmation"
+abstract: >-
+  Lean 4 proof that the Ethereum Fast Confirmation Rule is safe: a confirmed
+  block stays on every honest head from the next slot, under explicit synchrony
+  and stake assumptions, over a concrete Gloas FFG model tested against the
+  consensus-specs Python specification.
+type: software
+version: 0.1.0
+date-released: "2026-09-27"
+authors:
+  - family-names: "D'Amato"
+    given-names: Francesco
+    orcid: "https://orcid.org/0000-0002-8190-8664"
+repository-code: "https://github.com/fradamt/verified-fast-confirmation"
+license: MIT
+keywords:
+  - ethereum
+  - lean4
+  - formal-verification
+  - consensus
+  - fast-confirmation-rule
+references:
+  - type: article
+    title: "A Fast Confirmation Rule for the Ethereum Consensus Protocol"
+    authors:
+      - family-names: Saltini
+        given-names: Roberto
+      - family-names: Kalinin
+        given-names: Mikhail
+      - family-names: Zanolini
+        given-names: Luca
+      - family-names: "D'Amato"
+        given-names: Francesco
+      - family-names: Asgaonkar
+        given-names: Aditya
+      - family-names: Zhang
+        given-names: Chenyi
+    year: 2024
+    url: "https://arxiv.org/abs/2405.00549"
+    identifiers:
+      - type: other
+        value: "arXiv:2405.00549"
+        description: arXiv identifier

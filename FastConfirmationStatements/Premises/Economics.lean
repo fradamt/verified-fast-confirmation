@@ -24,12 +24,17 @@ structure ByzantineWeightPremises (E : Execution Root) : Prop where
       weight does not exceed `estimate_committee_weight_between_slots`.
       The stronger post-`//100` inequality used by the arithmetic is derived
       from this field and effective-balance quantization in
-      `FastConfirmationProofs/Discount/EconomicRounding.lean`. This is a
-      class I idealization that is false for realistic registries: with
-      fixed committees and coverage it forces every slot committee to weigh
-      exactly `total_active / SLOTS_PER_EPOCH`, and the pinned 100-validator
-      run of `scripts/conformance/contracts/check_real_bundle.py` violates it
-      from slot 0. -/
+      `FastConfirmationProofs/Discount/EconomicRounding.lean`. Committee
+      sampling is idealized (class I): this field takes the estimate as
+      exact, and the specification claims it only with high probability
+      (`COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR`). The idealization has
+      two intended parts: (i) equal slot-committee weights inside an epoch
+      (with the fixed schedule and coverage,
+      `EstimateForcesBalance.slot_committee_weight_forced`); (ii) a perfectly
+      mixed reshuffle across an epoch boundary, so the weight of a
+      cross-boundary span is at most the pro-rated estimate, which is the
+      expected overlap. The statistical properties of committee sampling are
+      out of scope by design. -/
   estimate_sound : ∀ a b : Slot,
     E.SlotWithinHorizon cfg a → E.SlotWithinHorizon cfg b →
     E.weight (E.span_committee a b) ≤

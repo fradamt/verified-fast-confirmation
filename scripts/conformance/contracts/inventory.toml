@@ -51,7 +51,7 @@ test = "ByzantineWeightPremises.effective_balance_quantized"
 path = "ByzantineWeightPremises.estimate_sound"
 file = "Economics.lean"
 class = "I"
-reason = "With fixed committees and coverage, the exact one-slot estimate forces every full-epoch slot committee to weigh total_active / SLOTS_PER_EPOCH."
+reason = "Committee sampling is idealized: the premise takes the high-probability committee-weight estimate of the specification as exact. Part (i): equal slot-committee weights inside an epoch. Part (ii): a perfectly mixed reshuffle across an epoch boundary, so a cross-boundary span weighs at most the pro-rated estimate (the expected overlap). Sampling statistics are out of scope by design."
 
 [[field]]
 path = "ByzantineWeightPremises.span_fraction"
