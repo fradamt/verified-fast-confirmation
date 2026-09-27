@@ -58,8 +58,9 @@ least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active b
 are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
-reads. The static-registry condition excludes included slashings, deposits, activations,
-exits, and effective-balance changes that alter validator records in the horizon.
+reads. The concrete transition rejects blocks with slashings, voluntary exits, or parent
+execution requests (`FFGWireBlock.InFixedScope`), and a Python run with an epoch-step
+registry change is outside the scope (`FixedFFGScope`).
 `on_attestation_committee` confines successful delivered attestations in honest
 in-horizon prefixes to their slot committee. Attester-slashing evidence can name
 off-committee validators.
@@ -79,7 +80,14 @@ Five families take `zeroRoot := anchorRoot`: the next-slot, target-edge,
 Byzantine, twelve-second, and twelve-second envelope runs. Python cannot make
 this choice, because `ZERO_HASH` is not the genesis root. With it, the genesis
 stub reads as the anchor checkpoint in the honest votes. The genesis-stub run
-keeps a separate `zeroRoot`, as Python does.
+keeps a separate `zeroRoot`, as Python does. It is still not a
+Python-faithful execution: it uses one-second slots, four validators and four
+slots per epoch, `attestation_due_bps = 0`, zero proposer boost, an oracle that
+accepts every block, a base signature check that accepts exactly the ground
+votes, and the genesis payload fields of `FFGBeaconState.genesis`. Every
+full-bundle run makes the same kind of choices: the twelve-second runs use
+twelve-second slots and a 2500 basis-point attestation due time, and the
+Byzantine run has five validators.
 
 * `ConcreteBridge.SafetyPremises`, the public premise:
   `NextSlotPremiseWitness.finite_execution_satisfies_premises` and
@@ -171,6 +179,25 @@ keeps a separate `zeroRoot`, as Python does.
   `NextSlotBridgeRun.witnessHorizonVoteDeliveryLookahead` delivers the
   slot-fifteen vote to every honest node at second sixteen, outside the
   verification horizon.
+* Concrete FFG fixtures outside the safety bundle:
+  `ConcreteJustificationWitness.concrete_certificate_extraction` extracts the
+  supermajority certificate of the end-of-epoch-2 justification of epoch 1 in
+  a two-slot-per-epoch concrete run, and
+  `ConcreteJustificationWitness.wrong_target_vote_not_counted` shows that
+  `process_attestation` accepts a wrong-target vote that does not count.
+  `ConcreteFinalityWitness.k2_certificate_extraction` finalizes epoch 2
+  through the two-epoch link 2 -> 4 with no link 2 -> 3
+  (`ConcreteFinalityWitness.no_adjacent_link`), the pattern of the pyspec
+  two-step-finality run, and
+  `ConcreteFinalityWitness.adjacent_certificate_extraction` finalizes epoch 4
+  through an adjacent link. These fixtures show concrete non-anchor finality;
+  no full-bundle run has it.
+* Fixed-scope guard regression:
+  `ScopeGuardRegression.registry_changing_block_out_of_scope` and
+  `ScopeGuardRegression.parent_request_block_out_of_scope` reject a genesis
+  child with slashings and an exit, or with a parent execution request;
+  `ScopeGuardRegression.in_scope_child_accepted` accepts the same child
+  without them.
 * `FFGInterpretationFidelity` (outside the safety premise):
   `NextSlotPremiseWitness.ffg_interpretation_fidelity`,
   `FullTwelveWitness.ffg_interpretation_fidelity`,

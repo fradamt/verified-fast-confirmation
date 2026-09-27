@@ -4,11 +4,9 @@ public import FastConfirmationModel.Execution.Stake
 @[expose] public section
 
 /-!
-Defines included FFG link certificates and execution block ancestry.
-These objects form the boundary between the transcribed fork-choice
-state and Casper FFG.  They contain concrete scheduled attestation evidence;
-accountable-safety consequences are proved from these objects in
-`FastConfirmationProofs/FFG/Certificates/FFGCertificates.lean`.
+Defines the genesis-epoch checkpoint read (`CheckpointReadsAs`) and the
+execution parent graph (`Execution.ParentEdge`, `Execution.RootDescends`).
+The included FFG link certificates are in `FastConfirmationInternal`.
 -/
 
 namespace FastConfirmation.Spec

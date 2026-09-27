@@ -21,7 +21,7 @@ def RegistryStateInHorizon (E : Execution Root) (state : BeaconState Root) : Pro
       E.SlotWithinHorizon cfg slot ∧
       ext.process_slots base slot = state
 
-/-- Contracts for the abstract `BeaconFunctionInterface` and the execution.
+/-- Contracts for the bridge interface (`BeaconFunctionInterface`) and the execution.
 The three indexed-attestation laws apply only to keyed states in honest,
 in-horizon causal stores. Default-state rejection and validity preservation
 under slot processing are separate contracts. The other fields state
@@ -117,9 +117,14 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
     ext.is_valid_indexed_attestation state a = true →
     ∀ v ∈ E.honest, v ∈ a.attesting_indices →
       ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data
-  /-- Committee confinement only for a successful `on_attestation` delivery
-      in an honest in-horizon causal prefix. Python obtains these indices from
-      committee bits before this handler. The Lean wire object is already
+  /-- Committee confinement for every successful `on_attestation` call whose
+      result is an honest in-horizon prefix store. The pre-store is arbitrary,
+      and a call can return its input store unchanged (for example, a vote
+      older than the latest message with its checkpoint state present). So the
+      field requires that the base validity check reject, on the states of
+      such stores, an indexed attestation with an index outside its slot
+      committee. Python obtains these indices from committee bits before this
+      handler. The Lean wire object is already
       indexed, so this premise supplies the committee. It uses the fixed
       ground-truth assignment `E.committee`; the RANDAO-seeded,
       fork-dependent committees of the real protocol are not modeled.
