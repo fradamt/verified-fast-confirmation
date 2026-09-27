@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Premises.NextSlotSafety
+public import FastConfirmationInternal.Premises.NextSlotSafety
 
 @[expose] public section
 

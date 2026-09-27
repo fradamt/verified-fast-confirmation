@@ -80,19 +80,21 @@ theorem head_path_admissible_before_next_tick
   have hanchorExact := acceptedAnchorExact_of_trajectory cfg ext E B hT
     hanchor hboundary
   have prefixOf {c : Checkpoint Root}
-      (hc : ∃ tip, Nonempty (IncludedCertifiedJustified cfg E
-        B.state.includedAttestations.Included B.anchor tip c))
+      (hc : ∃ tip, E.RootKnownInScheduledPrefix cfg ext tip ∧
+        Nonempty (IncludedCertifiedJustified cfg E
+          B.state.includedAttestations.Included B.anchor tip c))
       (hle : F.epoch ≤ c.epoch) : ExactCheckpointPrefix B.state.checkpoint_at_epoch F c := by
-    obtain ⟨tip, ⟨cert⟩⟩ := hc
+    obtain ⟨tip, htipAccepted, ⟨cert⟩⟩ := hc
     rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate cfg ext B
         hgenShort hanchor (E.store_causal cfg ext w m) with
-      hFa | ⟨ftip, _, ⟨fcert⟩⟩
+      hFa | ⟨ftip, hftip, ⟨fcert⟩⟩
     · change ExactCheckpointPrefix B.state.checkpoint_at_epoch
         (E.store cfg ext w m).finalized_checkpoint c
       rw [hFa]
-      exact IncludedCertifiedJustified.anchor_prefix (cfg := cfg) P V hanchorExact cert
+      exact IncludedCertifiedJustified.anchor_prefix (cfg := cfg) P V hanchorExact
+        htipAccepted cert
     · exact B.state.exactFinalizedPrefix_of_accountable cfg P V hanchorExact
-        hacc fcert cert hle
+        hacc hftip.acceptedRoot htipAccepted fcert cert hle
   have hparent : ParentSlotLt source := E.store_parentSlotLt cfg ext
     hT.wellFormed hT.externals_coherence hT.genesis_structure
     hT.wellFormed.anchor_parent_unscheduled v n
@@ -133,23 +135,24 @@ theorem head_path_admissible_before_next_tick
       · rw [hclock] at hrecent
         exact Nat.le_of_add_le_add_right (hlag'.trans hrecent)
     have hFleSourceN := hFleSource.trans_eq hnrmEpoch.symm
-    have hprefix := prefixOf ⟨tip, ⟨cert⟩⟩ hFleSourceN
+    have hprefix := prefixOf ⟨tip, ⟨_, E.store_causal cfg ext v n, htip⟩, ⟨cert⟩⟩ hFleSourceN
     have htipWalk := E.trustedAnchor_boundaryWalkAtEpoch_of_trajectory cfg ext hT hanchor hboundary
       v n hanchorLe htip
     have hcheckpoint := exactCheckpointPrefix_root_eq_at_sameTip cfg ext B.coherence
       (E.store_causal cfg ext v n) hparent htip hprefix hAU hFleSourceN htipWalk
     exact E.votePathAdmissible_of_checkpointCompatible_descendant cfg ext B hT
       hanchor hboundary hHm hFrealized.root_known hanchorLe hwalk htip hdesc hcheckpoint
-  · have hJcert : ∃ tip, Nonempty (IncludedCertifiedJustified cfg E
-        B.state.includedAttestations.Included B.anchor tip J) := by
+  · have hJcert : ∃ tip, E.RootKnownInScheduledPrefix cfg ext tip ∧
+        Nonempty (IncludedCertifiedJustified cfg E
+          B.state.includedAttestations.Included B.anchor tip J) := by
       rcases B.globalJustified_anchor_or_AUEvidence hgenShort hanchor
           (E.store_causal cfg ext v n) with hJa | hevidence
-      · refine ⟨B.anchor.root, ?_⟩
+      · refine ⟨J.root, ⟨_, E.store_causal cfg ext v n, hJknown⟩, ?_⟩
         change J = B.anchor at hJa
         rw [hJa]
         exact ⟨.anchor⟩
       · obtain ⟨carrier⟩ := hevidence
-        exact ⟨carrier.carrier, carrier.formed_evidence.certified⟩
+        exact ⟨carrier.carrier, carrier.carrier_accepted, carrier.formed_evidence.certified⟩
     have hprefix := prefixOf hJcert hFleJ
     have hcheckpoint : F.root = get_checkpoint_block cfg source J.root F.epoch := by
       have heq : F = get_checkpoint_for_block cfg source J.root F.epoch := by

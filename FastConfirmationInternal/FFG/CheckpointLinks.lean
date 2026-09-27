@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Premises.CheckpointLinks
+public import FastConfirmationInternal.Premises.CheckpointLinks
 public import FastConfirmationInternal.FFG.ScheduledState
 
 @[expose] public section

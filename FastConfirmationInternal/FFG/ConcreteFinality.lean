@@ -3,34 +3,14 @@ public import FastConfirmationInternal.FFG.ConcreteJustification
 
 @[expose] public section
 
-/-! Defines concrete FFG finalization certificates, the justification-bit
-invariant of the four Python finalization rules, and slashable evidence among
-included, target-matching body votes. -/
+/-! Defines the justification-bit invariant of the four Python finalization
+rules and slashable evidence among included, target-matching body votes.
+Finalization links are in `FastConfirmationModel.Spec.BeaconChain.ConcreteRun`. -/
 
 namespace FastConfirmation.Spec.ConcreteFFG
 open FastConfirmation.Spec
 
 variable {Root : Type}
-
-/-- The checkpoint of an accepted chain at an epoch: the root of the latest
-block at or before the epoch start slot. -/
-def chainCheckpoint (S : FFGSetup Root) (blocks : List (FFGWireBlock Root))
-    (epoch : Epoch) : Checkpoint Root :=
-  ⟨epoch, chainRootAt S.genesisRoot blocks (compute_start_slot_at_epoch S.cfg epoch)⟩
-
-/-- A finalizing link from a justified `finalized` checkpoint to a chain
-checkpoint `target` one or two epochs later. In the two-epoch case the chain
-checkpoint between them is justified (Gasper `k = 2`). This is the certificate
-that each of the four Python finalization rules produces. -/
-structure FinalizationLink [BEq Root] (S : FFGSetup Root)
-    (blocks : List (FFGWireBlock Root)) (votes : List (IncludedVote Root))
-    (finalized target : Checkpoint Root) : Prop where
-  justified : Justified S votes finalized
-  link : Nonempty (SupermajorityLink S votes finalized target)
-  target_on_chain : target = chainCheckpoint S blocks target.epoch
-  target_epoch : target.epoch = finalized.epoch + 1 ∨ target.epoch = finalized.epoch + 2
-  middle_justified : target.epoch = finalized.epoch + 2 →
-    Justified S votes (chainCheckpoint S blocks (finalized.epoch + 1))
 
 /-- A checkpoint with a finalizing link. -/
 def FinalizationCertified [BEq Root] (S : FFGSetup Root)
@@ -86,10 +66,12 @@ structure ConcreteCertificateAccountability [BEq Root] (S : FFGSetup Root)
     SupermajorityLink S votes s t → SupermajorityLink S votes s' t' →
     t.epoch ≤ S.scope.last_epoch → ¬ (s.epoch < s'.epoch ∧ t'.epoch < t.epoch)
 
-/-- The block roots of accepted blocks commit to the block slot and parent,
-and no accepted block has the genesis block root. This is the collision
-resistance of the root commitment, stated over a finite block set. -/
-structure RootsCommit (S : FFGSetup Root) (blocks : List (FFGWireBlock Root)) : Prop where
+/-- Equal roots of accepted blocks name the same slot and parent, and no
+accepted block has the genesis block root. This checks only these two fields;
+it is a consequence of block-root collision resistance over a finite block
+set. -/
+structure RootsDetermineSlotAndParent (S : FFGSetup Root) (blocks : List (FFGWireBlock Root)) :
+    Prop where
   not_genesis : ∀ b ∈ blocks, b.root ≠ S.genesisRoot
   commit : ∀ a ∈ blocks, ∀ b ∈ blocks, a.root = b.root →
     a.slot = b.slot ∧ a.parent_root = b.parent_root

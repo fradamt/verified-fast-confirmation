@@ -89,6 +89,8 @@ python3 scripts/check_review_boundary.py
 python3 scripts/check_review_boundary.py --self-test
 if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
   python3 scripts/conformance/contracts/check_inventory.py --repo "$consensus_repo"
+  # The real-bundle and differential runners import the concrete transition module.
+  lake build FastConfirmationModel.Spec.BeaconChain.ConcreteTransition
   "$consensus_repo/.venv/bin/python" scripts/conformance/contracts/check_real_bundle.py \
     --repo "$consensus_repo" --output "${TMPDIR:-/tmp}/fcr-real-bundle-$$.json"
 elif [[ "${REQUIRE_PYSPEC:-0}" == "1" ]]; then
@@ -101,8 +103,6 @@ fi
 python3 scripts/conformance/concrete/check_source_inventory.py --repo "$consensus_repo"
 if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
   "$consensus_repo/.venv/bin/python" scripts/conformance/contracts/test_realized_gap.py --repo "$consensus_repo"
-  # The differential runner imports the concrete transition module.
-  lake build FastConfirmationModel.Spec.BeaconChain.ConcreteTransition
   PYTHONDONTWRITEBYTECODE=1 "$consensus_repo/.venv/bin/python" \
     scripts/conformance/concrete/run_differential.py --consensus-repo "$consensus_repo"
 else

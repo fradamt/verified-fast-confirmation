@@ -48,8 +48,9 @@ least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active b
 are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
-reads. The static-registry condition excludes included slashings, deposits, activations,
-exits, and effective-balance changes that alter validator records in the horizon.
+reads. The static-registry condition excludes included slashings, voluntary exits,
+withdrawal and consolidation requests that start an exit, deposits, activations,
+ejections, and effective-balance changes that alter validator records in the horizon.
 `on_attestation_committee` confines successful delivered attestations in honest
 in-horizon prefixes to their slot committee. Attester-slashing evidence can name
 off-committee validators.
@@ -71,7 +72,7 @@ membership and executable ancestry.
 │ReviewSurfaceShape.lean     │Field names and types of 18 records and the claim body remain exact.                         │
 │check_imports.py            │The six-library import direction and Paper separation hold.                                  │
 │check_doc_names.py          │Backticked Lean names in current documents resolve to declarations or files.                 │
-│Audit.lean                  │The 44 audited public theorems have only standard axiom dependencies. No forbidden           │
+│Audit.lean                  │The 46 audited public theorems have only standard axiom dependencies. No forbidden           │
 │                            │declaration is allowed.                                                                      │
 │validate.sh                 │Fast checks above; full mode also builds every library and runs Lean checks.                 │
 └────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -79,16 +80,20 @@ membership and executable ancestry.
 
 ## FFG boundary and checks
 
-`FastConfirmationStatements` holds the safety premise and the supplied FFG
-interpretation. The intended inclusion relation uses body attestations whose
-target matches the checkpoint. Python `process_attestation` does not check that
-target root. `FastConfirmationModel` also contains a concrete FFG state and 34
-Gloas functions. A 59-case differential compares them with pinned Python. The
-public safety theorem still consumes the supplied interpretation. The projection
-harness checks each interpretation law on real pyspec runs. Full-bundle witnesses
-show consistency, while the contract and differential checks test Python behavior.
+`FastConfirmationStatements` holds the safety premise `ConcreteBridge.SafetyPremises`.
+`FastConfirmationModel` contains the concrete FFG state, 34 Gloas functions, and
+the bridge that runs them for `process_slots`, `state_transition`, and PJF. An
+opaque block-validity oracle (class I) stands for the Python checks that the
+projection does not model. `FastConfirmationProofs/FFG/Concrete/` computes the
+FFG interpretation from the bridge and proves the internal records in
+`FastConfirmationInternal`. The inclusion relation counts body votes that set
+the timely-target flag; Python `process_attestation` does not check the target
+root. A 59-case differential and a 48-block retained-projection comparison test
+the concrete transition against pinned Python. The projection harness checks
+each interpretation law on real pyspec runs. Full-bundle witnesses show
+consistency, while the contract and differential checks test Python behavior.
 
-The active inventory has 161 authored claim-reachable premise fields. The Lean reachability audit also checks two inherited projections and two outside Prop boundaries. Its labels separate tested state laws, execution scope, network and behavior, supplied interpretation, and idealizations. Two relay fields have both network and idealization labels.
+The active inventory has 72 authored claim-reachable premise fields. The Lean reachability audit also checks two outside Prop boundaries. Its labels separate tested state laws, execution scope, network and behavior, interpretation, and idealizations. Two relay fields have both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
 The field list is checked against the claim-type reachability audit. CI runs the
 Python contract, projection, realized-gap, and concrete differential checks in
 a separate pinned-pyspec job.

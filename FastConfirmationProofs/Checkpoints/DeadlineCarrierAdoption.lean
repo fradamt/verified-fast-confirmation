@@ -49,20 +49,21 @@ theorem deadline_carrier_known_of_au
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot := ⟨ast, ablk, hgen, hgenSlot⟩
   let F := (E.store cfg ext w m).finalized_checkpoint
-  obtain ⟨hcertificate⟩ := B.state.includedJustifiedAtTip_of_AU cfg ext hAU
+  obtain ⟨certCarrier, hcertCarrier, ⟨hcertificate⟩⟩ :=
+    B.state.includedJustifiedAccepted_of_AU cfg ext hAU
   have hanchorExact := acceptedAnchorExact_of_trajectory cfg ext E B hT
     hanchor hboundary
   have hprefix : ExactCheckpointPrefix B.state.checkpoint_at_epoch F c := by
     rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate cfg ext B
         hgenShort hanchor (E.store_causal cfg ext w m) with
-      hFanchor | ⟨_carrier, _hcarrier, ⟨hFcertificate⟩⟩
+      hFanchor | ⟨_carrier, hcarrier, ⟨hFcertificate⟩⟩
     · change ExactCheckpointPrefix B.state.checkpoint_at_epoch
         (E.store cfg ext w m).finalized_checkpoint c
       rw [hFanchor]
       exact IncludedCertifiedJustified.anchor_prefix
-        (cfg := cfg) P V hanchorExact hcertificate
+        (cfg := cfg) P V hanchorExact hcertCarrier hcertificate
     · exact B.state.exactFinalizedPrefix_of_accountable cfg P V
-        hanchorExact hacc hFcertificate hcertificate hFle
+        hanchorExact hacc hcarrier.acceptedRoot hcertCarrier hFcertificate hcertificate hFle
   have hFrealized := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
     cfg ext B hT hanchor hboundary (w := w) m
   have hanchorLe : B.anchor.epoch ≤ F.epoch :=
@@ -156,20 +157,21 @@ theorem deadline_justified_epoch_le_of_carrier
     rcases hselector with hgj | ⟨hgu, _⟩
     · rw [hgj]; exact B.state.gj_AU cfg ext haccepted
     · rw [hgu]; exact B.state.gu_AU cfg ext haccepted
-  obtain ⟨hcertificate⟩ := B.state.includedJustifiedAtTip_of_AU cfg ext hAU
+  obtain ⟨certCarrier, hcertCarrier, ⟨hcertificate⟩⟩ :=
+    B.state.includedJustifiedAccepted_of_AU cfg ext hAU
   have hanchorExact := acceptedAnchorExact_of_trajectory cfg ext E B hT
     hanchor hboundary
   have hprefix : ExactCheckpointPrefix B.state.checkpoint_at_epoch F c := by
     rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate cfg ext B
         hgenShort hanchor (E.store_causal cfg ext w m) with
-      hFanchor | ⟨_carrier, _hcarrier, ⟨hFcertificate⟩⟩
+      hFanchor | ⟨_carrier, hcarrier, ⟨hFcertificate⟩⟩
     · change ExactCheckpointPrefix B.state.checkpoint_at_epoch
         (E.store cfg ext w m).finalized_checkpoint c
       rw [hFanchor]
       exact IncludedCertifiedJustified.anchor_prefix
-        (cfg := cfg) P V hanchorExact hcertificate
+        (cfg := cfg) P V hanchorExact hcertCarrier hcertificate
     · exact B.state.exactFinalizedPrefix_of_accountable cfg P V
-        hanchorExact hacc hFcertificate hcertificate hFle
+        hanchorExact hacc hcarrier.acceptedRoot hcertCarrier hFcertificate hcertificate hFle
   have hFrealized := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
     cfg ext B hT hanchor hboundary (w := w) m
   have hanchorLe : B.anchor.epoch ≤ F.epoch :=

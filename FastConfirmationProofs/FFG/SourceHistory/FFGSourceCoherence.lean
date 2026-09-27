@@ -5,7 +5,7 @@ public import FastConfirmationProofs.FFG.State.ScheduledFFGStateTrajectory
 public import FastConfirmationProofs.Gloas.Payload.Preservation
 public import FastConfirmationProofs.Safety.BlockAgreement
 
-public import FastConfirmationStatements.Premises.FFG
+public import FastConfirmationInternal.Premises.FFG
 public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 

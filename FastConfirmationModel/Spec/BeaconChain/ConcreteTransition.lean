@@ -425,9 +425,14 @@ def process_block (cfg : Config) (preset : FFGPreset)
   let state := process_execution_payload_bid state block
   process_operations cfg preset schedule state block parentSlot
 
-/-- The sole opaque validity oracle can reject a candidate but supplies no
-FFG state. It binds cryptography, full hashes, proposer selection and the
-fixed-scope frames of erased operations. -/
+/-- The sole opaque validity oracle (class I). It can reject a candidate but
+supplies no FFG state. It stands for the Python checks that the projection
+does not model: BLS signatures, SSZ hash roots, proposer selection, the
+execution-requests commitment, RANDAO, eth1 data, sync aggregates,
+withdrawals, payload attestations, and the validity of the erased
+operations. An erased operation must also keep the retained fields fixed
+(`FixedFFGScope`). The safety theorem holds for every oracle, including one
+that accepts every block. -/
 structure BlockValidityOracle (Root : Type) where
   accepts : FFGBeaconState Root → FFGWireBlock Root → FFGBeaconState Root → Bool
 

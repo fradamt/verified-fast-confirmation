@@ -1,7 +1,7 @@
 module
 public import FastConfirmationModel
-public import FastConfirmationStatements.Premises.FFG
-public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
+public import FastConfirmationInternal.Premises.FFG
+public import FastConfirmationInternal.Premises.ScheduledExecution
 
 @[expose] public section
 

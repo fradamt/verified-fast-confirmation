@@ -178,13 +178,13 @@ theorem finalizedRoot_eq_checkpointBlock_at_tip
       store.finalized_checkpoint target := by
     rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate
         cfg ext B hgen hanchor hstore with hfinalizedAnchor |
-        ⟨_carrier, _hcarrier, hfinalized⟩
+        ⟨_carrier, hcarrier, hfinalized⟩
     · rw [hfinalizedAnchor]
       exact IncludedCertifiedJustified.anchor_prefix
-        (cfg := cfg) P V hanchorExact hjustified
+        (cfg := cfg) P V hanchorExact h.tip_accepted hjustified
     · obtain ⟨hfinalized⟩ := hfinalized
       exact B.state.exactFinalizedPrefix_of_accountable cfg P V
-        hanchorExact hacc hfinalized hjustified
+        hanchorExact hacc hcarrier.acceptedRoot h.tip_accepted hfinalized hjustified
           hfinalizedLeTarget
   exact exactCheckpointPrefix_root_eq_at_sameTip cfg ext B.coherence hstore
     hparent h.tip_known hprefix htargetAU hfinalizedLeTarget hwalk

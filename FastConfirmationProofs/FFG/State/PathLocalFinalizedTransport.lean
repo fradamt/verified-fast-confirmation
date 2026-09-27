@@ -174,12 +174,12 @@ theorem finalizedRoot_eq_checkpointBlock_of_anchor
     store.finalized_checkpoint.root =
       get_checkpoint_block cfg store h.tip
         store.finalized_checkpoint.epoch := by
-  obtain ⟨hsourceJustified⟩ :=
-    B.state.includedJustifiedAtTip_of_AU cfg ext h.source_au
+  obtain ⟨sourceCarrier, hsourceCarrier, ⟨hsourceJustified⟩⟩ :=
+    B.state.includedJustifiedAccepted_of_AU cfg ext h.source_au
   have hprefix : ExactCheckpointPrefix B.state.checkpoint_at_epoch B.anchor
       (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg store h.tip)) :=
     IncludedCertifiedJustified.anchor_prefix
-      (cfg := cfg) P V hanchorExact hsourceJustified
+      (cfg := cfg) P V hanchorExact hsourceCarrier hsourceJustified
   have hepoch : B.anchor.epoch ≤
       (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg store h.tip)).epoch :=
     IncludedCertifiedJustified.anchor_epoch_le

@@ -3,7 +3,7 @@ public import FastConfirmationProofs.FFG.Certificates.NoConflictCertificatePinni
 public import FastConfirmationProofs.Execution.History.SelectedPreQueryHistoricalSIR
 public import FastConfirmationProofs.FFG.State.ScheduledFFGGlobalCheckpointTrajectory
 
-public import FastConfirmationStatements.Premises.FFG
+public import FastConfirmationInternal.Premises.FFG
 public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 

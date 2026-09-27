@@ -290,19 +290,19 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
       E.unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
         cfg ext B hT hanchor hboundary (w := v) hi.originSecond
     simpa only [c, hi.field_eq] using hrealField
-  have hcIncluded : ∃ carrier : Root,
+  have hcIncluded : ∃ carrier : Root, E.RootKnownInScheduledPrefix cfg ext carrier ∧
       Nonempty (IncludedCertifiedJustified cfg E
         B.state.includedAttestations.Included B.anchor carrier c) := by
     have horigin : AcceptedGlobalUnrealizedJustifiedOrigin
         B.state (E.store cfg ext v hi.originSecond) c := by
       simpa only [c, hi.field_eq] using hi.accepted_origin
     rcases horigin with hanchorC | ⟨tip, htip, hcEq⟩
-    · refine ⟨B.anchor.root, ?_⟩
+    · refine ⟨B.anchor.root, Execution.anchorRoot_accepted cfg ext hgenShort hanchor, ?_⟩
       rw [hanchorC]
       exact ⟨IncludedCertifiedJustified.anchor⟩
     · obtain ⟨carrier, _hdesc, hformed⟩ :=
         B.state.unrealized_justified_mem tip htip.acceptedRoot
-      refine ⟨carrier, ?_⟩
+      refine ⟨carrier, B.state.formed_carrier_accepted hformed, ?_⟩
       rw [hcEq]
       exact (B.state.formed_evidence hformed).certified
   have hcKnownBoundary : ∀ w ∈ E.honest,
@@ -363,16 +363,16 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
         ExactCheckpointPrefix B.state.checkpoint_at_epoch F c := by
       rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate
           cfg ext B hgenShort hanchor (E.store_causal cfg ext w (n + 1)) with
-        hFanchor | ⟨carrier, _hcarrier, hFcert⟩
+        hFanchor | ⟨carrier, hcarrier, hFcert⟩
       · dsimp only [F]
         rw [hFanchor]
-        obtain ⟨carrierC, ⟨hCcert⟩⟩ := hcIncluded
+        obtain ⟨carrierC, hcarrierC, ⟨hCcert⟩⟩ := hcIncluded
         exact IncludedCertifiedJustified.anchor_prefix
-          (cfg := cfg) P V hanchorExact hCcert
+          (cfg := cfg) P V hanchorExact hcarrierC hCcert
       · obtain ⟨hFcert⟩ := hFcert
-        obtain ⟨carrierC, ⟨hCcert⟩⟩ := hcIncluded
+        obtain ⟨carrierC, hcarrierC, ⟨hCcert⟩⟩ := hcIncluded
         exact B.state.exactFinalizedPrefix_of_accountable cfg P V
-          hanchorExact haccExact hFcert hCcert hepoch
+          hanchorExact haccExact hcarrier.acceptedRoot hcarrierC hFcert hCcert hepoch
     have hFprefixC' := hFprefixC hfinalizedBeforeObservedAtBoundary
     have hFrealized :=
       E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory

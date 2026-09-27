@@ -28,6 +28,13 @@ structure FFGPreset where
 
 /-- The fixed registry view holds every field that can affect FFG weights.
 `is_active_validator` must have the same result throughout the horizon.
+The registry is constant in the scope. Thus the scope excludes each Python
+operation that changes a retained validator field: proposer and attester
+slashings, voluntary exits, withdrawal and consolidation requests that start
+an exit, deposits and deposit requests that add a validator, registry
+updates (activations and ejections), and effective-balance updates.
+Withdrawals, rewards, penalties, and the slashing penalty change only
+balances, which the projection does not retain.
 Python: `specs/phase0/beacon-chain.md:741-749,1088`. -/
 structure FixedFFGScope where
   validators : List Validator

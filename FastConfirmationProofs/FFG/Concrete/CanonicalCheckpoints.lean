@@ -62,11 +62,11 @@ namespace ConcreteBridge
 variable (B : ConcreteBridge Root)
 
 omit [LinearOrder Root] [Inhabited Root] in
-theorem norm0_onChain {blocks : List (FFGWireBlock Root)} {c : Checkpoint Root}
+theorem readAsAnchor_onChain {blocks : List (FFGWireBlock Root)} {c : Checkpoint Root}
     (hc : OnChain B.setup blocks c) :
-    B.norm0 c = B.anchorCheckpoint ∨
-      B.norm0 c = chainCheckpoint B.setup blocks (B.norm0 c).epoch := by
-  unfold norm0
+    B.readAsAnchor c = B.anchorCheckpoint ∨
+      B.readAsAnchor c = chainCheckpoint B.setup blocks (B.readAsAnchor c).epoch := by
+  unfold readAsAnchor
   split_ifs with h0
   · exact Or.inl rfl
   · rcases hc with rfl | h
@@ -76,8 +76,8 @@ theorem norm0_onChain {blocks : List (FFGWireBlock Root)} {c : Checkpoint Root}
 /-- **Formed shape.** A formed checkpoint is the genesis anchor or the chain
 checkpoint of its epoch on every reachable run of the carrier state. -/
 theorem formed_shape (hB : B.Admissible) {E : Execution Root} {x : Root} {c : Checkpoint Root}
-    (hf : B.Formed E x c) {cs : FFGBeaconState Root}
-    (hcs : B.stateOf x = some cs) {bl : List (FFGWireBlock Root)}
+    (hf : B.CarriedOrRealizable E x c) {cs : FFGBeaconState Root}
+    (hcs : B.committedState x = some cs) {bl : List (FFGWireBlock Root)}
     {vo : List (IncludedVote Root)} (hreach : Reachable B.setup bl vo cs)
     (hH : compute_epoch_at_slot B.setup.cfg cs.slot ≤ B.setup.scope.last_epoch) :
     c = B.anchorCheckpoint ∨ c = chainCheckpoint B.setup bl c.epoch := by
@@ -85,15 +85,15 @@ theorem formed_shape (hB : B.Admissible) {E : Execution Root} {x : Root} {c : Ch
   have hj : ∀ {c'}, Justified B.setup vo c' → OnChain B.setup bl c' :=
     fun h => onChain_of_justified hB.setup hreach hH h
   obtain ⟨Y, hY, hcj⟩ := eager_pjf hB.setup hB.numeric hinv (lengthsOK_of_reachable hreach) hH
-  have he := B.eagerOf_of x hcs hY
+  have he := B.unrealizedState_of x hcs hY
   obtain ⟨-, h | h | h | h | h⟩ := hf
-  · rw [h, B.GJ_of x hcs]; exact B.norm0_onChain (hj hinv.current_justified)
-  · rw [h, B.GF_of x hcs]; exact B.norm0_onChain (hj hinv.finalized_justified)
-  · rw [h, B.GU_of x he, hcj]
-    exact B.norm0_onChain (onChain_cjFormula (hj hinv.current_justified))
-  · rw [h, B.GUF_of x he]
+  · rw [h, B.realizedJustified_of x hcs]; exact B.readAsAnchor_onChain (hj hinv.current_justified)
+  · rw [h, B.realizedFinalized_of x hcs]; exact B.readAsAnchor_onChain (hj hinv.finalized_justified)
+  · rw [h, B.unrealizedJustified_of x he, hcj]
+    exact B.readAsAnchor_onChain (onChain_cjFormula (hj hinv.current_justified))
+  · rw [h, B.unrealizedFinalized_of x he]
     obtain ⟨bits, pj, j, f, rfl, hout⟩ := process_justification_and_finalization_outcome hY
-    apply B.norm0_onChain
+    apply B.readAsAnchor_onChain
     change OnChain B.setup bl f
     rcases hout with ⟨-, -, -, rfl⟩ | ⟨-, -, -, rfl | rfl | rfl⟩
     · exact hj hinv.finalized_justified
@@ -109,7 +109,7 @@ theorem formed_shape (hB : B.Admissible) {E : Execution Root} {x : Root} {c : Ch
     rw [hslots] at hnext'
     cases hnext'
     rw [hrun]
-    exact B.norm0_onChain (onChain_cjRun _ _ _ (hj hinv.current_justified))
+    exact B.readAsAnchor_onChain (onChain_cjRun _ _ _ (hj hinv.current_justified))
 
 /-! ### The committed chain run -/
 
@@ -118,7 +118,7 @@ omit [Inhabited Root] in
 its committed state whose block list is the store ancestor walk. -/
 theorem chain_witness (hB : B.Admissible) {store : Store Root} (hs : B.BridgedStore store) :
     ∀ n, ∀ x ∈ store.block_roots, (store.blocks x).slot ≤ n →
-      ∃ cs bl vo, B.stateOf x = some cs ∧ Reachable B.setup bl vo cs ∧
+      ∃ cs bl vo, B.committedState x = some cs ∧ Reachable B.setup bl vo cs ∧
         ∀ y, chainRootAt B.setup.genesisRoot bl y =
           (get_ancestor store (ForkChoiceNode.mk x .pending) y).root := by
   intro n
@@ -127,7 +127,7 @@ theorem chain_witness (hB : B.Admissible) {store : Store Root} (hs : B.BridgedSt
     intro x hx hn
     by_cases hgen : x = B.setup.genesisRoot
     · subst hgen
-      refine ⟨_, [], [], B.stateOf_genesis, .genesis, fun y => ?_⟩
+      refine ⟨_, [], [], B.committedState_genesis, .genesis, fun y => ?_⟩
       rw [get_ancestor_stop (by rw [hs.genesis_slot]; exact Nat.zero_le _)]
       rfl
     obtain ⟨cs, hcs, -, ⟨-, hH⟩, -, hslot, hrest⟩ := hs.known x hx
@@ -170,13 +170,13 @@ theorem BridgedStore.slot_zero {B : ConcreteBridge Root} {store : Store Root}
 /-- An accepted execution ancestor is the store ancestor at its own slot. -/
 theorem chain_ancestor (hB : B.Admissible) {E : Execution Root} (hg : B.ConcreteGenesis E)
     (hwf : WellFormedExecution E) {store : Store Root}
-    (hstore : E.ScheduledPrefixStore B.setup.cfg B.ext store) {r x : Root}
+    (hstore : E.ScheduledPrefixStore B.setup.cfg B.interface store) {r x : Root}
     (hd : E.RootDescends r x) (hr : r ∈ store.block_roots)
-    (hx : E.RootKnownInScheduledPrefix B.setup.cfg B.ext x) :
+    (hx : E.RootKnownInScheduledPrefix B.setup.cfg B.interface x) :
     x ∈ store.block_roots ∧ (store.blocks x).slot ≤ (store.blocks r).slot ∧
       (get_ancestor store (ForkChoiceNode.mk r .pending) (store.blocks x).slot).root = x := by
   have hs := B.bridgedStore_prefix hB hg hstore
-  have hprov := Execution.ScheduledPrefixStore.blockProvenance B.setup.cfg B.ext E hstore
+  have hprov := Execution.ScheduledPrefixStore.blockProvenance B.setup.cfg B.interface E hstore
   induction hd with
   | refl r => exact ⟨hr, le_rfl, by rw [get_ancestor_stop le_rfl]⟩
   | @step child parent ancestor hedge hrest ih =>
@@ -198,9 +198,9 @@ theorem chain_ancestor (hB : B.Admissible) {E : Execution Root} (hg : B.Concrete
 /-- **`available_checkpoint_checkpoint_of_known`.** -/
 theorem available_checkpoint_of_known (hB : B.Admissible) {E : Execution Root}
     (hg : B.ConcreteGenesis E) (hwf : WellFormedExecution E) {store : Store Root}
-    (hstore : E.ScheduledPrefixStore B.setup.cfg B.ext store) {r : Root}
+    (hstore : E.ScheduledPrefixStore B.setup.cfg B.interface store) {r : Root}
     (hr : r ∈ store.block_roots) {c : Checkpoint Root}
-    (hc : ∃ carrier, E.RootDescends r carrier ∧ B.Formed E carrier c) :
+    (hc : ∃ carrier, E.RootDescends r carrier ∧ B.CarriedOrRealizable E carrier c) :
     c = get_checkpoint_for_block B.setup.cfg store r c.epoch := by
   obtain ⟨x, hd, hf⟩ := hc
   have hs := B.bridgedStore_prefix hB hg hstore

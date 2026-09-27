@@ -724,7 +724,7 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
     (hqH : E.WithinHorizon cfg q)
     {selected : Root} {e : Epoch}
@@ -1187,7 +1187,7 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLin
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)
@@ -1727,7 +1727,7 @@ noncomputable def
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)
@@ -2165,7 +2165,7 @@ noncomputable def
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)

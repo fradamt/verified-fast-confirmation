@@ -13,11 +13,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
 PREMISES = ROOT / "FastConfirmationStatements" / "Premises"
+INTERNAL_PREMISES = ROOT / "FastConfirmationInternal" / "Premises"
+# Internal FFG interpretation records that the pyspec projection runner probes
+# for the canonical interpretation of the concrete bridge.
+PROJECTED = ("AcceptedBlockFFGState", "FFGStateReadAgreement",
+             "FFGStateAndCheckpointReadAgreement", "ScheduledFFGInterpretation",
+             "EpochCheckpointProjectionLaws", "IncludedLinkCheckpointAgreement")
 
 
-def source_fields(reachable: set[str] | None = None) -> dict[str, str]:
+def source_fields(reachable: set[str] | None = None,
+                  folder: Path = PREMISES) -> dict[str, str]:
     fields = {}
-    for path in sorted(PREMISES.glob("*.lean")):
+    for path in sorted(folder.glob("*.lean")):
         source = path.read_text()
         for name, body in re.findall(
             r"(?:^|\n)structure\s+([A-Za-z_][\w]*)[\s\S]*?\bwhere\n"
@@ -68,7 +75,7 @@ def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
         audit = reachable_file.read_text()
         reachable = {line.split("\t")[-1].rsplit(".", 1)[-1]
                      for line in audit.splitlines() if line.startswith("SR\t")}
-        if not reachable or "NextSlotSafetyPremises" not in reachable:
+        if not reachable or "SafetyPremises" not in reachable:
             raise ValueError("reachability audit has no safety premise root")
     source = source_fields(reachable)
     if reachable_file is not None:
@@ -151,12 +158,12 @@ def main() -> int:
         projection = json.loads(projection_path.read_text())
         projection_names = {row["field"] for row in projection["results"]}
         expected_projection = {row["path"] for row in inventory.values()
-                               if row["path"].startswith(("AcceptedBlockFFGState.",
-                                   "FFGStateReadAgreement.", "FFGStateAndCheckpointReadAgreement.",
-                                   "ScheduledFFGInterpretation.",
-                                   "EventualCheckpointInclusion.", "EpochCheckpointProjectionLaws.",
-                                   "IncludedLinkCheckpointAgreement."))}
-        expected_projection.update(("ImportedBlockFinalizationLag", "GenesisOrNormalizedAnchor"))
+                               if row["path"].startswith("EventualCheckpointInclusion.")}
+        expected_projection.update(key for key in source_fields(folder=INTERNAL_PREMISES)
+                                   if key.split(".", 1)[0] in PROJECTED)
+        expected_projection.update(("ImportedBlockFinalizationLag", "GenesisOrNormalizedAnchor",
+                                    "RealizableBySlotRun", "HonestEarlierTargetVoteOnCarrierChain",
+                                    "IncludedCheckpointEvidence.causal"))
         missing_projection = expected_projection - projection_names
         if missing_projection:
             raise ValueError(f"projection coverage missing={sorted(missing_projection)}")

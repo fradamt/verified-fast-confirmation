@@ -241,7 +241,7 @@ theorem confirmed_safety_and_lineage_of_acceptedActualFCRFold
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)
@@ -411,7 +411,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)
@@ -433,7 +433,7 @@ theorem acceptedHistoricalA32CurrentLineageAt_all
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)
@@ -455,7 +455,7 @@ theorem acceptedHistoricalA32CurrentLineage_invariant
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)
@@ -477,7 +477,7 @@ theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)
@@ -499,7 +499,7 @@ theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)
@@ -524,7 +524,7 @@ theorem confirmed_head_of_acceptedActualFCRFold_nextSlot
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)

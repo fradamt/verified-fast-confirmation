@@ -15,7 +15,7 @@ scripts/conformance/run.sh /path/to/fradamt-consensus-specs gloas minimal out/gl
 
 The runner uses the checkout's Python environment. It performs no setup. It writes Python and Lean logs next to the trace and returns a nonzero status for an empty export, schema error, test failure, or Lean mismatch. `FCR_EXPORT_ONLY=1` exports and checks the trace without invoking Lean. The Lean runner is a script outside the library.
 Repository validation uses `scripts/validate.sh --fast` for source and
-boundary checks. Full validation builds the libraries and audits 44 public
+boundary checks. Full validation builds the libraries and audits 46 public
 theorem witnesses. Neither check makes a trace match a refinement theorem.
 
 Schema v2 records payload membership, Payload Timeliness Committee (PTC) vote maps, block deadlines, bid hashes, message slots and payload flags, and committee reads. The projection keeps a source state identity for opaque external calls. The runner checks executable configuration conditions. It does not replay block, envelope, or PTC handlers, prove `BeaconExternalsPremises`, or implement execution engine validation. Each imported payload must already have passed source validation. A trace match is an observation comparison.
@@ -27,7 +27,7 @@ Schema v1 phase0 traces remain historical and both readers reject them. Gloas FU
 ## Contract conformance
 
 The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists every
-direct field in the premise structures. T means a generated reachable-state property of the pinned Python functions. E-scope labels execution limits. E-network/behavior labels delivery, scheduling, and honest or adversarial behavior. E-interpretation labels supplied FFG obligations. I labels cryptographic, engine, or fixed-committee idealizations. Some mixed relay fields carry both E-network/behavior and I. The inventory covers 161 authored claim-reachable structure fields, two inherited Lean projections, and two outside Prop boundaries: EpochEndsFitUint64 and BeaconFunctionInterface.AnchorCommitsToState. The checker verifies their source declarations. Thirteen selector, checkpoint, and anchor fields were moved from T to E
+direct field in the premise structures. T means a generated reachable-state property of the pinned Python functions. E-scope labels execution limits. E-network/behavior labels delivery, scheduling, and honest or adversarial behavior. E-interpretation labels the external-state contracts and the fields of the A3.2 view. The bridge fixes that view; its modeling choices are the fixed committee schedule, AU from the four carried selectors, and the genesis-epoch read as the anchor. A3.2 itself is E-network/behavior. I labels cryptographic, engine, or fixed-committee idealizations. Some mixed relay fields carry both E-network/behavior and I. The inventory covers 72 authored claim-reachable structure fields and two outside Prop boundaries: EpochEndsFitUint64 and BeaconFunctionInterface.AnchorCommitsToState. The checker verifies their source declarations. Thirteen selector, checkpoint, and anchor fields were moved from T to E
 because their old probes did not test the supplied execution interpretation. The
 inventory checker fails when a Lean field has no entry.
 
@@ -75,20 +75,33 @@ epoch 1 through the link 1 -> 3 and epoch 2 through the link 2 -> 4. It is
 labelled out of scope for `epoch_one_finalization_one_step`. The second run
 never includes epoch-1 votes; it finalizes epoch 2 only through the link
 2 -> 4 and passes the `k = 2` finalized evidence fields. The later anchor is labelled out of scope because it fails
-`GenesisOrNormalizedAnchor`. The JSON output quotes each Lean field and gives
+`GenesisOrNormalizedAnchor`.
+
+Three checks test the concrete canonical evidence. `RealizableBySlotRun` runs
+`process_slots` on a copy of the state of each accepted block to the start of
+each of the next three epochs. The justified checkpoint must have formed
+evidence at the block. In four runs some of these checkpoints are not carried
+by any selector of the block. `HonestEarlierTargetVoteOnCarrierChain` tests the
+aggregate convention: for each signer of an included aggregate, the split that
+keeps only the bit of that signer indexes exactly that signer, keeps the data,
+and passes the structural indexed check. `IncludedCheckpointEvidence.causal`
+requires, for each formed non-anchor checkpoint, a signer whose split vote has
+an earlier slot and that target and is included on the chain. Every validator
+of these fixtures is honest. The JSON output quotes each Lean field and gives
 a status and a state witness for each case. Structural mappings are marked
 construction; the exact Assumption 3.2 antecedent needs all honest views and
 slashing state, so its result is marked as not established. Unexcluded FAIL results make validation fail. Expected scope failures remain OUT_OF_SCOPE. `EventualCheckpointInclusion.included` is NOT_ESTABLISHED in each full run: the sampled consequence does not test the A3.2 implication.
 
 ### Whole-bundle sample
 
-`scripts/conformance/contracts/check_real_bundle.py` imports 48 normally participating blocks from a 100-validator Gloas genesis with 32, 33, 34, and 35 ETH effective balances. On this one accepted run it evaluates 72 finite fields: 50 FFG projection checks, 17 registry, committee, economic, anchor, and configuration checks, and five state-law samples on accepted keyed states. `ByzantineWeightPremises.estimate_sound` fails on 211 checked spans. The other checked fields pass, except `EventualCheckpointInclusion.included`, which is NOT_ESTABLISHED. This run has one view and no Byzantine validators; it cannot test network relay, all honest views, BLS, KZG, engine validity, or a nonvacuous span fault bound. CI runs this sample and fails if an unlabelled field fails.
+`scripts/conformance/contracts/check_real_bundle.py` imports 48 normally participating blocks from a 100-validator Gloas genesis with 32, 33, 34, and 35 ETH effective balances. On this one accepted run it evaluates 75 finite fields: 52 FFG projection checks, 17 registry, committee, economic, anchor, and configuration checks, five state-law samples on accepted keyed states, and one retained-projection comparison. The comparison sends each of the 48 accepted blocks, the retained fields of its parent state, and the committees that its attestations read to the Lean `state_transition` with an accepting oracle. The Lean result must equal the retained fields of the Python post-state, and the Python registry must not change. The comparison uses the Lean evaluator of the concrete differential. No block of this run has a full parent payload or an erased operation. `ByzantineWeightPremises.estimate_sound` fails on 211 checked spans. The other checked fields pass, except `EventualCheckpointInclusion.included`, which is NOT_ESTABLISHED. This run has one view and no Byzantine validators; it cannot test network relay, all honest views, BLS, KZG, engine validity, or a nonvacuous span fault bound. CI runs this sample and fails if an unlabelled field fails.
 
 ## Scope of the checks
 
-The FFG interpretation remains a premise of the safety theorem. The projection harness checks sampled fields of that interpretation on real pyspec runs. It does not establish A3.2 as an implication. The concrete
+The safety theorem computes its FFG interpretation from the concrete bridge. The projection harness checks sampled fields of that interpretation on real pyspec runs. It does not establish A3.2 as an implication. The concrete
 FFG state and 34 Gloas functions in `FastConfirmationModel` passed 59 differential
-cases, but the theorem does not yet use that state. Full-bundle witnesses show
+cases and the 48-block retained-projection comparison. The block-validity oracle
+stays opaque (class I). Full-bundle witnesses show
 that the premises are consistent. Python faithfulness comes from the contract
 suite, projection harness, and concrete differential. The witnesses' PJF returns
 early in epochs 0 and 1 as Python does.

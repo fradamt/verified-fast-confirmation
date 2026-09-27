@@ -9,10 +9,10 @@ public import FastConfirmationProofs.ModelFacts.FFGState
 A block transition only adds included body votes. Thus each PJF pass of a
 descendant sees at least the participation of its ancestor, and the epoch of
 the resulting checkpoint does not decrease (`cjFormula_mono`, `cjRun_mono`).
-The file defines the canonical formed-evidence relation `Formed`: the four
+The file defines the canonical formed-evidence relation `CarriedOrRealizable`: the four
 selector values of an accepted block and the realized checkpoints of its
 slot runs. It proves the membership, maximality, monotonicity, and epoch laws
-of `AcceptedBlockFFGState` for `Formed`. -/
+of `AcceptedBlockFFGState` for `CarriedOrRealizable`. -/
 
 namespace FastConfirmation.Spec.ConcreteFFG
 open FastConfirmation.Spec
@@ -278,8 +278,8 @@ variable (B : ConcreteBridge Root)
 accepted root. -/
 theorem genesis_parent_not_descends (hB : B.Admissible) {E : Execution Root}
     (hg : B.ConcreteGenesis E) (hwf : WellFormedExecution E) {store : Store Root}
-    (hstore : E.ScheduledPrefixStore B.setup.cfg B.ext store) (hs : B.BridgedStore store)
-    {x : Root} (hx : E.RootKnownInScheduledPrefix B.setup.cfg B.ext x)
+    (hstore : E.ScheduledPrefixStore B.setup.cfg B.interface store) (hs : B.BridgedStore store)
+    {x : Root} (hx : E.RootKnownInScheduledPrefix B.setup.cfg B.interface x)
     (hd : E.RootDescends (store.blocks B.setup.genesisRoot).parent_root x) : False := by
   have hne := hs.genesis_parent_ne
   have hun := hs.genesis_parent_unopened
@@ -291,11 +291,12 @@ theorem genesis_parent_not_descends (hB : B.Admissible) {E : Execution Root}
     rw [hun] at ho
     cases ho
   | step hedge _ =>
-    obtain ⟨anchor, hroot, -, -, -, hgs⟩ := hg
+    obtain ⟨anchor, hroot, -, -, -, -, hgs⟩ := hg
     have hgmem : B.setup.genesisRoot ∈ E.genesis_store.block_roots := by
       rw [hgs, ← hroot]; simp [get_forkchoice_store]
     have hagree : store.blocks B.setup.genesisRoot = E.genesis_store.blocks B.setup.genesisRoot :=
-      hwf.blocks_agree (Execution.ScheduledPrefixStore.blockProvenance B.setup.cfg B.ext E hstore)
+      hwf.blocks_agree
+        (Execution.ScheduledPrefixStore.blockProvenance B.setup.cfg B.interface E hstore)
         (fun r hr => Or.inl ⟨hr, rfl⟩) hs.genesis_known hgmem
     rcases hedge with ⟨r, hr, hchild, -⟩ | ⟨w, n, b, hb, hchild, -⟩
     · rw [hgs] at hr
@@ -309,10 +310,11 @@ state of `x` extends to a run of the committed state of `r` with more
 included votes, and every later run from `r` is at least the run from `x`. -/
 theorem chain_runs (hB : B.Admissible) {E : Execution Root} (hg : B.ConcreteGenesis E)
     (hwf : WellFormedExecution E) {store : Store Root}
-    (hstore : E.ScheduledPrefixStore B.setup.cfg B.ext store) {r x : Root}
+    (hstore : E.ScheduledPrefixStore B.setup.cfg B.interface store) {r x : Root}
     (hd : E.RootDescends r x) (hr : r ∈ store.block_roots)
-    (hx : E.RootKnownInScheduledPrefix B.setup.cfg B.ext x) :
-    x ∈ store.block_roots ∧ ∃ csx csr, B.stateOf x = some csx ∧ B.stateOf r = some csr ∧
+    (hx : E.RootKnownInScheduledPrefix B.setup.cfg B.interface x) :
+    x ∈ store.block_roots ∧ ∃ csx csr, B.committedState x = some csx ∧
+      B.committedState r = some csr ∧
       csx.slot ≤ csr.slot ∧
       ∀ bx vx, Reachable B.setup bx vx csx → ∃ br vr, Reachable B.setup br vr csr ∧
         (∀ v ∈ vx, v ∈ vr) ∧
@@ -324,7 +326,7 @@ theorem chain_runs (hB : B.Admissible) {E : Execution Root} (hg : B.ConcreteGene
             (k - compute_epoch_at_slot B.setup.cfg csr.slot)
             csr.current_justified_checkpoint).epoch := by
   have hs := B.bridgedStore_prefix hB hg hstore
-  have hprov := Execution.ScheduledPrefixStore.blockProvenance B.setup.cfg B.ext E hstore
+  have hprov := Execution.ScheduledPrefixStore.blockProvenance B.setup.cfg B.interface E hstore
   induction hd with
   | refl r =>
     obtain ⟨cs, hcs, -⟩ := hs.known r hr
@@ -365,42 +367,45 @@ theorem chain_runs (hB : B.Admissible) {E : Execution Root} (hg : B.ConcreteGene
 
 /-- A realized checkpoint of a slot run from the committed state of `x`, to an
 in-scope target slot. The pre-state of every block has this form. -/
-def RealizedAt (x : Root) (c : Checkpoint Root) : Prop :=
-  ∃ cs target next, B.stateOf x = some cs ∧
+def RealizableBySlotRun (x : Root) (c : Checkpoint Root) : Prop :=
+  ∃ cs target next, B.committedState x = some cs ∧
     compute_epoch_at_slot B.setup.cfg target ≤ B.setup.scope.last_epoch ∧
     process_slots B.setup.cfg B.setup.preset cs target = .ok next ∧
-    c = B.norm0 next.current_justified_checkpoint
+    c = B.readAsAnchor next.current_justified_checkpoint
 
 /-- The canonical formed-evidence relation: at an accepted block, the four
 selector values and the realized checkpoints of its slot runs. -/
-def Formed (E : Execution Root) (x : Root) (c : Checkpoint Root) : Prop :=
-  E.RootKnownInScheduledPrefix B.setup.cfg B.ext x ∧
-    (c = B.GJ x ∨ c = B.GF x ∨ c = B.GU x ∨ c = B.GUF x ∨ B.RealizedAt x c)
+def CarriedOrRealizable (E : Execution Root) (x : Root) (c : Checkpoint Root) : Prop :=
+  E.RootKnownInScheduledPrefix B.setup.cfg B.interface x ∧
+    (c = B.realizedJustified x ∨ c = B.realizedFinalized x ∨ c = B.unrealizedJustified x ∨
+      c = B.unrealizedFinalized x ∨ B.RealizableBySlotRun x c)
 
 omit [Inhabited Root] in
-theorem gj_epoch {r : Root} {cs : FFGBeaconState Root} (hcs : B.stateOf r = some cs) :
-    (B.GJ r).epoch = cs.current_justified_checkpoint.epoch := by
-  rw [B.GJ_of r hcs, B.norm0_epoch]
+theorem realizedJustified_epoch {r : Root} {cs : FFGBeaconState Root}
+    (hcs : B.committedState r = some cs) :
+    (B.realizedJustified r).epoch = cs.current_justified_checkpoint.epoch := by
+  rw [B.realizedJustified_of r hcs, B.readAsAnchor_epoch]
 
 omit [Inhabited Root] in
-/-- `GU` is the one-boundary run from the committed state. -/
-theorem gu_epoch (hB : B.Admissible) {r : Root} {cs : FFGBeaconState Root}
-    (hcs : B.stateOf r = some cs) {bl : List (FFGWireBlock Root)}
+/-- `unrealizedJustified` is the one-boundary run from the committed state. -/
+theorem unrealizedJustified_epoch (hB : B.Admissible) {r : Root} {cs : FFGBeaconState Root}
+    (hcs : B.committedState r = some cs) {bl : List (FFGWireBlock Root)}
     {vo : List (IncludedVote Root)} (hreach : Reachable B.setup bl vo cs)
     (hH : compute_epoch_at_slot B.setup.cfg cs.slot ≤ B.setup.scope.last_epoch) :
-    (B.GU r).epoch = (cjRun B.setup bl vo (compute_epoch_at_slot B.setup.cfg cs.slot) 1
+    (B.unrealizedJustified r).epoch =
+      (cjRun B.setup bl vo (compute_epoch_at_slot B.setup.cfg cs.slot) 1
       cs.current_justified_checkpoint).epoch := by
   obtain ⟨Y, hY, hcj⟩ := eager_pjf hB.setup hB.numeric
     (provenanceInvariant_of_reachable hB.setup hreach hH) (lengthsOK_of_reachable hreach) hH
-  rw [B.GU_of r (B.eagerOf_of r hcs hY), B.norm0_epoch, hcj]
+  rw [B.unrealizedJustified_of r (B.unrealizedState_of r hcs hY), B.readAsAnchor_epoch, hcj]
   rfl
 
 /-- A formed checkpoint is bounded by a run of at most two boundaries from
 the committed state of its carrier, and of at most one boundary from an
 epoch `E ≥ 2`. -/
 theorem formed_run_bound (hB : B.Admissible) {E : Execution Root} (hg : B.ConcreteGenesis E)
-    {x : Root} {c : Checkpoint Root} (hf : B.Formed E x c) {cs : FFGBeaconState Root}
-    (hcs : B.stateOf x = some cs) {bl : List (FFGWireBlock Root)}
+    {x : Root} {c : Checkpoint Root} (hf : B.CarriedOrRealizable E x c) {cs : FFGBeaconState Root}
+    (hcs : B.committedState x = some cs) {bl : List (FFGWireBlock Root)}
     {vo : List (IncludedVote Root)} (hreach : Reachable B.setup bl vo cs)
     (hH : compute_epoch_at_slot B.setup.cfg cs.slot ≤ B.setup.scope.last_epoch) :
     ∃ j, c.epoch ≤ (cjRun B.setup bl vo (compute_epoch_at_slot B.setup.cfg cs.slot) j
@@ -410,16 +415,16 @@ theorem formed_run_bound (hB : B.Admissible) {E : Execution Root} (hg : B.Concre
   have hraw : ∃ j, c.epoch ≤ (cjRun B.setup bl vo (compute_epoch_at_slot B.setup.cfg cs.slot) j
       cs.current_justified_checkpoint).epoch := by
     obtain ⟨hacc, h | h | h | h | h⟩ := hf
-    · exact ⟨0, by rw [h, B.gj_epoch hcs]; exact le_rfl⟩
+    · exact ⟨0, by rw [h, B.realizedJustified_epoch hcs]; exact le_rfl⟩
     · refine ⟨0, ?_⟩
       rw [h]
       exact (B.realized_finalized_epoch_le_realized_justified hB hg hacc).trans
-        (by rw [B.gj_epoch hcs]; exact le_rfl)
-    · exact ⟨1, by rw [h, B.gu_epoch hB hcs hreach hH]⟩
+        (by rw [B.realizedJustified_epoch hcs]; exact le_rfl)
+    · exact ⟨1, by rw [h, B.unrealizedJustified_epoch hB hcs hreach hH]⟩
     · refine ⟨1, ?_⟩
       rw [h]
       exact (B.unrealized_finalized_epoch_le_unrealized_justified hB hg hacc).trans
-        (by rw [B.gu_epoch hB hcs hreach hH])
+        (by rw [B.unrealizedJustified_epoch hB hcs hreach hH])
     · obtain ⟨cs', target, next, hcs', htarget, hslots, rfl⟩ := h
       rw [hcs] at hcs'
       cases hcs'
@@ -428,7 +433,7 @@ theorem formed_run_bound (hB : B.Admissible) {E : Execution Root} (hg : B.Concre
         (lengthsOK_of_reachable hreach) hlt htarget
       rw [hslots] at hnext'
       cases hnext'
-      exact ⟨_, by rw [B.norm0_epoch, hcj]⟩
+      exact ⟨_, by rw [B.readAsAnchor_epoch, hcj]⟩
   obtain ⟨j, hj⟩ := hraw
   obtain ⟨h2, h1⟩ := cjRun_cap hB.setup hinv.target_epoch_le j cs.current_justified_checkpoint
   by_cases hE : 2 ≤ compute_epoch_at_slot B.setup.cfg cs.slot
@@ -437,8 +442,8 @@ theorem formed_run_bound (hB : B.Admissible) {E : Execution Root} (hg : B.Concre
 
 /-- A formed checkpoint is no later than the epoch of its carrier. -/
 theorem formed_epoch_le (hB : B.Admissible) {E : Execution Root} (hg : B.ConcreteGenesis E)
-    {x : Root} {c : Checkpoint Root} (hf : B.Formed E x c) {cs : FFGBeaconState Root}
-    (hcs : B.stateOf x = some cs) :
+    {x : Root} {c : Checkpoint Root} (hf : B.CarriedOrRealizable E x c) {cs : FFGBeaconState Root}
+    (hcs : B.committedState x = some cs) :
     c.epoch ≤ compute_epoch_at_slot B.setup.cfg cs.slot := by
   obtain ⟨cs', bl, vo, -, hcs', hreach, hH, -⟩ := B.accepted_state hB hg hf.1
   rw [hcs] at hcs'
@@ -454,7 +459,7 @@ theorem formed_epoch_le (hB : B.Admissible) {E : Execution Root} (hg : B.Concret
 omit [Inhabited Root] in
 theorem known_witness {store : Store Root} (hs : B.BridgedStore store) {r : Root}
     (hr : r ∈ store.block_roots) :
-    ∃ cs, B.stateOf r = some cs ∧ cs.slot = (store.blocks r).slot ∧
+    ∃ cs, B.committedState r = some cs ∧ cs.slot = (store.blocks r).slot ∧
       compute_epoch_at_slot B.setup.cfg cs.slot ≤ B.setup.scope.last_epoch ∧
       ∃ bl vo, Reachable B.setup bl vo cs := by
   obtain ⟨cs, hcs, -, ⟨⟨bl, vo, hreach⟩, hH⟩, -, hslot, -⟩ := hs.known r hr
@@ -466,10 +471,10 @@ theorem known_witness {store : Store Root} (hs : B.BridgedStore store) {r : Root
 theorem unrealized_justified_max (hB : B.Admissible) {E : Execution Root}
     (hg : B.ConcreteGenesis E) (hwf : WellFormedExecution E) {r : Root}
     {b : BeaconBlock Root} {c : Checkpoint Root}
-    (hb : E.BlockKnownInScheduledPrefix B.setup.cfg B.ext r b)
+    (hb : E.BlockKnownInScheduledPrefix B.setup.cfg B.interface r b)
     (hE : GENESIS_EPOCH + 1 < compute_epoch_at_slot B.setup.cfg b.slot)
-    (hc : ∃ carrier, E.RootDescends r carrier ∧ B.Formed E carrier c) :
-    c.epoch ≤ (B.GU r).epoch := by
+    (hc : ∃ carrier, E.RootDescends r carrier ∧ B.CarriedOrRealizable E carrier c) :
+    c.epoch ≤ (B.unrealizedJustified r).epoch := by
   obtain ⟨x, hd, hf⟩ := hc
   obtain ⟨store, hstore, hr, hbr⟩ := hb
   have hs := B.bridgedStore_prefix hB hg hstore
@@ -496,20 +501,20 @@ theorem unrealized_justified_max (hB : B.Admissible) {E : Execution Root}
   have := hk (compute_epoch_at_slot B.setup.cfg csr.slot + 1) (by beacon_omega)
   rw [show compute_epoch_at_slot B.setup.cfg csr.slot + 1 -
     compute_epoch_at_slot B.setup.cfg csr.slot = 1 by beacon_omega] at this
-  rw [B.gu_epoch hB hcsr hreachr hHr]
+  rw [B.unrealizedJustified_epoch hB hcsr hreachr hHr]
   exact this
 
 /-- `realized_justified_max`. -/
 theorem realized_justified_max (hB : B.Admissible) {E : Execution Root}
     (hg : B.ConcreteGenesis E) (hwf : WellFormedExecution E) {r seed : Root}
     {b sb : BeaconBlock Root} {c : Checkpoint Root}
-    (hb : E.BlockKnownInScheduledPrefix B.setup.cfg B.ext r b)
-    (hsb : E.BlockKnownInScheduledPrefix B.setup.cfg B.ext seed sb)
+    (hb : E.BlockKnownInScheduledPrefix B.setup.cfg B.interface r b)
+    (hsb : E.BlockKnownInScheduledPrefix B.setup.cfg B.interface seed sb)
     (hds : E.RootDescends r seed)
     (hlt : compute_epoch_at_slot B.setup.cfg sb.slot < compute_epoch_at_slot B.setup.cfg b.slot)
     (hE : GENESIS_EPOCH + 2 < compute_epoch_at_slot B.setup.cfg b.slot)
-    (hc : ∃ carrier, E.RootDescends seed carrier ∧ B.Formed E carrier c) :
-    c.epoch ≤ (B.GJ r).epoch := by
+    (hc : ∃ carrier, E.RootDescends seed carrier ∧ B.CarriedOrRealizable E carrier c) :
+    c.epoch ≤ (B.realizedJustified r).epoch := by
   obtain ⟨x, hd, hf⟩ := hc
   obtain ⟨sstore, hsstore, hsr, hsbr⟩ := hsb
   have hss := B.bridgedStore_prefix hB hg hsstore
@@ -546,23 +551,23 @@ theorem realized_justified_max (hB : B.Admissible) {E : Execution Root}
   refine hj.trans ((cjRun_epoch_mono_len hinvx.current_epoch_le hjk).trans ?_)
   have := hk (compute_epoch_at_slot B.setup.cfg csr.slot) le_rfl
   rw [Nat.sub_self] at this
-  rw [B.gj_epoch hcsr]
+  rw [B.realizedJustified_epoch hcsr]
   exact this
 
 /-- `unrealized_justified_epoch_le_later_realized`. -/
 theorem unrealized_justified_epoch_le_later_realized (hB : B.Admissible) {E : Execution Root}
     (hg : B.ConcreteGenesis E) (hwf : WellFormedExecution E) {seed tip : Root}
     {sb tb : BeaconBlock Root}
-    (hsb : E.BlockKnownInScheduledPrefix B.setup.cfg B.ext seed sb)
-    (htb : E.BlockKnownInScheduledPrefix B.setup.cfg B.ext tip tb)
+    (hsb : E.BlockKnownInScheduledPrefix B.setup.cfg B.interface seed sb)
+    (htb : E.BlockKnownInScheduledPrefix B.setup.cfg B.interface tip tb)
     (hd : E.RootDescends tip seed)
     (hlt : compute_epoch_at_slot B.setup.cfg sb.slot < compute_epoch_at_slot B.setup.cfg tb.slot) :
-    (B.GU seed).epoch ≤ (B.GJ tip).epoch := by
+    (B.unrealizedJustified seed).epoch ≤ (B.realizedJustified tip).epoch := by
   obtain ⟨store, hstore, hr, hbr⟩ := htb
   have hs := B.bridgedStore_prefix hB hg hstore
   obtain ⟨hxk, csx, csr, hcsx, hcsr, -, hruns⟩ :=
     B.chain_runs hB hg hwf hstore hd hr (Execution.BlockKnownInScheduledPrefix.acceptedRoot
-      B.setup.cfg B.ext E hsb)
+      B.setup.cfg B.interface E hsb)
   obtain ⟨csx', hcsx', -, hHx, bx, vx, hreachx⟩ := B.known_witness hs hxk
   rw [hcsx] at hcsx'
   cases hcsx'
@@ -574,7 +579,7 @@ theorem unrealized_justified_epoch_le_later_realized (hB : B.Admissible) {E : Ex
   rw [← hslotr, ← hslotx] at hlt
   obtain ⟨br, vr, -, -, hk⟩ := hruns bx vx hreachx
   have hinvx := provenanceInvariant_of_reachable hB.setup hreachx hHx
-  rw [B.gu_epoch hB hcsx hreachx hHx, B.gj_epoch hcsr]
+  rw [B.unrealizedJustified_epoch hB hcsx hreachx hHx, B.realizedJustified_epoch hcsr]
   refine (cjRun_epoch_mono_len hinvx.current_epoch_le (b := compute_epoch_at_slot B.setup.cfg
     csr.slot - compute_epoch_at_slot B.setup.cfg csx.slot) (by beacon_omega)).trans ?_
   have := hk (compute_epoch_at_slot B.setup.cfg csr.slot) le_rfl
@@ -584,10 +589,10 @@ theorem unrealized_justified_epoch_le_later_realized (hB : B.Admissible) {E : Ex
 /-- `unrealized_justified_mono`. -/
 theorem unrealized_justified_mono (hB : B.Admissible) {E : Execution Root}
     (hg : B.ConcreteGenesis E) (hwf : WellFormedExecution E) {seed tip : Root}
-    (hseed : E.RootKnownInScheduledPrefix B.setup.cfg B.ext seed)
-    (htip : E.RootKnownInScheduledPrefix B.setup.cfg B.ext tip)
+    (hseed : E.RootKnownInScheduledPrefix B.setup.cfg B.interface seed)
+    (htip : E.RootKnownInScheduledPrefix B.setup.cfg B.interface tip)
     (hd : E.RootDescends tip seed) :
-    (B.GU seed).epoch ≤ (B.GU tip).epoch := by
+    (B.unrealizedJustified seed).epoch ≤ (B.unrealizedJustified tip).epoch := by
   obtain ⟨store, hstore, hr⟩ := htip
   have hs := B.bridgedStore_prefix hB hg hstore
   obtain ⟨hxk, csx, csr, hcsx, hcsr, hle, hruns⟩ := B.chain_runs hB hg hwf hstore hd hr hseed
@@ -600,7 +605,8 @@ theorem unrealized_justified_mono (hB : B.Admissible) {E : Execution Root}
   have hEle := compute_epoch_at_slot_mono (cfg := B.setup.cfg) hle
   obtain ⟨br, vr, hreachr, -, hk⟩ := hruns bx vx hreachx
   have hinvx := provenanceInvariant_of_reachable hB.setup hreachx hHx
-  rw [B.gu_epoch hB hcsx hreachx hHx, B.gu_epoch hB hcsr hreachr hHr]
+  rw [B.unrealizedJustified_epoch hB hcsx hreachx hHx,
+    B.unrealizedJustified_epoch hB hcsr hreachr hHr]
   refine (cjRun_epoch_mono_len hinvx.current_epoch_le (b := compute_epoch_at_slot B.setup.cfg
     csr.slot + 1 - compute_epoch_at_slot B.setup.cfg csx.slot) (by beacon_omega)).trans ?_
   have := hk (compute_epoch_at_slot B.setup.cfg csr.slot + 1) (by beacon_omega)
@@ -612,8 +618,8 @@ theorem unrealized_justified_mono (hB : B.Admissible) {E : Execution Root}
 theorem available_checkpoint_epoch_le_block (hB : B.Admissible) {E : Execution Root}
     (hg : B.ConcreteGenesis E) (hwf : WellFormedExecution E) {r : Root}
     {b : BeaconBlock Root} {c : Checkpoint Root}
-    (hb : E.BlockKnownInScheduledPrefix B.setup.cfg B.ext r b)
-    (hc : ∃ carrier, E.RootDescends r carrier ∧ B.Formed E carrier c) :
+    (hb : E.BlockKnownInScheduledPrefix B.setup.cfg B.interface r b)
+    (hc : ∃ carrier, E.RootDescends r carrier ∧ B.CarriedOrRealizable E carrier c) :
     c.epoch ≤ compute_epoch_at_slot B.setup.cfg b.slot := by
   obtain ⟨x, hd, hf⟩ := hc
   obtain ⟨store, hstore, hr, hbr⟩ := hb
@@ -633,12 +639,12 @@ with `q` in the epoch of the root and with its current justified checkpoint. -/
 theorem last_boundary (hB : B.Admissible) {store : Store Root} (hs : B.BridgedStore store)
     (E : Execution Root)
     (hedge : ∀ r ∈ store.block_roots, E.ParentEdge r (store.blocks r).parent_root) :
-    ∀ n, ∀ r ∈ store.block_roots, (store.blocks r).slot ≤ n → ∀ cr, B.stateOf r = some cr →
+    ∀ n, ∀ r ∈ store.block_roots, (store.blocks r).slot ≤ n → ∀ cr, B.committedState r = some cr →
       1 ≤ compute_epoch_at_slot B.setup.cfg cr.slot →
       ∃ q cp cq wire, q ∈ store.block_roots ∧ (store.blocks q).parent_root ∈ store.block_roots ∧
         E.RootDescends r q ∧
         q ≠ B.setup.genesisRoot ∧
-        B.stateOf (store.blocks q).parent_root = some cp ∧ B.stateOf q = some cq ∧
+        B.committedState (store.blocks q).parent_root = some cp ∧ B.committedState q = some cq ∧
         state_transition B.setup.cfg B.setup.preset B.setup.schedule B.setup.oracle cp wire =
           .ok cq ∧
         compute_epoch_at_slot B.setup.cfg cp.slot < compute_epoch_at_slot B.setup.cfg cr.slot ∧
@@ -651,7 +657,7 @@ theorem last_boundary (hB : B.Admissible) {store : Store Root} (hs : B.BridgedSt
     have hgen : r ≠ B.setup.genesisRoot := by
       intro h
       subst h
-      rw [B.stateOf_genesis] at hcr
+      rw [B.committedState_genesis] at hcr
       cases hcr
       change 1 ≤ compute_epoch_at_slot B.setup.cfg 0 at hE1
       simp [compute_epoch_at_slot] at hE1
@@ -685,21 +691,22 @@ anchor was realized by an epoch-boundary run from an accepted block of an
 earlier epoch. -/
 theorem realized_justified_realized (hB : B.Admissible) {E : Execution Root}
     (hg : B.ConcreteGenesis E) {r : Root} {b : BeaconBlock Root}
-    (hb : E.BlockKnownInScheduledPrefix B.setup.cfg B.ext r b) :
-    B.GJ r = B.anchorCheckpoint ∨
+    (hb : E.BlockKnownInScheduledPrefix B.setup.cfg B.interface r b) :
+    B.realizedJustified r = B.anchorCheckpoint ∨
       GENESIS_EPOCH + 2 < compute_epoch_at_slot B.setup.cfg b.slot ∧
-        ∃ seed sb, E.BlockKnownInScheduledPrefix B.setup.cfg B.ext seed sb ∧
+        ∃ seed sb, E.BlockKnownInScheduledPrefix B.setup.cfg B.interface seed sb ∧
           E.RootDescends r seed ∧
           compute_epoch_at_slot B.setup.cfg sb.slot < compute_epoch_at_slot B.setup.cfg b.slot ∧
-          ∃ carrier, E.RootDescends seed carrier ∧ B.Formed E carrier (B.GJ r) := by
+          ∃ carrier, E.RootDescends seed carrier ∧
+            B.CarriedOrRealizable E carrier (B.realizedJustified r) := by
   obtain ⟨store, hstore, hr, hbr⟩ := hb
   have hs := B.bridgedStore_prefix hB hg hstore
-  have hprov := Execution.ScheduledPrefixStore.blockProvenance B.setup.cfg B.ext E hstore
+  have hprov := Execution.ScheduledPrefixStore.blockProvenance B.setup.cfg B.interface E hstore
   obtain ⟨cr, hcr, hslot, hH, bl, vo, hreach⟩ := B.known_witness hs hr
   by_cases h0 : cr.current_justified_checkpoint.epoch = 0
   · left
-    rw [B.GJ_of r hcr]
-    unfold norm0
+    rw [B.realizedJustified_of r hcr]
+    unfold readAsAnchor
     rw [if_pos (by simpa [GENESIS_EPOCH] using h0)]
   right
   have h3 : 2 < compute_epoch_at_slot B.setup.cfg cr.slot := by
@@ -727,7 +734,7 @@ theorem realized_justified_realized (hB : B.Admissible) {E : Execution Root}
     cases hcq'
     refine Or.inr (Or.inr (Or.inr (Or.inr ⟨cp, wire.slot, atSlot, hcp, by rw [← hqs]; exact hHq,
       hslots, ?_⟩)))
-    rw [B.GJ_of r hcr, ← hcj, (process_block_checkpoints hblock).2.2.1]
+    rw [B.realizedJustified_of r hcr, ← hcj, (process_block_checkpoints hblock).2.2.1]
 
 end ConcreteBridge
 

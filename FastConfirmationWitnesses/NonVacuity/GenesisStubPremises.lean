@@ -1,196 +1,319 @@
 module
 public import Mathlib.Tactic
-public import FastConfirmationWitnesses.NonVacuity.GenesisStubFFG
-public import FastConfirmationProofs.Safety.NextSlotSafety
-public import FastConfirmationProofs.Safety.FinalizedCheckpointNextSlotSafety
+public import FastConfirmationWitnesses.NonVacuity.GenesisStubRun
+public import FastConfirmationProofs.ReviewTheorem
+public import FastConfirmationInternal.FFG.InterpretationFidelity
 
 public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 
 /-!
-# Genesis-stub non-vacuity: a real Phase0 genesis anchor
+# Genesis-stub witness: the safety premise with the Python genesis stub
 
-This file is the next-slot bundle of `NextSlotPremises` for the genesis-stub
-variant of the horizon-four run.  The anchor state carries the Phase0 genesis
-stub `(GENESIS_EPOCH, zeroRoot)` as its current justified and finalized
-checkpoints, while the trusted store anchor is `(0, anchorRoot)`.  The bundle
-reads the stub as the anchor (`CheckpointReadsAs`), and
-`genesis_stub_full_bundle_witness` shows that the bundle holds, the FCR still
-confirms the child root, and the anchor state need not carry the anchor
+This file proves that the run of `GenesisStubBridgeRun` satisfies the public
+safety premise `ConcreteBridge.SafetyPremises`. The anchor state is the
+Python genesis state: its current justified and finalized checkpoints are the
+stub `(GENESIS_EPOCH, junkRoot)`, and the stub root is not the anchor root.
+The FFG content is the canonical content of the bridge. The stub reads as the
+anchor checkpoint in the selectors of the bridge.
+`genesis_stub_full_bundle_witness` shows that the premise holds, that the FCR
+confirms the child, and that the anchor state does not carry the anchor
 checkpoint.
-
-This file proves that one finite execution satisfies the complete next-slot
-premise bundle. It combines the two parts of the horizon-four witness.  The
-operational execution lives in `GenesisStubBase`; the
-accepted FFG state and exact-link interpretation live in
-`GenesisStubFFG`.  It supplies the paper A3.2 law, the
-call-scoped helper provisos, and the public witness that packages them with the
-reset-free accepted next-slot safety fold.
-
-The finite reductions below are deliberately kept separate from the A3.2
-argument.  They document the exact executable trajectory rather than hiding
-it inside construction of the combined assumption record.
 -/
 
 namespace FastConfirmation.Spec
 namespace GenesisStubPremiseWitness
 
-open GenesisStubBase
-open GenesisStubFFG
+open ConcreteFFG
+open GenesisStubBridgeRun
 
-/-! ## Exact executable FCR and reset classifiers -/
+/-! ## Scheduled prefixes and known blocks -/
 
-theorem confirmed_at_one {v : ValidatorIndex}
-    (hv : v ∈ witnessExecution.honest) :
-    witnessExecution.confirmed witnessConfig witnessExternals v 1 =
-      anchorRoot := by
-  rcases honest_eq_zero_or_one_or_two_or_three hv with
-    rfl | rfl | rfl | rfl <;>
-    set_option maxRecDepth 50000 in decide
+def childPrefix : witnessExecution.ScheduledEventPrefix where
+  node := 0
+  previousSecond := 0
+  processedCount := 0
+  count_le := by decide
 
+def childPostPrefix : witnessExecution.ScheduledEventPrefix :=
+  childPrefix.successor (by decide)
 
+/-- At second eight the first event is the ordinary slot-seven receipt; the
+carrier block is the exact next event. -/
+def carrierPrefix : witnessExecution.ScheduledEventPrefix where
+  node := 0
+  previousSecond := 7
+  processedCount := 1
+  count_le := by decide
 
+def carrierPostPrefix : witnessExecution.ScheduledEventPrefix :=
+  carrierPrefix.successor (by decide)
 
-/-! ## Literal selected-helper provisos -/
+theorem child_known_post :
+    childRoot ∈ (childPostPrefix.store witnessConfig witnessExternals).block_roots := by
+  set_option maxRecDepth 100000 in decide +kernel
 
-private theorem bounded_no_currentTargetAcceptedEdge_under_selector :
-    ∀ (v : Fin 4) (n : Fin 15) (a c : WitnessRoot),
-      getLatestSelectorGuard witnessConfig
-          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
-            v.val n.val)
-          (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-            witnessExternals v.val n.val).afterObserved →
-        (a, c) ∈
-          (findLatestSelectedTrace witnessConfig witnessExternals
-            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
-              v.val n.val)
-            (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-              witnessExternals v.val n.val).afterObserved).2.2 →
-        get_block_epoch witnessConfig
-            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
-              v.val n.val).store a <
-        get_block_epoch witnessConfig
-            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
-              v.val n.val).store c →
-        False := by
-  simp only [getLatestSelectorGuard]
-  set_option maxRecDepth 50000 in decide
+theorem carrier_known_post :
+    carrierRoot ∈ (carrierPostPrefix.store witnessConfig witnessExternals).block_roots := by
+  set_option maxRecDepth 100000 in decide +kernel
 
-private theorem bounded_no_selectedPreviousResult_under_selector :
-    ∀ (v : Fin 4) (n : Fin 15) (result : WitnessRoot),
-      getLatestSelectorGuard witnessConfig
-          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
-            v.val n.val)
-          (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-            witnessExternals v.val n.val).afterObserved →
-        find_latest_confirmed_descendant witnessConfig witnessExternals
-          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
-            v.val n.val)
-          (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-            witnessExternals v.val n.val).afterObserved = result →
-        result ≠
-          (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-            witnessExternals v.val n.val).afterObserved →
-        get_block_epoch witnessConfig
-            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
-              v.val n.val).store result ≠
-          get_current_store_epoch witnessConfig
-            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
-              v.val n.val).store →
-        is_start_slot_at_epoch witnessConfig
-          (get_current_slot witnessConfig
-            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
-              v.val n.val).store) ≠ true →
-        False := by
-  simp only [getLatestSelectorGuard]
-  set_option maxRecDepth 50000 in decide
+theorem anchor_accepted :
+    witnessExecution.RootKnownInScheduledPrefix witnessConfig witnessExternals anchorRoot :=
+  ⟨witnessExecution.genesis_store, .genesis, (genesis_roots_iff anchorRoot).mpr rfl⟩
 
-/-- Whenever the executable selector is actually enabled in this witness,
-its current-target edge antecedent is empty.  Tentative edges computed at
-guard-false queries are deliberately outside this call-scoped statement. -/
-theorem no_currentTargetAcceptedEdge_under_selector
-    {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
-    (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
-    (hselector : getLatestSelectorGuard witnessConfig
-      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved)
-    (a c : WitnessRoot)
-    (hedge : CurrentTargetSelectedEdge witnessConfig witnessExternals
-      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved a c) : False := by
-  have hnlt := time_lt_sixteen hHn1
-  have hnlt' : n < 15 := by omega
-  have hvlt : v < 4 := by
-    rcases honest_eq_zero_or_one_or_two_or_three hv with
-      rfl | rfl | rfl | rfl <;> decide
-  let vf : Fin 4 := ⟨v, hvlt⟩
-  let nf : Fin 15 := ⟨n, hnlt'⟩
-  rcases hedge with ⟨hmem, hlt⟩
-  exact bounded_no_currentTargetAcceptedEdge_under_selector
-    vf nf a c hselector hmem hlt
+theorem child_accepted :
+    witnessExecution.RootKnownInScheduledPrefix witnessConfig witnessExternals childRoot :=
+  ⟨_, .scheduledPrefix childPostPrefix, child_known_post⟩
 
-/-- At an actual selector invocation, the strict selected-result antecedent
-from a previous block epoch is empty in this finite prefix. -/
-theorem no_selectedPreviousResult_under_selector
-    {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
-    (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
-    (hselector : getLatestSelectorGuard witnessConfig
-      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved)
-    (result : WitnessRoot)
-    (hout : find_latest_confirmed_descendant witnessConfig witnessExternals
-      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved = result)
-    (hstrict : result ≠
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved)
-    (hprevious : get_block_epoch witnessConfig
-      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n).store
-        result ≠ get_current_store_epoch witnessConfig
-          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n).store)
-    (hnotStart : is_start_slot_at_epoch witnessConfig
-      (get_current_slot witnessConfig
-        (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n).store)
-        ≠ true) : False := by
-  have hnlt := time_lt_sixteen hHn1
-  have hnlt' : n < 15 := by omega
-  have hvlt : v < 4 := by
-    rcases honest_eq_zero_or_one_or_two_or_three hv with
-      rfl | rfl | rfl | rfl <;> decide
-  let vf : Fin 4 := ⟨v, hvlt⟩
-  let nf : Fin 15 := ⟨n, hnlt'⟩
-  exact bounded_no_selectedPreviousResult_under_selector
-    vf nf result hselector hout hstrict hprevious hnotStart
+theorem carrier_accepted :
+    witnessExecution.RootKnownInScheduledPrefix witnessConfig witnessExternals carrierRoot :=
+  ⟨_, .scheduledPrefix carrierPostPrefix, carrier_known_post⟩
 
-theorem witnessSelectedHelperProvisos
-    {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
-    (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
-    (hselector : getLatestSelectorGuard witnessConfig
-      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved) :
-    SelectedPredictionVoteSupport witnessConfig witnessExternals witnessExecution
-      v (n + 1)
-      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved := by
-  refine
-    { current_edge_vote_support := ?_
-      previous_result_vote_support := ?_ }
-  · intro a c hedge
-    exact False.elim
-      (no_currentTargetAcceptedEdge_under_selector
-        hv hHn1 hselector a c hedge)
-  · intro result hout hstrict hprevious hnotStart
-    exact False.elim
-      (no_selectedPreviousResult_under_selector hv hHn1 hselector
-        result hout hstrict hprevious hnotStart)
+theorem child_acceptedBlockAt :
+    witnessExecution.BlockKnownInScheduledPrefix witnessConfig witnessExternals childRoot
+      childSignedBlock.message := by
+  refine ⟨_, .scheduledPrefix childPostPrefix, child_known_post, ?_⟩
+  set_option maxRecDepth 100000 in decide +kernel
 
-/-! ## Concrete late-prefix geometry used by Paper A3.2 -/
+theorem carrier_acceptedBlockAt :
+    witnessExecution.BlockKnownInScheduledPrefix witnessConfig witnessExternals carrierRoot
+      carrierSignedBlock.message := by
+  refine ⟨_, .scheduledPrefix carrierPostPrefix, carrier_known_post, ?_⟩
+  set_option maxRecDepth 100000 in decide +kernel
+
+/-! ## Finite block projection of every causal prefix -/
+
+theorem scheduledBlock_cases {b : SignedBeaconBlock WitnessRoot}
+    (h : IsScheduledBlock witnessExecution b) :
+    b = childSignedBlock ∨ b = carrierSignedBlock := by
+  obtain ⟨w, n, hmem⟩ := h
+  rcases block_mem_schedule_iff.mp hmem with hchild | hcarrier
+  · exact Or.inl hchild.2
+  · exact Or.inr hcarrier.2
+
+theorem genesis_blocks_anchor :
+    witnessExecution.genesis_store.blocks anchorRoot = anchorSignedBlock.message := by
+  set_option maxRecDepth 100000 in decide +kernel
+
+/-- Causal stores range over arbitrary nodes, seconds, and prefix lengths, but
+their known blocks have only these three rows. -/
+theorem causal_known_table {store : Store WitnessRoot}
+    (hstore : witnessExecution.ScheduledPrefixStore witnessConfig witnessExternals store)
+    {r : WitnessRoot} (hr : r ∈ store.block_roots) :
+    (r = anchorRoot ∧ store.blocks r = anchorSignedBlock.message) ∨
+      (r = childRoot ∧ store.blocks r = childSignedBlock.message) ∨
+      (r = carrierRoot ∧ store.blocks r = carrierSignedBlock.message) := by
+  rcases hstore.blockProvenance witnessConfig witnessExternals witnessExecution r hr with
+    hgen | hsched
+  · have hrAnchor : r = anchorRoot := (genesis_roots_iff r).mp hgen.1
+    left
+    refine ⟨hrAnchor, ?_⟩
+    rw [hgen.2, hrAnchor]
+    exact genesis_blocks_anchor
+  · obtain ⟨b, hb, hroot, hmessage⟩ := hsched
+    rcases scheduledBlock_cases hb with rfl | rfl
+    · right; left
+      exact ⟨hroot.symm, hmessage⟩
+    · right; right
+      exact ⟨hroot.symm, hmessage⟩
+
+theorem acceptedRoot_cases {r : WitnessRoot}
+    (hr : witnessExecution.RootKnownInScheduledPrefix witnessConfig witnessExternals r) :
+    r = anchorRoot ∨ r = childRoot ∨ r = carrierRoot := by
+  obtain ⟨store, hstore, hknown⟩ := hr
+  rcases causal_known_table hstore hknown with h | h | h
+  · exact Or.inl h.1
+  · exact Or.inr (Or.inl h.1)
+  · exact Or.inr (Or.inr h.1)
+
+theorem acceptedBlockAt_cases {r : WitnessRoot} {b : BeaconBlock WitnessRoot}
+    (h : witnessExecution.BlockKnownInScheduledPrefix witnessConfig witnessExternals r b) :
+    (r = anchorRoot ∧ b = anchorSignedBlock.message) ∨
+      (r = childRoot ∧ b = childSignedBlock.message) ∨
+      (r = carrierRoot ∧ b = carrierSignedBlock.message) := by
+  obtain ⟨store, hstore, hr, hblock⟩ := h
+  rcases causal_known_table hstore hr with h | h | h
+  · left; exact ⟨h.1, hblock.symm.trans h.2⟩
+  · right; left; exact ⟨h.1, hblock.symm.trans h.2⟩
+  · right; right; exact ⟨h.1, hblock.symm.trans h.2⟩
+
+/-! ## Concrete execution descent -/
+
+theorem child_parentEdge : witnessExecution.ParentEdge childRoot anchorRoot :=
+  Or.inr ⟨0, 1, childSignedBlock, block_mem_schedule_iff.mpr (Or.inl ⟨rfl, rfl⟩), rfl, rfl⟩
+
+theorem carrier_parentEdge : witnessExecution.ParentEdge carrierRoot childRoot :=
+  Or.inr ⟨0, 8, carrierSignedBlock, block_mem_schedule_iff.mpr (Or.inr ⟨rfl, rfl⟩), rfl, rfl⟩
+
+theorem child_descends_anchor : witnessExecution.RootDescends childRoot anchorRoot :=
+  .step child_parentEdge (.refl anchorRoot)
+
+/-- The anchor block's parent edge reaches the dangling parent root, which is
+also the root of the genesis stub (Python `ZERO_HASH`). -/
+theorem anchor_parentEdge : witnessExecution.ParentEdge anchorRoot junkRoot :=
+  Or.inl ⟨anchorRoot, (genesis_roots_iff anchorRoot).mpr rfl, rfl, by
+    rw [genesis_blocks_anchor]
+    rfl⟩
+
+theorem child_descends_stub : witnessExecution.RootDescends childRoot stubCheckpoint.root :=
+  .step child_parentEdge (.step anchor_parentEdge (.refl junkRoot))
+
+theorem carrier_descends_child : witnessExecution.RootDescends carrierRoot childRoot :=
+  .step carrier_parentEdge (.refl childRoot)
+
+theorem carrier_descends_anchor : witnessExecution.RootDescends carrierRoot anchorRoot :=
+  Execution.RootDescends.trans witnessExecution carrier_descends_child child_descends_anchor
+
+theorem parentEdge_val_lt {child parent : WitnessRoot}
+    (h : witnessExecution.ParentEdge child parent) : parent.val < child.val := by
+  rcases h with hgen | hsched
+  · obtain ⟨r, hr, rfl, rfl⟩ := hgen
+    have hrAnchor : child = anchorRoot := (genesis_roots_iff child).mp hr
+    subst child
+    change (witnessExecution.genesis_store.blocks anchorRoot).parent_root.val < 1
+    rw [genesis_blocks_anchor]
+    decide
+  · obtain ⟨w, n, b, hb, hchild, hparent⟩ := hsched
+    rcases block_mem_schedule_iff.mp hb with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · rw [hchild, hparent]
+      decide
+    · rw [hchild, hparent]
+      decide
+
+theorem rootDescends_val_le {source target : WitnessRoot}
+    (h : witnessExecution.RootDescends source target) : target.val ≤ source.val := by
+  induction h with
+  | refl => exact le_rfl
+  | step hedge _ ih => exact ih.trans (Nat.le_of_lt (parentEdge_val_lt hedge))
+
+theorem rootDescends_carrier_iff {r : WitnessRoot} :
+    witnessExecution.RootDescends r carrierRoot ↔ r = carrierRoot := by
+  constructor
+  · intro hdesc
+    have hle := rootDescends_val_le hdesc
+    change 3 ≤ r.val at hle
+    apply Fin.ext
+    change r.val = 3
+    have hrlt := r.isLt
+    omega
+  · rintro rfl
+    exact .refl carrierRoot
+
+/-! ## The bridge view -/
+
+/-- The paper A3.2 view of the run. -/
+noncomputable abbrev witnessView : CheckpointInclusionView witnessConfig witnessExecution :=
+  witnessBridge.checkpointInclusionView witnessExecution
+
+theorem known_bridge {r : WitnessRoot}
+    (h : witnessExecution.RootKnownInScheduledPrefix witnessConfig witnessExternals r) :
+    witnessExecution.RootKnownInScheduledPrefix witnessConfig witnessBridge.interface r := by
+  rw [interface_eq]
+  exact h
+
+theorem known_of_bridge {r : WitnessRoot}
+    (h : witnessExecution.RootKnownInScheduledPrefix witnessConfig witnessBridge.interface r) :
+    witnessExecution.RootKnownInScheduledPrefix witnessConfig witnessExternals r := by
+  rw [← interface_eq]
+  exact h
+
+theorem blockAt_cases {r : WitnessRoot} {b : BeaconBlock WitnessRoot}
+    (h : witnessView.BlockAt r b) :
+    (r = anchorRoot ∧ b = anchorSignedBlock.message) ∨
+      (r = childRoot ∧ b = childSignedBlock.message) ∨
+      (r = carrierRoot ∧ b = carrierSignedBlock.message) := by
+  change witnessExecution.BlockKnownInScheduledPrefix witnessConfig witnessBridge.interface r b
+    at h
+  rw [interface_eq] at h
+  exact acceptedBlockAt_cases h
+
+theorem checkpointAt_anchor_zero : witnessView.C anchorRoot 0 = anchorCheckpoint := by
+  decide +kernel
+
+theorem checkpointAt_child_zero : witnessView.C childRoot 0 = anchorCheckpoint := by
+  decide +kernel
+
+theorem checkpointAt_child_one : witnessView.C childRoot 1 = childEpochOneCheckpoint := by
+  decide +kernel
+
+theorem checkpointAt_anchor_one :
+    witnessView.C anchorRoot 1 = ({ epoch := 1, root := anchorRoot } : Checkpoint WitnessRoot) := by
+  decide +kernel
+
+theorem gu_child : witnessView.GU childRoot = anchorCheckpoint := by
+  decide +kernel
+
+theorem realizedJustified_anchor :
+    witnessBridge.realizedJustified anchorRoot = anchorCheckpoint := by
+  decide +kernel
+
+theorem realizedJustified_child : witnessBridge.realizedJustified childRoot = anchorCheckpoint := by
+  decide +kernel
+
+theorem unrealizedJustified_carrier :
+    witnessBridge.unrealizedJustified carrierRoot = childEpochOneCheckpoint := by
+  decide +kernel
+
+theorem formed_anchor_anchor : witnessView.formed anchorRoot anchorCheckpoint :=
+  ⟨known_bridge anchor_accepted, Or.inl realizedJustified_anchor.symm⟩
+
+theorem formed_child_anchor : witnessView.formed childRoot anchorCheckpoint :=
+  ⟨known_bridge child_accepted, Or.inl realizedJustified_child.symm⟩
+
+theorem formed_carrier_child : witnessView.formed carrierRoot childEpochOneCheckpoint :=
+  ⟨known_bridge carrier_accepted, Or.inr (Or.inr (Or.inl unrealizedJustified_carrier.symm))⟩
+
+/-! ### Body votes and `D_b` -/
+
+theorem indexed_wireVote {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
+    witnessBridge.indexed (wireVote s) = vote s := by
+  rw [indexed_eq_indexedList]
+  interval_cases s <;> decide +kernel
+
+/-- The body votes of the accepted blocks of the run are the three carrier
+votes. -/
+theorem bodyIncluded_cases {carrier : WitnessRoot} {a : Attestation WitnessRoot}
+    (h : witnessView.Included carrier a) :
+    carrier = carrierRoot ∧ (a = vote 4 ∨ a = vote 5 ∨ a = vote 6) := by
+  obtain ⟨-, -, wire, stateRoot, hopen, vote', hmem, rfl⟩ := h
+  have hentry := List.mem_of_find?_eq_some (Option.map_eq_some_iff.mp hopen).choose_spec.1
+  have hkey : ((Option.map_eq_some_iff.mp hopen).choose).1 = carrier := by
+    simpa using List.find?_some (Option.map_eq_some_iff.mp hopen).choose_spec.1
+  have hval := (Option.map_eq_some_iff.mp hopen).choose_spec.2
+  revert hentry hkey hval
+  generalize (Option.map_eq_some_iff.mp hopen).choose = e
+  intro hentry hkey hval
+  simp only [blockEntries, List.mem_cons, List.not_mem_nil, or_false] at hentry
+  rcases hentry with rfl | rfl
+  · simp only [Prod.mk.injEq] at hval
+    rw [← hval.1] at hmem
+    simp [childWire] at hmem
+  · simp only [Prod.mk.injEq] at hval
+    rw [← hval.1] at hmem
+    refine ⟨hkey.symm, ?_⟩
+    simp only [carrierWire, List.mem_cons, List.not_mem_nil, or_false] at hmem
+    rcases hmem with rfl | rfl | rfl
+    · exact Or.inl (indexed_wireVote (by decide) (by decide))
+    · exact Or.inr (Or.inl (indexed_wireVote (by decide) (by decide)))
+    · exact Or.inr (Or.inr (indexed_wireVote (by decide) (by decide)))
+
+theorem witness_hasSlashablePairOnChain_false (tip : WitnessRoot) (i : ValidatorIndex) :
+    ¬ witnessView.HasSlashablePairOnChain witnessConfig tip i := by
+  rintro ⟨a₁, a₂, ⟨carrier₁, -, hinc₁⟩, ⟨carrier₂, -, hinc₂⟩, hi₁, hi₂, hslash⟩
+  obtain ⟨-, h₁⟩ := bodyIncluded_cases hinc₁
+  obtain ⟨-, h₂⟩ := bodyIncluded_cases hinc₂
+  rcases h₁ with rfl | rfl | rfl <;> rcases h₂ with rfl | rfl | rfl <;>
+    simp_all [vote, voteData, is_slashable_attestation_data]
+
+theorem witness_slashableOnChain_eq_empty (tip : WitnessRoot) :
+    witnessView.slashableOnChain witnessConfig tip = ∅ := by
+  classical
+  rw [Finset.eq_empty_iff_forall_notMem]
+  intro i hi
+  unfold CheckpointInclusionView.slashableOnChain at hi
+  exact witness_hasSlashablePairOnChain_false tip i (Finset.mem_filter.mp hi).2
+
+/-! ## Late-prefix geometry -/
 
 structure LateStoreFacts (w : ValidatorIndex) (m : ℕ) : Prop where
   anchor_known : anchorRoot ∈
@@ -200,41 +323,23 @@ structure LateStoreFacts (w : ValidatorIndex) (m : ℕ) : Prop where
   carrier_known : carrierRoot ∈
     (witnessExecution.store witnessConfig witnessExternals w m).block_roots
   child_target_key : childEpochOneCheckpoint ∈
-    (witnessExecution.store witnessConfig witnessExternals w m
-      ).checkpoint_state_keys
+    (witnessExecution.store witnessConfig witnessExternals w m).checkpoint_state_keys
   anchor_epoch : get_block_epoch witnessConfig
-    (witnessExecution.store witnessConfig witnessExternals w m)
-      anchorRoot = 0
+    (witnessExecution.store witnessConfig witnessExternals w m) anchorRoot = 0
   child_epoch : get_block_epoch witnessConfig
-    (witnessExecution.store witnessConfig witnessExternals w m)
-      childRoot = 0
+    (witnessExecution.store witnessConfig witnessExternals w m) childRoot = 0
   carrier_epoch : get_block_epoch witnessConfig
-    (witnessExecution.store witnessConfig witnessExternals w m)
-      carrierRoot = 2
+    (witnessExecution.store witnessConfig witnessExternals w m) carrierRoot = 2
   carrier_descends_anchor : is_ancestor
     (witnessExecution.store witnessConfig witnessExternals w m)
       (get_node_for_root carrierRoot) (get_node_for_root anchorRoot) = true
   carrier_descends_child : is_ancestor
     (witnessExecution.store witnessConfig witnessExternals w m)
       (get_node_for_root carrierRoot) (get_node_for_root childRoot) = true
-  carrier_descends_self : is_ancestor
-    (witnessExecution.store witnessConfig witnessExternals w m)
-      (get_node_for_root carrierRoot) (get_node_for_root carrierRoot) = true
-  head_descends_anchor : is_ancestor
-    (witnessExecution.store witnessConfig witnessExternals w m)
-      (get_head witnessConfig
-        (witnessExecution.store witnessConfig witnessExternals w m))
-      (get_node_for_root anchorRoot) = true
   head_descends_child : is_ancestor
     (witnessExecution.store witnessConfig witnessExternals w m)
-      (get_head witnessConfig
-        (witnessExecution.store witnessConfig witnessExternals w m))
+      (get_head witnessConfig (witnessExecution.store witnessConfig witnessExternals w m))
       (get_node_for_root childRoot) = true
-  head_descends_carrier : is_ancestor
-    (witnessExecution.store witnessConfig witnessExternals w m)
-      (get_head witnessConfig
-        (witnessExecution.store witnessConfig witnessExternals w m))
-      (get_node_for_root carrierRoot) = true
 
 theorem lateStoreFacts (w : ValidatorIndex) (m : ℕ)
     (hHm : witnessExecution.WithinHorizon witnessConfig m)
@@ -242,61 +347,61 @@ theorem lateStoreFacts (w : ValidatorIndex) (m : ℕ)
     LateStoreFacts w m := by
   have hmlt := time_lt_sixteen hHm
   rw [slot_at_eq] at h8m
-  constructor <;>
-    rw [witness_store_symmetric w 0 m] <;>
-    interval_cases m <;>
-    set_option maxRecDepth 50000 in decide
+  constructor <;> rw [witness_store_symmetric w 0 m] <;> interval_cases m <;>
+    (set_option maxRecDepth 100000 in decide +kernel)
 
 theorem slot_at_ge_eight_of_epoch_two {m : ℕ}
     (hHm : witnessExecution.WithinHorizon witnessConfig m)
-    (hepoch : compute_epoch_at_slot witnessConfig
-      (witnessExecution.slot_at witnessConfig m) = 2) :
+    (hepoch : compute_epoch_at_slot witnessConfig (witnessExecution.slot_at witnessConfig m) = 2) :
     8 ≤ witnessExecution.slot_at witnessConfig m := by
   have hmlt := time_lt_sixteen hHm
   rw [slot_at_eq] at hepoch ⊢
-  interval_cases m <;>
-    norm_num [witnessConfig, compute_epoch_at_slot] at hepoch <;>
-    norm_num
+  interval_cases m <;> norm_num [witnessConfig, compute_epoch_at_slot] at hepoch <;> norm_num
 
-theorem vote_received_by_from_eight {w : ValidatorIndex} {m : ℕ}
-    {s : Slot} (hs4 : 4 ≤ s) (hs6 : s ≤ 6) (hm8 : 8 ≤ m) :
+theorem vote_received_by_from_eight {w : ValidatorIndex} {m : ℕ} {s : Slot}
+    (hs4 : 4 ≤ s) (hs6 : s ≤ 6) (hm8 : 8 ≤ m) :
     witnessExecution.AttestationReceivedBy w m (vote s) := by
   refine ⟨s + 1, ?_, false, ?_⟩
   · exact (Nat.succ_le_succ hs6).trans (by omega : 7 ≤ m)
   change Event.attestation (vote s) false ∈ witnessSchedule w (s + 1)
-  interval_cases s <;>
-    simp [witnessSchedule, vote4, vote5, vote6]
-
-theorem child_acceptedBlockAt :
-    witnessExecution.BlockKnownInScheduledPrefix witnessConfig witnessExternals childRoot
-      childSignedBlock.message := by
-  refine ⟨childTransition.postStore, childTransition.post_causal, ?_, ?_⟩
-  · simpa [childSignedBlock] using childTransition.root_known
-  · simpa [childSignedBlock] using
-      childTransition.inserted_message_fresh (by
-        set_option maxRecDepth 50000 in decide)
+  interval_cases s <;> simp [witnessSchedule]
 
 theorem child_canonical_throughout_epoch_two :
-    witnessExecution.CanonicalThroughoutEpoch witnessConfig witnessExternals
+    witnessExecution.CanonicalThroughoutEpoch witnessConfig witnessBridge.interface
       childRoot 2 := by
+  rw [interface_eq]
   intro w hw m hHm hepoch
   have h8m := slot_at_ge_eight_of_epoch_two hHm hepoch
   have hlate := lateStoreFacts w m hHm h8m
   exact ⟨hlate.child_known, hlate.head_descends_child⟩
 
+/-! ## Paper A3.2 support -/
 
-/-! ## Exact positive Paper A3.2 support -/
+theorem registry_length : witnessExecution.registry.length = 4 := by
+  rw [registry_eq]
+  rfl
 
-noncomputable def witnessAnchorChildLinkSupportAt
-    (w : ValidatorIndex) (m : ℕ) (tip : WitnessRoot)
+/-- The anchor-to-child link support at one view in epoch 2. -/
+noncomputable def witnessAnchorChildLinkSupportAt (w : ValidatorIndex) (m : ℕ) (tip : WitnessRoot)
     (hHm : witnessExecution.WithinHorizon witnessConfig m)
-    (hepoch : compute_epoch_at_slot witnessConfig
-      (witnessExecution.slot_at witnessConfig m) = 2) :
-    witnessAcceptedChainFFGState.PaperA32LinkSupportAt witnessConfig
-      witnessExternals w m tip anchorCheckpoint childEpochOneCheckpoint := by
+    (hepoch : compute_epoch_at_slot witnessConfig (witnessExecution.slot_at witnessConfig m) = 2) :
+    SourceTargetLinkSupportAt witnessConfig witnessExternals witnessView w m tip
+      anchorCheckpoint childEpochOneCheckpoint := by
   have h8slot := slot_at_ge_eight_of_epoch_two hHm hepoch
   have h8m : 8 ≤ m := by simpa only [slot_at_eq] using h8slot
   have hlate := lateStoreFacts w m hHm h8slot
+  have hkeyed : ((witnessExecution.store witnessConfig witnessExternals w m).checkpoint_states
+      childEpochOneCheckpoint).validators = witnessScope.validators := by
+    rw [← registry_eq]
+    exact (witnessStore_registryConstant w m).2 _ hlate.child_target_key
+  have hvalid : ∀ s, 4 ≤ s → s ≤ 6 → witnessExternals.is_valid_indexed_attestation
+      ((witnessExecution.store witnessConfig witnessExternals w m).checkpoint_states
+        childEpochOneCheckpoint) (vote s) = true := by
+    intro s _ hs6
+    have hs16 : s < 16 := hs6.trans_lt (by decide)
+    refine (witness_valid_iff _ _).2 ⟨ground_structure hkeyed, ?_, vote_mem_ground hs16⟩
+    rw [hkeyed]
+    decide
   refine
     { view_within_horizon := hHm
       source_before_target := by decide
@@ -307,398 +412,431 @@ noncomputable def witnessAnchorChildLinkSupportAt
       signers_not_slashable := ?_
       signers_in_registry := ?_
       signer_attestation := ?_
-      supermajority := by decide }
-  · intro i hi
-    change i ∉ witnessAcceptedChainFFGState.slashableOnChain
-      witnessConfig witnessExternals tip
+      supermajority := by decide +kernel }
+  · intro i _
     rw [witness_slashableOnChain_eq_empty]
     simp
   · intro i hi
+    rw [registry_length]
     simp only [Finset.mem_insert, Finset.mem_singleton] at hi
-    rcases hi with rfl | rfl | rfl <;>
-      simp [Execution.registry, Execution.anchor_state, witnessExecution,
-        anchorState, stateAt, anchorSignedBlock, get_forkchoice_store]
+    rcases hi with rfl | rfl | rfl <;> simp
   · intro i hi
     simp only [Finset.mem_insert, Finset.mem_singleton] at hi
     rcases hi with rfl | rfl | rfl
-    · refine ⟨vote4, vote_received_by_from_eight
-          (s := 4) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
-          ?_, ?_⟩
+    · refine ⟨vote 4, vote_received_by_from_eight (s := 4) (by decide) (by decide) h8m, ?_,
+        hvalid 4 (by decide) (by decide), slot_within_of_lt_sixteen (by decide), ?_, ?_, ?_,
+        Or.inr ⟨rfl, rfl⟩, rfl⟩
       · decide
-      · apply (witness_valid_iff _ _).2
-        refine ⟨?_, vote_mem_ground (by decide)⟩
-        rw [(witnessStore_registryConstant w m).2 _ hlate.child_target_key]
-        decide
-      · exact slot_within_of_lt_sixteen (by decide)
-      · simpa only [vote4, vote_data_slot, slot_at_eq] using
-          (by omega : 4 ≤ m)
+      · simpa only [vote_data_slot, slot_at_eq] using (by omega : 4 ≤ m)
       · decide
       · decide
-      · exact stub_reads_anchor
-      · rfl
-    · refine ⟨vote5, vote_received_by_from_eight
-          (s := 5) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
-          ?_, ?_⟩
+    · refine ⟨vote 5, vote_received_by_from_eight (s := 5) (by decide) (by decide) h8m, ?_,
+        hvalid 5 (by decide) (by decide), slot_within_of_lt_sixteen (by decide), ?_, ?_, ?_,
+        Or.inr ⟨rfl, rfl⟩, rfl⟩
       · decide
-      · apply (witness_valid_iff _ _).2
-        refine ⟨?_, vote_mem_ground (by decide)⟩
-        rw [(witnessStore_registryConstant w m).2 _ hlate.child_target_key]
-        decide
-      · exact slot_within_of_lt_sixteen (by decide)
-      · simpa only [vote5, vote_data_slot, slot_at_eq] using
-          (by omega : 5 ≤ m)
+      · simpa only [vote_data_slot, slot_at_eq] using (by omega : 5 ≤ m)
       · decide
       · decide
-      · exact stub_reads_anchor
-      · rfl
-    · refine ⟨vote6, vote_received_by_from_eight
-          (s := 6) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
-          ?_, ?_⟩
+    · refine ⟨vote 6, vote_received_by_from_eight (s := 6) (by decide) (by decide) h8m, ?_,
+        hvalid 6 (by decide) (by decide), slot_within_of_lt_sixteen (by decide), ?_, ?_, ?_,
+        Or.inr ⟨rfl, rfl⟩, rfl⟩
       · decide
-      · apply (witness_valid_iff _ _).2
-        refine ⟨?_, vote_mem_ground (by decide)⟩
-        rw [(witnessStore_registryConstant w m).2 _ hlate.child_target_key]
-        decide
-      · exact slot_within_of_lt_sixteen (by decide)
-      · simpa only [vote6, vote_data_slot, slot_at_eq] using
-          (by omega : 6 ≤ m)
+      · simpa only [vote_data_slot, slot_at_eq] using (by omega : 6 ≤ m)
       · decide
       · decide
-      · exact stub_reads_anchor
-      · rfl
 
 theorem witnessPaperA32Support_child_one :
-    witnessAcceptedChainFFGState.SourceTargetSupportThroughoutEpoch witnessConfig
-      witnessExternals childRoot 1 := by
+    SourceTargetSupportThroughoutEpoch witnessConfig witnessBridge.interface witnessView
+      childRoot 1 := by
+  rw [interface_eq]
   intro w hw m hHm hepoch
   have h8slot := slot_at_ge_eight_of_epoch_two hHm hepoch
   have hlate := lateStoreFacts w m hHm h8slot
   refine ⟨hlate.child_known, ?_, ?_⟩
-  · simpa only [hlate.child_epoch] using (by decide : 0 ≤ 1)
-  intro tip htip hdesc
-  have hsource :
-      (witnessAcceptedChainFFGState.checkpoint_inclusion_view witnessConfig
-        witnessExternals).voting_source_at witnessConfig
-          (witnessExecution.store witnessConfig witnessExternals w m)
-          childRoot 1 = anchorCheckpoint := by
-    change (if get_block_epoch witnessConfig
-        (witnessExecution.store witnessConfig witnessExternals w m)
-          childRoot = 1 then
-        witnessAcceptedChainFFGState.realized_justified childRoot
-      else witnessAcceptedChainFFGState.unrealized_justified childRoot) = anchorCheckpoint
-    rw [hlate.child_epoch]
-    rfl
-  simpa only [hsource, witnessC_child_one] using
-    Nonempty.intro
-      (witnessAnchorChildLinkSupportAt w m tip hHm hepoch)
-
+  · rw [hlate.child_epoch]
+    decide
+  intro tip _ _
+  have hsource : witnessView.voting_source_at witnessConfig
+      (witnessExecution.store witnessConfig witnessExternals w m) childRoot 1 =
+        anchorCheckpoint := by
+    unfold CheckpointInclusionView.voting_source_at
+    rw [hlate.child_epoch, if_neg (by decide), gu_child]
+  rw [hsource, checkpointAt_child_one]
+  exact ⟨witnessAnchorChildLinkSupportAt w m tip hHm hepoch⟩
 
 theorem witnessPaperA32Support_anchor_one_false :
-    ¬ witnessAcceptedChainFFGState.SourceTargetSupportThroughoutEpoch
-      witnessConfig witnessExternals anchorRoot 1 := by
+    ¬ SourceTargetSupportThroughoutEpoch witnessConfig witnessBridge.interface witnessView
+      anchorRoot 1 := by
+  rw [interface_eq]
   intro hsupport
   have hH8 : witnessExecution.WithinHorizon witnessConfig 8 :=
     time_within_of_lt_sixteen (by decide)
-  have hepoch8 : compute_epoch_at_slot witnessConfig
-      (witnessExecution.slot_at witnessConfig 8) = 2 := by
+  have hepoch8 :
+      compute_epoch_at_slot witnessConfig (witnessExecution.slot_at witnessConfig 8) = 2 := by
+    rw [slot_at_eq]
     decide
-  obtain ⟨_hanchorKnown, _hanchorEpoch, hall⟩ :=
-    hsupport 0 (by decide) 8 hH8 hepoch8
-  have hlate := lateStoreFacts 0 8 hH8 (by decide)
-  have hdesc : is_ancestor
-      (witnessExecution.store witnessConfig witnessExternals 0 8)
+  obtain ⟨_, _, hall⟩ := hsupport 0 (by decide) 8 hH8 hepoch8
+  have hlate := lateStoreFacts 0 8 hH8 (by rw [slot_at_eq])
+  have hdesc : is_ancestor (witnessExecution.store witnessConfig witnessExternals 0 8)
       (get_node_for_root carrierRoot)
-      (get_node_for_root
-        ((witnessAcceptedChainFFGState.checkpoint_inclusion_view witnessConfig
-          witnessExternals).C anchorRoot 1).root) = true := by
-    simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view, witnessC_anchor_one] using
-      hlate.carrier_descends_anchor
+      (get_node_for_root (witnessView.C anchorRoot 1).root) = true := by
+    rw [checkpointAt_anchor_one]
+    exact hlate.carrier_descends_anchor
   obtain ⟨L⟩ := hall carrierRoot hlate.carrier_known hdesc
   have hsigners : L.signers.Nonempty := by
     by_contra hnone
-    have hempty : L.signers = ∅ :=
-      Finset.not_nonempty_iff_eq_empty.mp hnone
+    have hempty : L.signers = ∅ := Finset.not_nonempty_iff_eq_empty.mp hnone
     have hzero : 2 * witnessExecution.total_active witnessConfig ≤ 0 := by
-      simpa only [hempty, Execution.weight, Finset.sum_empty,
-        Nat.mul_zero] using L.supermajority
+      simpa only [hempty, Execution.weight, Finset.sum_empty, Nat.mul_zero] using
+        L.supermajority
     exact (Nat.not_lt_of_ge hzero)
-      (Nat.mul_pos (by omega)
-        (witnessExecution.total_active_pos witnessConfig))
+      (Nat.mul_pos (by omega) (witnessExecution.total_active_pos witnessConfig))
   obtain ⟨i, hi⟩ := hsigners
-  obtain ⟨a, hreceived, _hiatt, _hvalid, _hslotH, _hslotLe,
-    _hepoch, _hcommittee, _hsource, htarget⟩ :=
-      L.signer_attestation i hi
-  obtain ⟨k, hk, fromBlock, hmem⟩ := hreceived
-  have hground := attestation_mem_schedule_ground hmem
-  obtain ⟨s, hslt, rfl⟩ := groundVote_exists hground
-  have htarget' : (vote s).data.target =
-      ({ epoch := 1, root := anchorRoot } : Checkpoint WitnessRoot) := by
-    simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view, witnessC_anchor_one] using
-      htarget
+  obtain ⟨a, hreceived, -, -, -, -, -, -, -, htarget⟩ := L.signer_attestation i hi
+  obtain ⟨k, -, fromBlock, hmem⟩ := hreceived
+  obtain ⟨s, hslt, rfl⟩ := groundVote_exists (attestation_mem_schedule_ground hmem)
+  rw [checkpointAt_anchor_one] at htarget
   interval_cases s <;>
-    simp [vote, voteData, anchorCheckpoint, childEpochOneCheckpoint,
-      carrierEpochTwoCheckpoint, carrierEpochThreeCheckpoint,
-      anchorRoot, childRoot, carrierRoot] at htarget'
+    simp [vote, voteData, anchorCheckpoint, childEpochOneCheckpoint, carrierEpochTwoCheckpoint,
+      carrierEpochThreeCheckpoint, anchorRoot, childRoot, carrierRoot] at htarget
 
-/-! ## Universal Paper A3.2 -/
+/-! ## Paper A3.2 -/
 
 theorem witnessPaperA32Inclusion :
-    witnessAcceptedChainFFGState.EventualCheckpointInclusion witnessConfig
-      witnessExternals := by
+    EventualCheckpointInclusion witnessConfig witnessBridge.interface witnessView := by
   constructor
   intro b bb e hb hbe hcanonical hsupport w hw m hHm hboundary
+  rw [interface_eq]
   cases e with
   | zero =>
       have h8slot : 8 ≤ witnessExecution.slot_at witnessConfig m := by
         simpa [compute_start_slot_at_epoch, witnessConfig] using hboundary
       have hlate := lateStoreFacts w m hHm h8slot
-      rcases acceptedBlockAt_cases hb with h | h | h
+      rcases blockAt_cases hb with h | h | h
       · rcases h with ⟨rfl, rfl⟩
-        refine ⟨anchorRoot, hlate.anchor_known, hlate.anchor_known,
-          is_ancestor_refl _ _, ?_, Or.inl (Nat.zero_le _), ?_⟩
+        refine ⟨anchorRoot, hlate.anchor_known, hlate.anchor_known, is_ancestor_refl _ _, ?_,
+          Or.inl (Nat.zero_le _), ?_⟩
         · rw [hlate.anchor_epoch]
           decide
-        · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-            witnessC_anchor_zero] using
-            (⟨anchorRoot, .refl anchorRoot, witnessFormed_anchor⟩ :
-              witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig
-                witnessExternals anchorRoot anchorCheckpoint)
+        · rw [checkpointAt_anchor_zero]
+          exact ⟨anchorRoot, .refl anchorRoot, formed_anchor_anchor⟩
       · rcases h with ⟨rfl, rfl⟩
-        refine ⟨childRoot, hlate.child_known, hlate.child_known,
-          is_ancestor_refl _ _, ?_, Or.inl (Nat.zero_le _), ?_⟩
+        refine ⟨childRoot, hlate.child_known, hlate.child_known, is_ancestor_refl _ _, ?_,
+          Or.inl (Nat.zero_le _), ?_⟩
         · rw [hlate.child_epoch]
           decide
-        · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-            witnessC_child_zero] using
-            (⟨anchorRoot, child_descends_anchor, witnessFormed_anchor⟩ :
-              witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig
-                witnessExternals childRoot anchorCheckpoint)
+        · rw [checkpointAt_child_zero]
+          exact ⟨childRoot, .refl childRoot, formed_child_anchor⟩
       · rcases h with ⟨rfl, rfl⟩
-        norm_num [carrierSignedBlock, witnessConfig,
-          compute_epoch_at_slot] at hbe
+        norm_num [carrierSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
   | succ e =>
       cases e with
       | zero =>
-          rcases acceptedBlockAt_cases hb with h | h | h
+          rcases blockAt_cases hb with h | h | h
           · rcases h with ⟨rfl, rfl⟩
-            exact False.elim
-              (witnessPaperA32Support_anchor_one_false hsupport)
+            exact False.elim (witnessPaperA32Support_anchor_one_false hsupport)
           · rcases h with ⟨rfl, rfl⟩
-            have h12slot : 12 ≤
-                witnessExecution.slot_at witnessConfig m := by
-              simpa [compute_start_slot_at_epoch, witnessConfig] using
-                hboundary
-            have h8slot : 8 ≤
-                witnessExecution.slot_at witnessConfig m :=
-              (by decide : 8 ≤ 12).trans h12slot
-            have hlate := lateStoreFacts w m hHm h8slot
+            have h12slot : 12 ≤ witnessExecution.slot_at witnessConfig m := by
+              simpa [compute_start_slot_at_epoch, witnessConfig] using hboundary
+            have hlate := lateStoreFacts w m hHm ((by decide : 8 ≤ 12).trans h12slot)
             refine ⟨carrierRoot, hlate.carrier_known, hlate.child_known,
               hlate.carrier_descends_child, ?_, Or.inr ?_, ?_⟩
             · rw [hlate.carrier_epoch]
               decide
             · rw [hlate.carrier_epoch]
               decide
-            · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-                witnessC_child_one] using witnessAU_carrier_child
+            · rw [checkpointAt_child_one]
+              exact ⟨carrierRoot, .refl carrierRoot, formed_carrier_child⟩
           · rcases h with ⟨rfl, rfl⟩
-            norm_num [carrierSignedBlock, witnessConfig,
-              compute_epoch_at_slot] at hbe
+            norm_num [carrierSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
       | succ e =>
           have hmlt := time_lt_sixteen hHm
           rw [slot_at_eq] at hboundary
-          change (Nat.succ (Nat.succ e) + 2) * 4 ≤ m at hboundary
+          change (e + 1 + 1 + 2) * 4 ≤ m at hboundary
           omega
 
-/-!
-## Combined accepted bundle and public witness
+/-! ## The safety premise -/
 
-The exact bundle and joint witness follow after the accepted-transition
-finalization-delay witness below.
--/
+theorem witnessAdmissible : witnessBridge.Admissible where
+  setup := ⟨by decide, rfl, by decide +kernel⟩
+  numeric := by norm_num [UINT64_MAX, witnessBridge, witnessSetup, witnessScope, witnessConfig,
+    witnessPreset]
 
-theorem witnessAcceptedRealizedFinalizationDelay :
-    witnessExecution.ImportedBlockFinalizationLag witnessConfig
-      witnessExternals witnessAcceptedSemantics := by
-  intro t
-  change
-    CheckpointReadsAs (t.postStore.block_states t.signedBlock.root).finalized_checkpoint
-        anchorCheckpoint ∨
-      (t.postStore.block_states t.signedBlock.root
-          ).finalized_checkpoint.epoch + 2 ≤
-        compute_epoch_at_slot witnessConfig t.signedBlock.message.slot
-  rcases acceptedTransition_cases t with h | h
-  · left
-    rw [h.1]
-    change CheckpointReadsAs (t.postStore.block_states childRoot).finalized_checkpoint
-      anchorCheckpoint
-    rw [h.2]
-    exact stub_reads_anchor
-  · left
-    rw [h.1]
-    change CheckpointReadsAs (t.postStore.block_states carrierRoot).finalized_checkpoint
-      anchorCheckpoint
-    rw [h.2]
-    exact stub_reads_anchor
+theorem witnessConcreteGenesis : witnessBridge.ConcreteGenesis witnessExecution :=
+  ⟨anchorSignedBlock, rfl, rfl, by decide, rfl, by decide +kernel, rfl⟩
 
-def witnessCompletedPrefixCallAssumptions :
-    witnessExecution.ScheduledFCRCallPremises
-      witnessConfig witnessExternals where
-  synchrony := witnessPaperSafetySynchrony
+theorem witnessBodyAttestationsDelivered :
+    witnessBridge.BodyAttestationsDelivered witnessExecution := by
+  intro r b hb a ha
+  change witnessExecution.BlockKnownInScheduledPrefix witnessConfig witnessBridge.interface r b
+    at hb
+  rw [interface_eq] at hb
+  rcases acceptedBlockAt_cases hb with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩
+  · simp [anchorSignedBlock] at ha
+  · simp [childSignedBlock] at ha
+  · refine ⟨0, 8, ?_⟩
+    simp only [carrierSignedBlock, List.mem_cons, List.not_mem_nil, or_false] at ha
+    rcases ha with rfl | rfl | rfl <;> simp [witnessExecution, witnessSchedule]
+
+theorem committedState_cases {r : WitnessRoot} {cs : FFGBeaconState WitnessRoot}
+    (h : witnessBridge.committedState r = some cs) :
+    cs = witnessSetup.genesis ∨ cs = childFFGState ∨ cs = carrierFFGState := by
+  unfold ConcreteBridge.committedState at h
+  split_ifs at h
+  · cases h
+    exact Or.inl rfl
+  · split at h
+    · rcases stateEntries_cases h with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩
+      · exact Or.inl rfl
+      · exact Or.inr (Or.inl rfl)
+      · exact Or.inr (Or.inr rfl)
+    · cases h
+
+theorem witnessEpochOneFinalizationScope :
+    witnessBridge.EpochOneFinalizationScope witnessExecution := by
+  intro r cs _ hcs _ _ _
+  have hcheck : cs.finalized_checkpoint.epoch = 0 ∧ cs.previous_justified_checkpoint.epoch = 0 ∧
+      cs.current_justified_checkpoint.epoch = 0 := by
+    rcases committedState_cases hcs with rfl | rfl | rfl <;> exact ⟨rfl, rfl, rfl⟩
+  refine ⟨fun h => absurd h (by rw [hcheck.1]; decide), ?_⟩
+  intro eager heager hf
+  obtain ⟨_, _, _, f, rfl, hcase⟩ := process_justification_and_finalization_outcome heager
+  change f.epoch = GENESIS_EPOCH + 1 at hf
+  exfalso
+  rcases hcase with ⟨-, -, -, rfl⟩ | ⟨-, -, -, rfl | rfl | rfl⟩
+  · rw [hcheck.1] at hf
+    exact absurd hf (by decide)
+  · rw [hcheck.1] at hf
+    exact absurd hf (by decide)
+  · rw [hcheck.2.1] at hf
+    exact absurd hf (by decide)
+  · rw [hcheck.2.2] at hf
+    exact absurd hf (by decide)
+
+theorem witnessEpochEndsFitUint64 : EpochEndsFitUint64 witnessConfig := by
+  refine ⟨2 ^ 62, ?_⟩
+  norm_num [EpochEndsFitUint64, UINT64_MAX, witnessConfig]
+
+/-- **The safety premise of the run.** -/
+theorem witnessSafetyPremises : witnessBridge.SafetyPremises witnessExecution where
+  admissible := witnessAdmissible
+  genesis := witnessConcreteGenesis
+  horizon_scope := rfl
+  whole_seconds := by decide
+  wellFormed := witnessWellFormedExecution
+  externals_coherence := by
+    rw [interface_eq]
+    exact witnessExternalsCoherence
+  honest_behavior := by
+    rw [interface_eq]
+    exact witnessHonestBehavior
+  body_attestations_delivered := witnessBodyAttestationsDelivered
+  synchrony := by
+    rw [interface_eq]
+    exact witnessPaperSafetySynchrony
   static_validators := witnessStaticValidatorSet
   byzantine_bound := witnessByzantineBound
-  source_coherence := witnessPhase0SourceCoherence
-  boundary_source_coherence := witnessPhase0BoundarySourceCoherence
-  balance_floor := witnessBalanceFloor
-
-def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
-    witnessExecution.NextSlotSafetyPremises witnessConfig
-      witnessExternals where
-  ffg_interpretation := witnessAcceptedSemantics
-  scheduled_execution := witnessScheduledPrefixTrajectoryAssumptions
-  call_conditions := witnessCompletedPrefixCallAssumptions
   epoch_ends_fit := witnessEpochEndsFitUint64
-  anchor_eq := by
-    simpa only [witnessAcceptedSemantics] using witnessAnchorEquality.symm
-  anchor_state_checkpoints := Or.inl rfl
-  anchor_boundary := by
-    simpa only [witnessAcceptedSemantics] using
-      witnessTrustedAnchorBoundaryAligned
-  imported_block_finalization_lag := witnessAcceptedRealizedFinalizationDelay
   slots_per_epoch_gt_one := by decide
+  epoch_one_finalization_scope := witnessEpochOneFinalizationScope
   checkpoint_inclusion := witnessPaperA32Inclusion
-  checkpoint_projection := witnessAcceptedEpochCheckpointProjection
-  link_checkpoint_agreement := witnessExactLinkValidity
 
-/-- The same FFG interpretation used by the premise bundle satisfies the
-interpretation-fidelity record: each included vote is a valid body member of
-its accepted carrier, validated on the prepared target state. -/
+/-! ## Interpretation fidelity -/
+
+theorem includedVote_data {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
+    (vote s).data =
+      { slot := s, index := 0, beacon_block_root := childRoot
+        source := stubCheckpoint, target := childEpochOneCheckpoint } := by
+  interval_cases s <;> rfl
+
+theorem child_known_bridge_post :
+    childRoot ∈ (childPostPrefix.store witnessConfig witnessBridge.interface).block_roots := by
+  rw [interface_eq]
+  exact child_known_post
+
+/-- Interpretation fidelity of each carrier body vote: it is a valid body
+member of the accepted carrier, validated on the prepared target state. -/
+noncomputable def includedFidelityAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
+    Execution.IncludedAttestationFidelity witnessConfig witnessBridge.interface witnessExecution
+      carrierRoot (vote s) where
+  carrier_message := carrierSignedBlock.message
+  carrier_accepted := by
+    rw [interface_eq]
+    exact carrier_acceptedBlockAt
+  in_carrier_body := by
+    interval_cases s <;> simp [carrierSignedBlock]
+  head_descends_target := by
+    rw [includedVote_data hlo hhi]
+    exact .refl childRoot
+  target_on_chain := by
+    rw [includedVote_data hlo hhi]
+    exact carrier_descends_child
+  target_descends_source := by
+    rw [includedVote_data hlo hhi]
+    exact child_descends_stub
+  attesters_in_registry := by
+    intro i hi
+    have hi' : i = s % 4 := by simpa [vote] using hi
+    subst i
+    rw [registry_length]
+    exact Nat.mod_lt s (by decide)
+  validation_state := witnessBridge.interface.process_slots
+    (witnessBridge.project childFFGState) 4
+  validation_registry := by
+    rw [registry_eq, interface_eq, witnessProcessSlots_registry]
+    rfl
+  valid := by
+    rw [interface_eq]
+    have hs16 : s < 16 := hhi.trans_lt (by decide)
+    refine (witness_valid_iff _ (vote s)).2 ⟨ground_structure ?_, ?_, vote_mem_ground hs16⟩
+    · rw [witnessProcessSlots_registry]
+      rfl
+    · rw [witnessProcessSlots_registry]
+      decide
+  validation_store := childPostPrefix.store witnessConfig witnessBridge.interface
+  validation_store_honest := by
+    apply Execution.HonestPrefixStoreWithinHorizon.scheduledPrefix childPostPrefix
+    · decide
+    · exact time_within_of_lt_sixteen (show 1 < 16 by decide)
+  validation_target_known := by
+    rw [includedVote_data hlo hhi]
+    exact child_known_bridge_post
+  validation_state_from_target := by
+    rw [interface_eq]
+    interval_cases s <;> (set_option maxRecDepth 100000 in decide +kernel)
+
+/-- The canonical interpretation that the safety premise gives, at validator 0
+and second 0. -/
+noncomputable def witnessInterpretation :
+    ScheduledFFGInterpretation witnessConfig witnessBridge.interface witnessExecution :=
+  (witnessSafetyPremises.nextSlotSafetyPremises (v := 0) (by decide) (n := 0)
+    (time_within_of_lt_sixteen (by decide))).ffg_interpretation
+
+/-- The canonical interpretation of the run satisfies the fidelity record:
+each included vote is a valid body member of its accepted carrier, validated
+on the prepared target state. -/
 theorem ffg_interpretation_fidelity :
-    FFGInterpretationFidelity witnessConfig witnessExternals witnessExecution
-      witnessAcceptedActualFCRNextSlotSafetyAssumptions.ffg_interpretation where
+    FFGInterpretationFidelity witnessConfig witnessBridge.interface witnessExecution
+      witnessInterpretation where
   included_fidelity := by
     intro carrier a h
-    exact witnessIncludedFidelity h
+    change witnessBridge.TargetIncludedAt witnessExecution carrier a at h
+    obtain ⟨rfl, ha⟩ := bodyIncluded_cases
+      (witnessBridge.bodyIncludedAt_of_targetIncludedAt witnessAdmissible witnessConcreteGenesis h)
+    rcases ha with rfl | rfl | rfl
+    · exact ⟨includedFidelityAt 4 (by decide) (by decide)⟩
+    · exact ⟨includedFidelityAt 5 (by decide) (by decide)⟩
+    · exact ⟨includedFidelityAt 6 (by decide) (by decide)⟩
   realized_finalized_epoch_le_unrealized_finalized := by
     intro r hr
-    rfl
+    change (witnessBridge.realizedFinalized r).epoch ≤ (witnessBridge.unrealizedFinalized r).epoch
+    rcases acceptedRoot_cases (known_of_bridge hr) with rfl | rfl | rfl <;> decide +kernel
+
+/-! ## Public facts -/
+
+theorem confirmed_at_one {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) :
+    witnessExecution.confirmed witnessConfig witnessExternals v 1 = anchorRoot := by
+  rcases honest_eq_zero_or_one_or_two_or_three hv with rfl | rfl | rfl | rfl <;>
+    (set_option maxRecDepth 100000 in decide +kernel)
+
+theorem second_sixteen_outside_horizon : ¬ witnessExecution.WithinHorizon witnessConfig 16 := by
+  intro hH16
+  exact (Nat.lt_irrefl 16) (time_lt_sixteen hH16)
 
 theorem witnessPaperA32_child_one_conclusion :
     ∀ w ∈ witnessExecution.honest, ∀ m : ℕ,
       witnessExecution.WithinHorizon witnessConfig m →
-      compute_start_slot_at_epoch witnessConfig 3 ≤
-        witnessExecution.slot_at witnessConfig m →
-      ∃ b' ∈
-          (witnessExecution.store witnessConfig witnessExternals w m
-            ).block_roots,
-        childRoot ∈
-            (witnessExecution.store witnessConfig witnessExternals w m
-              ).block_roots ∧
-          is_ancestor
-            (witnessExecution.store witnessConfig witnessExternals w m)
+      compute_start_slot_at_epoch witnessConfig 3 ≤ witnessExecution.slot_at witnessConfig m →
+      ∃ b' ∈ (witnessExecution.store witnessConfig witnessBridge.interface w m).block_roots,
+        childRoot ∈ (witnessExecution.store witnessConfig witnessBridge.interface w m).block_roots ∧
+          is_ancestor (witnessExecution.store witnessConfig witnessBridge.interface w m)
             (get_node_for_root b') (get_node_for_root childRoot) = true ∧
           get_block_epoch witnessConfig
-              (witnessExecution.store witnessConfig witnessExternals w m) b' <
-            3 ∧
+              (witnessExecution.store witnessConfig witnessBridge.interface w m) b' < 3 ∧
           (1 ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch witnessConfig
-              (witnessExecution.store witnessConfig witnessExternals w m) b') ∧
-          witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig witnessExternals b'
-            (witnessAcceptedChainFFGState.checkpoint_at_epoch childRoot 1) := by
-  exact witnessPaperA32Inclusion.included child_acceptedBlockAt
-    (by decide) child_canonical_throughout_epoch_two
-      witnessPaperA32Support_child_one
+              (witnessExecution.store witnessConfig witnessBridge.interface w m) b') ∧
+          witnessView.AvailableCheckpoint witnessConfig b' (witnessView.C childRoot 1) := by
+  have hblock : witnessView.BlockAt childRoot childSignedBlock.message := by
+    change witnessExecution.BlockKnownInScheduledPrefix witnessConfig witnessBridge.interface
+      childRoot childSignedBlock.message
+    rw [interface_eq]
+    exact child_acceptedBlockAt
+  exact witnessPaperA32Inclusion.included hblock (by decide)
+    child_canonical_throughout_epoch_two witnessPaperA32Support_child_one
 
-theorem second_sixteen_outside_horizon :
-    ¬ witnessExecution.WithinHorizon witnessConfig 16 := by
-  intro hH16
-  exact (Nat.lt_irrefl 16) (time_lt_sixteen hH16)
-
+/-- The facts that the finite run shows together. -/
 structure JointWitnessFacts : Prop where
-  assumptions : Nonempty
-    (witnessExecution.NextSlotSafetyPremises witnessConfig
-      witnessExternals)
+  premises : witnessBridge.SafetyPremises witnessExecution
   strict_call : witnessExecution.IsScheduledFCRCallAt witnessConfig witnessExternals 0 1
-  strict_input : witnessExecution.confirmed witnessConfig witnessExternals
-    0 1 = anchorRoot
-  strict_output : witnessExecution.confirmed witnessConfig witnessExternals
-    0 2 = childRoot
+  strict_input : witnessExecution.confirmed witnessConfig witnessExternals 0 1 = anchorRoot
+  strict_output : witnessExecution.confirmed witnessConfig witnessExternals 0 2 = childRoot
   strict_changes_root : childRoot ≠ anchorRoot
-  exact_selector : find_latest_confirmed_descendant witnessConfig
-    witnessExternals confirmingFcr anchorRoot = childRoot
+  exact_selector : find_latest_confirmed_descendant witnessConfig witnessExternals confirmingFcr
+    anchorRoot = childRoot
   substantive_a32_support :
-    witnessAcceptedChainFFGState.SourceTargetSupportThroughoutEpoch witnessConfig
-      witnessExternals childRoot 1
+    SourceTargetSupportThroughoutEpoch witnessConfig witnessBridge.interface witnessView
+      childRoot 1
   substantive_a32_conclusion :
-    ∃ b' ∈
-        (witnessExecution.store witnessConfig witnessExternals 0 12
-          ).block_roots,
-      childRoot ∈
-          (witnessExecution.store witnessConfig witnessExternals 0 12
-            ).block_roots ∧
-        is_ancestor
-          (witnessExecution.store witnessConfig witnessExternals 0 12)
+    ∃ b' ∈ (witnessExecution.store witnessConfig witnessBridge.interface 0 12).block_roots,
+      childRoot ∈ (witnessExecution.store witnessConfig witnessBridge.interface 0 12).block_roots ∧
+        is_ancestor (witnessExecution.store witnessConfig witnessBridge.interface 0 12)
           (get_node_for_root b') (get_node_for_root childRoot) = true ∧
         get_block_epoch witnessConfig
-            (witnessExecution.store witnessConfig witnessExternals 0 12) b' <
-          3 ∧
+            (witnessExecution.store witnessConfig witnessBridge.interface 0 12) b' < 3 ∧
         (1 ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch witnessConfig
-            (witnessExecution.store witnessConfig witnessExternals 0 12) b') ∧
-        witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig witnessExternals b'
-          (witnessAcceptedChainFFGState.checkpoint_at_epoch childRoot 1)
-  final_vote_ground : witnessExecution.vote 3 15 = some (15, vote15)
-  final_vote_delivery : Event.attestation vote15 false ∈
-    witnessExecution.schedule 0 16
-  delivery_is_outside_horizon :
-    ¬ witnessExecution.WithinHorizon witnessConfig 16
-  public_safety_at_end : is_ancestor
-    (witnessExecution.store witnessConfig witnessExternals 0 15)
-    (get_head witnessConfig
-      (witnessExecution.store witnessConfig witnessExternals 0 15))
-    (get_node_for_root childRoot) = true
+            (witnessExecution.store witnessConfig witnessBridge.interface 0 12) b') ∧
+        witnessView.AvailableCheckpoint witnessConfig b' (witnessView.C childRoot 1)
+  final_vote_ground : witnessExecution.vote 3 15 = some (15, vote 15)
+  final_vote_delivery : Event.attestation (vote 15) false ∈ witnessExecution.schedule 0 16
+  delivery_is_outside_horizon : ¬ witnessExecution.WithinHorizon witnessConfig 16
+  public_safety_at_end :
+    witnessExecution.confirmed witnessConfig witnessBridge.interface 0 2 ∈
+        (witnessExecution.store witnessConfig witnessBridge.interface 0 15).block_roots ∧
+      is_ancestor (witnessExecution.store witnessConfig witnessBridge.interface 0 15)
+        (get_head witnessConfig (witnessExecution.store witnessConfig witnessBridge.interface 0 15))
+        (get_node_for_root (witnessExecution.confirmed witnessConfig witnessBridge.interface 0 2)) =
+        true
+  public_safety_confirms_child :
+    witnessExecution.confirmed witnessConfig witnessBridge.interface 0 2 = childRoot
 
-theorem finite_execution_satisfies_premises : JointWitnessFacts := by
-  refine
-    { assumptions := ⟨witnessAcceptedActualFCRNextSlotSafetyAssumptions⟩
-      strict_call := by
-        change get_current_slot witnessConfig
-            (witnessExecution.store witnessConfig witnessExternals 0 2) >
-          get_current_slot witnessConfig
-            (witnessExecution.store witnessConfig witnessExternals 0 1)
-        set_option maxRecDepth 50000 in decide
-      strict_input := confirmed_at_one (by decide)
-      strict_output := actual_fcr_transition_strict_advance
-      strict_changes_root := by decide
-      exact_selector := find_latest_confirmed_descendant_strict_advance
-      substantive_a32_support := witnessPaperA32Support_child_one
-      substantive_a32_conclusion := ?_
-      final_vote_ground := by decide
-      final_vote_delivery := witness_slot15_delivery_at_second16 0
-      delivery_is_outside_horizon := second_sixteen_outside_horizon
-      public_safety_at_end := ?_ }
-  · exact witnessPaperA32_child_one_conclusion 0 (by decide) 12
-      (time_within_of_lt_sixteen (by decide)) (by decide)
-  · have hsafe :=
-      Execution.NextSlotSafetyPremises.confirmed_head_nextSlot
-        witnessConfig witnessExternals witnessExecution
-        witnessAcceptedActualFCRNextSlotSafetyAssumptions
-        (v := 0) (n := 2) (w := 0) (m := 15)
-        (by decide) (by decide) (by decide) (by decide)
-        (time_within_of_lt_sixteen (by decide))
-    simpa only [actual_fcr_transition_strict_advance] using hsafe
+theorem finite_execution_satisfies_premises : JointWitnessFacts where
+  premises := witnessSafetyPremises
+  strict_call := by
+    change get_current_slot witnessConfig
+        (witnessExecution.store witnessConfig witnessExternals 0 2) >
+      get_current_slot witnessConfig (witnessExecution.store witnessConfig witnessExternals 0 1)
+    set_option maxRecDepth 100000 in decide +kernel
+  strict_input := confirmed_at_one (by decide)
+  strict_output := actual_fcr_transition_strict_advance
+  strict_changes_root := by decide
+  exact_selector := find_latest_confirmed_descendant_strict_advance
+  substantive_a32_support := witnessPaperA32Support_child_one
+  substantive_a32_conclusion :=
+    witnessPaperA32_child_one_conclusion 0 (by decide) 12
+      (time_within_of_lt_sixteen (by decide)) (by rw [slot_at_eq]; decide)
+  final_vote_ground := by decide
+  final_vote_delivery := witness_slot15_delivery_at_second16 0
+  delivery_is_outside_horizon := second_sixteen_outside_horizon
+  public_safety_at_end :=
+    confirmed_root_safe_from_next_slot WitnessRoot witnessBridge witnessExecution
+      witnessSafetyPremises 0 (by decide) 2 0 (by decide) 15 (by decide)
+      (by
+        change witnessExecution.slot_at witnessConfig 2 + 1 ≤
+          witnessExecution.slot_at witnessConfig 15
+        rw [slot_at_eq, slot_at_eq]
+        decide)
+      (time_within_of_lt_sixteen (by decide))
+  public_safety_confirms_child := by
+    rw [interface_eq]
+    exact actual_fcr_transition_strict_advance
 
-theorem next_slot_premises_nonempty :
-    ∃ (cfg : Config) (ext : BeaconFunctionInterface WitnessRoot)
-      (E : Execution WitnessRoot),
-      Nonempty (E.NextSlotSafetyPremises cfg ext) := by
-  exact ⟨witnessConfig, witnessExternals, witnessExecution,
-    ⟨witnessAcceptedActualFCRNextSlotSafetyAssumptions⟩⟩
-
-/-- Genesis-stub full-bundle witness.  The anchor state is a real Phase0
-genesis state: its current justified and finalized checkpoints are the stub
-`(GENESIS_EPOCH, zeroRoot)`, and the stub root is not the anchor root.  The
-complete next-slot premise bundle holds, the actual FCR call confirms the
-child root, and next-slot safety holds at the end of the horizon.  The bundle
-therefore does not force the anchor state's current justified checkpoint to
-equal the genesis store's justified checkpoint. -/
+/-- Genesis-stub full-bundle witness. The anchor state is the Python genesis
+state: its current justified and finalized checkpoints are the stub
+`(GENESIS_EPOCH, junkRoot)`, and the stub root is not the anchor root. The
+safety premise holds, the FCR call confirms the child root, and the public
+safety theorem applies at the end of the horizon. The premise therefore does
+not force the anchor state's current justified checkpoint to equal the
+genesis store's justified checkpoint. -/
 theorem genesis_stub_full_bundle_witness :
     witnessExecution.anchor_state.current_justified_checkpoint = stubCheckpoint ∧
       witnessExecution.anchor_state.finalized_checkpoint = stubCheckpoint ∧
@@ -708,8 +846,8 @@ theorem genesis_stub_full_bundle_witness :
       witnessExecution.anchor_state.current_justified_checkpoint ≠
         witnessExecution.genesis_store.justified_checkpoint ∧
       JointWitnessFacts := by
-  refine ⟨by decide, by decide, rfl, by decide, witnessAnchorEquality, by decide,
-    finite_execution_satisfies_premises⟩
+  refine ⟨by decide +kernel, by decide +kernel, rfl, by decide, by decide +kernel,
+    by decide +kernel, finite_execution_satisfies_premises⟩
 
 end GenesisStubPremiseWitness
 end FastConfirmation.Spec

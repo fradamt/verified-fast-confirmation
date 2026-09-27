@@ -3,7 +3,7 @@ public import FastConfirmationProofs.Safety.ConfirmedCacheSafety
 public import FastConfirmationProofs.Checkpoints.ExecutionRootReflection
 public import FastConfirmationInternal.ProofVocabulary.Vocabulary
 
-public import FastConfirmationStatements.Claims
+public import FastConfirmationInternal.Premises.NextSlotSafety
 @[expose] public section
 
 /-!
@@ -373,8 +373,8 @@ end Execution
 
 /-- Stored-output safety theorem at the following-slot deadline. The observer
 has the root in its block store, and its head descends from that root. -/
-theorem confirmed_root_safe_from_next_slot :
-    ConfirmedRootSafeFromNextSlot cfg ext := by
+theorem accepted_confirmed_root_safe_from_next_slot :
+    AcceptedConfirmedRootSafeFromNextSlot cfg ext := by
   intro E h v hv n w hw m hnm hnext hHm
   have hanc := h.confirmed_head_nextSlot cfg ext E hv hw hnm hnext hHm
   have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg hnm hHm

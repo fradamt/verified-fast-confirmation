@@ -1,7 +1,7 @@
 module
 public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetSupportAccounting
 
-public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
+public import FastConfirmationInternal.Premises.ScheduledExecution
 @[expose] public section
 
 /-!

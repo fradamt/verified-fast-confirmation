@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Premises.CheckpointLinks
+public import FastConfirmationInternal.Premises.CheckpointLinks
 public import FastConfirmationProofs.ForkChoice.Ancestry.AncestryRoots
 public import FastConfirmationProofs.Checkpoints.CheckpointGeometry
 public import FastConfirmationProofs.FFG.Certificates.FFGAccountability
@@ -94,16 +94,15 @@ theorem target_accepted
     {Accepted : Root → Prop}
     (P : EpochCheckpointProjectionLaws anchor Accepted C)
     (V : IncludedLinkCheckpointAgreement cfg E included anchor C Accepted)
-    {carrier source target}
+    {carrier source target} (hcarrier : Accepted carrier)
     (L : IncludedSupermajorityLink cfg E included carrier source target)
     (hcontributing : IncludedSupermajorityLink.Contributing cfg anchor L)
     (hanchorSource : anchor.epoch ≤ source.epoch) :
     Accepted target.root := by
-  have hcarrier := V.carrier_accepted L hcontributing
   have htargetEpoch : anchor.epoch ≤ target.epoch :=
     hanchorSource.trans (Nat.le_of_lt L.source_before_target)
   have hprojected := P.checkpoint_root_accepted hcarrier htargetEpoch
-  have htarget := (V.endpoints_on_carrier L hcontributing).2
+  have htarget := (V.endpoints_on_carrier hcarrier L hcontributing).2
   have htargetRoot : target.root = (C carrier target.epoch).root :=
     congrArg Checkpoint.root htarget
   rw [htargetRoot]
@@ -118,16 +117,16 @@ theorem source_prefix_target
     {Accepted : Root → Prop}
     (P : EpochCheckpointProjectionLaws anchor Accepted C)
     (V : IncludedLinkCheckpointAgreement cfg E included anchor C Accepted)
-    {carrier source target}
+    {carrier source target} (hcarrier : Accepted carrier)
     (L : IncludedSupermajorityLink cfg E included carrier source target)
     (hcontributing : IncludedSupermajorityLink.Contributing cfg anchor L)
     (hanchorSource : anchor.epoch ≤ source.epoch) :
     ExactCheckpointPrefix C source target := by
   obtain ⟨hsource, htarget⟩ :=
-    V.endpoints_on_carrier L hcontributing
+    V.endpoints_on_carrier hcarrier L hcontributing
   have htargetRoot : target.root = (C carrier target.epoch).root :=
     congrArg Checkpoint.root htarget
-  have hcomp := P.checkpoint_comp (V.carrier_accepted L hcontributing)
+  have hcomp := P.checkpoint_comp hcarrier
     hanchorSource (Nat.le_of_lt L.source_before_target)
   unfold ExactCheckpointPrefix
   calc
@@ -143,15 +142,15 @@ theorem target_self
     {Accepted : Root → Prop}
     (P : EpochCheckpointProjectionLaws anchor Accepted C)
     (V : IncludedLinkCheckpointAgreement cfg E included anchor C Accepted)
-    {carrier source target}
+    {carrier source target} (hcarrier : Accepted carrier)
     (L : IncludedSupermajorityLink cfg E included carrier source target)
     (hcontributing : IncludedSupermajorityLink.Contributing cfg anchor L)
     (hanchorTarget : anchor.epoch ≤ target.epoch) :
     target = C target.root target.epoch := by
-  have htarget := (V.endpoints_on_carrier L hcontributing).2
+  have htarget := (V.endpoints_on_carrier hcarrier L hcontributing).2
   have htargetRoot : target.root = (C carrier target.epoch).root :=
     congrArg Checkpoint.root htarget
-  have hcomp := P.checkpoint_comp (V.carrier_accepted L hcontributing)
+  have hcomp := P.checkpoint_comp hcarrier
     hanchorTarget (Nat.le_refl target.epoch)
   calc
     target = C carrier target.epoch := htarget
@@ -185,7 +184,7 @@ theorem exact_self
     (P : EpochCheckpointProjectionLaws anchor Accepted C)
     (V : IncludedLinkCheckpointAgreement cfg E included anchor C Accepted)
     (hanchorExact : anchor = C anchor.root anchor.epoch)
-    {carrier c}
+    {carrier c} (hcarrier : Accepted carrier)
     (h : IncludedCertifiedJustified cfg E included anchor carrier c) :
     c = C c.root c.epoch := by
   cases h with
@@ -195,7 +194,7 @@ theorem exact_self
         (IncludedCertifiedJustified.anchor_epoch_le
           (cfg := cfg) hsource).trans
           (Nat.le_of_lt link.source_before_target)
-      exact V.target_self (cfg := cfg) P link hsource hanchorTarget
+      exact V.target_self (cfg := cfg) P hcarrier link hsource hanchorTarget
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- The trusted anchor is an exact prefix of every checkpoint in an exact
@@ -207,7 +206,7 @@ theorem anchor_prefix
     (P : EpochCheckpointProjectionLaws anchor Accepted C)
     (V : IncludedLinkCheckpointAgreement cfg E included anchor C Accepted)
     (hanchorExact : anchor = C anchor.root anchor.epoch)
-    {carrier c}
+    {carrier c} (hcarrier : Accepted carrier)
     (h : IncludedCertifiedJustified cfg E included anchor carrier c) :
     ExactCheckpointPrefix C anchor c := by
   induction h with
@@ -218,9 +217,9 @@ theorem anchor_prefix
       have hanchorSource : anchor.epoch ≤ source.epoch :=
         IncludedCertifiedJustified.anchor_epoch_le (cfg := cfg) hsource
       have hsourceTarget := V.source_prefix_target (cfg := cfg) P
-        link hsource hanchorSource
+        hcarrier link hsource hanchorSource
       have htargetAccepted := V.target_accepted (cfg := cfg) P
-        link hsource hanchorSource
+        hcarrier link hsource hanchorSource
       exact P.prefix_trans htargetAccepted (Nat.le_refl anchor.epoch)
         hanchorSource ih hsourceTarget
 
@@ -266,6 +265,8 @@ theorem exact_prefix_of_accountable
     (hanchorExact : anchor = C anchor.root anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E anchor)
     {finalizedCarrier justifiedCarrier : Root}
+    (hfinalizedCarrier : Accepted finalizedCarrier)
+    (hjustifiedCarrier : Accepted justifiedCarrier)
     {finalized justified : Checkpoint Root}
     (hfinalized : IncludedCertifiedFinalized cfg E
       I.Included anchor finalizedCarrier finalized)
@@ -309,9 +310,9 @@ theorem exact_prefix_of_accountable
       · have hfinalizedAnchor : anchor.epoch ≤ finalized.epoch :=
           CertifiedJustified.anchor_epoch_le (cfg := cfg) hfinalizedGlobal
         have hsourceTarget := V.source_prefix_target (cfg := cfg) P
-          link hsource hanchorSource
+          hjustifiedCarrier link hsource hanchorSource
         have htargetAccepted := V.target_accepted (cfg := cfg) P
-          link hsource hanchorSource
+          hjustifiedCarrier link hsource hanchorSource
         exact P.prefix_trans htargetAccepted hfinalizedAnchor hsourceEpoch
           (ih hsourceEpoch) hsourceTarget
       · have hsourceLt : source.epoch < finalized.epoch :=
@@ -324,7 +325,7 @@ theorem exact_prefix_of_accountable
           have hanchorTarget : anchor.epoch ≤ target.epoch :=
             hanchorSource.trans (Nat.le_of_lt link.source_before_target)
           have hself := V.target_self (cfg := cfg) P
-            link hsource hanchorTarget
+            hjustifiedCarrier link hsource hanchorTarget
           unfold ExactCheckpointPrefix
           rw [← htargetFinalized]
           exact hself
@@ -346,7 +347,7 @@ theorem exact_prefix_of_accountable
               CertifiedJustified.anchor_epoch_le (cfg := cfg)
                 hfinalizedGlobal
             have hprefix := V.source_prefix_target (cfg := cfg) P
-              hfinalized.finalizing_link hfinalized.justified
+              hfinalizedCarrier hfinalized.finalizing_link hfinalized.justified
               hanchorFinalized
             simpa only [heq] using hprefix
           · by_cases hmiddle : hfinalized.child.epoch = finalized.epoch + 2 ∧
@@ -367,17 +368,16 @@ theorem exact_prefix_of_accountable
                 CertifiedJustified.anchor_epoch_le (cfg := cfg)
                   hfinalizedGlobal
               have hfinalizedOnCarrier :=
-                (V.endpoints_on_carrier hfinalized.finalizing_link
+                (V.endpoints_on_carrier hfinalizedCarrier hfinalized.finalizing_link
                   hfinalized.justified).1
-              have hcarrierAccepted := V.carrier_accepted
-                hfinalized.finalizing_link hfinalized.justified
+              have hcarrierAccepted := hfinalizedCarrier
               have hmiddleOnCarrier : middle = C finalizedCarrier middle.epoch := by
                 cases hmiddleIncluded with
                 | anchor =>
                     have key : ∀ a f : ℕ, a = f + 1 → a ≤ f → False := by omega
                     exact (key _ _ hmiddleEpoch hanchorFinalized).elim
                 | @link middleSource _ hmiddleSource middleLink =>
-                    exact (V.endpoints_on_carrier middleLink hmiddleSource).2
+                    exact (V.endpoints_on_carrier hfinalizedCarrier middleLink hmiddleSource).2
               have hmiddleRoot : middle.root =
                   (C finalizedCarrier middle.epoch).root :=
                 congrArg Checkpoint.root hmiddleOnCarrier
@@ -416,6 +416,8 @@ theorem exactFinalizedPrefix_of_accountable
     (hanchorExact : anchor = S.checkpoint_at_epoch anchor.root anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E anchor)
     {finalizedCarrier justifiedCarrier : Root}
+    (hfinalizedCarrier : E.RootKnownInScheduledPrefix cfg ext finalizedCarrier)
+    (hjustifiedCarrier : E.RootKnownInScheduledPrefix cfg ext justifiedCarrier)
     {finalized justified : Checkpoint Root}
     (hfinalized : IncludedCertifiedFinalized cfg E
       S.includedAttestations.Included anchor finalizedCarrier finalized)
@@ -426,7 +428,8 @@ theorem exactFinalizedPrefix_of_accountable
   let I := Execution.AcceptedBlockAttestationInclusion.relation
     (cfg := cfg) (ext := ext) (E := E) S.includedAttestations
   exact IncludedCertifiedFinalized.exact_prefix_of_accountable
-    (cfg := cfg) I P V hanchorExact hacc hfinalized hjustified hepoch
+    (cfg := cfg) I P V hanchorExact hacc hfinalizedCarrier hjustifiedCarrier hfinalized
+    hjustified hepoch
 
 end AcceptedBlockFFGState
 

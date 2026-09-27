@@ -6,7 +6,7 @@ public import FastConfirmationProofs.FCRRule.FCRCallContracts
 public import FastConfirmationInternal.ProofVocabulary.Vocabulary
 public import FastConfirmationInternal.Execution.SafeFrom
 
-public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
+public import FastConfirmationInternal.Premises.ScheduledExecution
 @[expose] public section
 
 /-!

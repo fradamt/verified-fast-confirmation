@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Premises.FFGState
+public import FastConfirmationInternal.Premises.AcceptedFFGState
 public import FastConfirmationModel.Execution.PayloadFrame
 public import FastConfirmationInternal.FFG.AnchorNormalization
 

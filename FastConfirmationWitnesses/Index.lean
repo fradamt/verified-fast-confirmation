@@ -5,10 +5,6 @@ public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuer
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
 public import FastConfirmationWitnesses.NonVacuity.GenesisStubPremises
-public import FastConfirmationWitnesses.NonVacuity.TwelveSecondSynchrony
-public import FastConfirmationWitnesses.NonVacuity.FullTwelve
-public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
-public import FastConfirmationWitnesses.NonVacuity.FullTwelveFFG
 public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
 public import FastConfirmationWitnesses.NonVacuity.TargetEdgePremises
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveEnvelopePremises
@@ -25,7 +21,8 @@ faithfulness; the contract suite, projection harness, and concrete differential
 check test that behavior. Their PJF returns early in epochs 0 and 1, as Python does.
 
 This page names the finite runs that satisfy the premise bundles: a short
-next-slot safety run with one-second slots and a 500 ms delay,
+next-slot safety run with one-second slots and a 500 ms delay, the same run
+with the real genesis stub,
 a one-second target-edge run,
 a one-second run with Byzantine weight and a slashing, a 12-second
 full-bundle run, and a 12-second run with an accepted payload envelope. It
@@ -69,153 +66,123 @@ off-committee validators.
 
 ## Premise bundles
 
-* `Execution.NextSlotSafetyPremises`:
+Every full-bundle witness is a finite run with a concrete bridge: one
+concrete setup, a finite state table, and a finite block table. The state
+functions of the run are the bridge interface, and its FFG content is the
+canonical content of the bridge, not a hand-made interpretation. The proofs
+evaluate stores with a computable copy of the interface (`lookupInterface`)
+and rewrite by `interface_eq_lookupInterface`. The concrete child and carrier
+states are literals that the pointwise concrete transition checks by kernel
+reduction.
+
+Five families take `zeroRoot := anchorRoot`: the next-slot, target-edge,
+Byzantine, twelve-second, and twelve-second envelope runs. Python cannot make
+this choice, because `ZERO_HASH` is not the genesis root. With it, the genesis
+stub reads as the anchor checkpoint in the honest votes. The genesis-stub run
+keeps a separate `zeroRoot`, as Python does.
+
+* `ConcreteBridge.SafetyPremises`, the public premise:
   `NextSlotPremiseWitness.finite_execution_satisfies_premises` and
-  `NextSlotPremiseWitness.next_slot_premises_nonempty`. The execution has four
-  honest validators, four slots per epoch, an anchor, a slot-one child, and a
-  slot-eight FFG carrier. Its scheduled FCR call changes the confirmed root.
-  The final in-horizon vote is delivered one second beyond the horizon.
+  `NextSlotPremiseWitness.next_slot_premises_nonempty`. The run uses the
+  concrete bridge `NextSlotBridgeRun.witnessBridge`. It has four honest
+  validators, four slots per epoch, an anchor, a slot-one child, and a
+  slot-eight carrier whose body has the votes of slots four to six. Its
+  scheduled FCR call changes the confirmed root, and
+  `finite_execution_satisfies_premises` applies
+  `confirmed_root_safe_from_next_slot` to the changed root. The final
+  in-horizon vote is delivered one second beyond the horizon.
 * Real Phase0 genesis anchor:
   `GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` is the same
   one-second run with a real genesis anchor state. Its current justified and
   finalized checkpoints are the stub `(GENESIS_EPOCH, zeroRoot)`, and the stub
-  root is not the anchor root. Honest votes before slot eight carry the stub as
-  their source. The full next-slot bundle holds, the FCR call confirms the
-  child, and the anchor state's justified checkpoint differs from the genesis
-  store's justified checkpoint.
+  root is not the anchor root. Honest votes before slot 12 carry the stub as
+  their source. The public premise holds, the FCR call confirms the child, and
+  the anchor state's justified checkpoint differs from the genesis store's
+  justified checkpoint.
 * Guarded current-target edge:
-  `TargetEdgePremiseWitness.full_bundle_witness` supplies the full next-slot
-  bundle for a one-second run. `target_edge_support_exercised` proves the
-  selector guard and the accepted anchor-to-child epoch crossing at the call
-  from second six to seven. `target_edge_call_snapshot` checks positive vote
-  weight and a remaining honest target vote. `target_edge_safe_from_next_slot`
-  applies the public safety theorem from second eight onward.
+  `TargetEdgePremiseWitness.full_bundle_witness` proves the public premise
+  for a one-second run with a slot-four child. `target_edge_support_exercised`
+  proves the selector guard and the accepted anchor-to-child epoch crossing at
+  the call from second six to seven. `target_edge_call_snapshot` checks
+  positive vote weight and a remaining honest target vote.
+  `target_edge_safe_from_next_slot` applies the public safety theorem from
+  second eight onward.
 * Byzantine weight and slashing relay:
-  `ByzantinePremiseWitness.full_bundle_witness` supplies the full next-slot
-  bundle for a one-second run with non-honest validator 4 of weight 200 out of
-  4000. `byzantine_weight_exercised` proves positive non-honest weight in an
+  `ByzantinePremiseWitness.full_bundle_witness` proves the public premise for
+  a one-second run with non-honest validator 4 of weight 200 out of 4000.
+  Validator 4 shares every committee of validator 3.
+  `byzantine_weight_exercised` proves positive non-honest weight in an
   in-horizon span. Validator 4 signs two slot-four votes with the same target
   epoch. `slashing_relay_exercised` proves the relay antecedent for the
   slashing that every node applies at second five. `equivocation_read_at_call`
   shows that the call from second six to seven reads the evidence and confirms
   the child. The call from second nine to ten confirms the epoch-two carrier
-  in its own epoch. The previous-result proviso branch is not exercised by a
-  full-bundle witness.
-* Twelve-second synchrony and behavior:
-  `TwelveSecondSynchronyWitness.joint_witness` proves `WellFormedExecution`,
-  `HonestBehavior`, `Synchrony`, and `NextSlotSynchronyPremises` for a second
-  finite run. Its four honest validators share an anchor and accept a slot-one
-  child. The slot is 12 seconds, the vote deadline is 3 seconds, and the
-  positive delay is 2 seconds. Node 1 receives the child block at second 14
-  while node 0 receives it at second 12; it receives the slot-zero vote at
-  second 6 while node 0 receives it at second 4. The early vote copies are
-  received inside the slot and are scheduled again for handler service at the
-  next slot boundary. `delayed_block_in_stores` checks the real block-store
-  difference. This run has no envelope or equivocation evidence, so those
-  synchrony fields hold vacuously.
-  The same run proves `HorizonVoteDeliveryLookahead`, `StaticValidatorSet`,
-  `ByzantineWeightPremises`, `Phase0SourceCoherence`,
-  `Phase0BoundarySourceCoherence`, the balance floor, `EpochEndsFitUint64`,
-  and `InitialAnchorAtEpochBoundary` for its concrete anchor.
+  in its own epoch. Block D at slot 11 extends the carrier; its body has the
+  votes of slots 8 to 10. `previous_result_proviso_exercised` shows that the
+  call from second 12 to 13, in the non-start slot 13 of epoch 3, selects D
+  from the confirmed carrier. `previous_result_descendant_support_exercised`
+  proves the descendant target support of this selection.
 * Twelve-second full bundle:
-  `FullTwelveWitness.full_bundle_witness` proves the full
-  `Execution.NextSlotSafetyPremises` for the four-epoch trace, with
-  12,000 ms slots, a 3,000 ms vote deadline, and a positive 2,000 ms delay.
-  `FullTwelveWitness.delayed_receipts_are_first` proves the real block and
-  vote receipt delays. The scheduled call at second 24 changes the anchor
-  to the child. `FullTwelveWitness.changed_root_safe_from_next_slot` applies
-  `confirmed_root_safe_from_next_slot` to this output. The accepted slot-eight
-  carrier supports the FFG interpretation and Paper A3.2. Envelope service
-  remains vacuous; the selector has no current-target accepted edge.
+  `FullTwelveWitness.full_bundle_witness` proves the public premise for the
+  run `FullTwelveBridgeRun`, with 12,000 ms slots, a 3,000 ms vote deadline,
+  and a positive 2,000 ms delay. It has the concrete setup, blocks, and states
+  of the next-slot run. `FullTwelveWitness.delayed_receipts_are_first` proves
+  the real block and vote receipt delays: node 1 receives the child block at
+  second 14 while node 0 receives it at second 12, and the slot-zero vote at
+  second 6 while node 0 receives it at second 4.
+  `FullTwelveWitness.delayed_block_in_stores` checks the block-store
+  difference. The scheduled call at second 24 changes the anchor to the child.
+  `FullTwelveWitness.changed_root_safe_from_next_slot` applies
+  `confirmed_root_safe_from_next_slot` to this output. Envelope service is
+  vacuous.
 * Twelve-second envelope bundle:
-  `FullTwelveEnvelopeWitness.full_bundle_witness` proves the full safety
-  premises in a run with an accepted child payload envelope. Node 1 first
-  receives it two seconds after node 0. The envelope and data relay
-  antecedents hold at second 168, with boundary service at second 180.
+  `FullTwelveEnvelopeWitness.full_bundle_witness` proves the public premise
+  in a run with an accepted child payload envelope. The base interface of the
+  bridge reports the child data as available and accepts exactly the child
+  envelope. Node 1 first receives the envelope two seconds after node 0. The
+  envelope and data relay antecedents hold at second 168, with boundary
+  service at second 180.
   `FullTwelveEnvelopeWitness.changed_root_safe_from_next_slot` applies the
-  public safety theorem. `payload_status_branches` checks the FULL choice
-  and its Gloas weight beside the EMPTY choice. `gloas_discount_sample`
-  computes zero carrier discount after verification. `fcr_branch_samples`
-  checks selection, finalized reset, and late selector bypass.
-* `Execution.ScheduledExecutionPremises`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessScheduledPrefixTrajectoryAssumptions`.
-  The same execution has whole-second scheduling, honest votes, a valid genesis
-  store, and well-formed external functions.
-* `Execution.WellFormedExecution`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessWellFormedExecution`. The four
-  honest nodes start from one valid anchor store and process finite schedules.
-* `HonestBehavior`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessHonestBehavior`. Every scheduled
-  honest vote belongs to its assigned slot committee and meets the
-  attestation due time in that execution.
-* `Execution.ScheduledFCRCallPremises`:
-  `NextSlotPremiseWitness.witnessCompletedPrefixCallAssumptions`. The same
-  execution has synchronized votes and blocks, stable validators and weights,
-  and a scheduled descendant-helper call.
-  Its selector guard excludes selected current-target accepted edges, so this
-  witness does not exercise these support branches.
-* `NextSlotSynchronyPremises`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessPaperSafetySynchrony`.
-  The same execution satisfies the delivery and relay laws. It contains no
-  execution payload envelope, so its envelope laws are vacuous.
-* `Synchrony`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessSynchrony`. The same finite
-  schedule delivers each honest vote to all four honest nodes.
-* `BeaconExternalsPremises`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessExternalsCoherence`. The same
-  execution uses deterministic slot processing and envelope verification.
-* `ByzantineWeightPremises`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessByzantineBound`. The same
-  execution has four equal-weight honest validators and no Byzantine weight.
-  `ByzantinePremiseWitness.byzantine_weight_exercised` has positive
-  non-honest weight under the full safety bundle.
-* `StaticValidatorSet`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessStaticValidatorSet`. All four
-  validators remain active throughout the finite horizon.
-* `Phase0SourceCoherence`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessPhase0SourceCoherence`. Slot
-  processing preserves the chosen source within an epoch.
-* `Phase0BoundarySourceCoherence`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessPhase0BoundarySourceCoherence`.
-  The same finite state transition satisfies the source coherence laws, and
-  `Phase0BoundarySourceCoherence.of_eager` derives the boundary laws.
-* `HorizonVoteDeliveryLookahead`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessHorizonVoteDeliveryLookahead`.
-  The slot-fifteen vote reaches every honest node at second sixteen, outside
-  the verification horizon. This stronger law is the `delivery_lookahead`
-  field of `NextSlotSynchronyPremises`; it supplies in-horizon vote delivery.
-* `ScheduledFFGInterpretation`:
-  `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedSemantics`. The child
-  and carrier in the same execution have an accepted FFG interpretation at
-  every causal schedule prefix.
+  public safety theorem. `payload_status_branches` checks the FULL choice and
+  its Gloas weight beside the EMPTY choice. `gloas_discount_sample` computes
+  zero carrier discount after verification. `fcr_branch_samples` checks
+  selection, finalized reset, and late selector bypass.
+* The internal record `Execution.NextSlotSafetyPremises` follows from the
+  public premise by `ConcreteBridge.SafetyPremises.nextSlotSafetyPremises`.
+  The bridge proves the Phase0 source laws
+  (`ConcreteBridge.phase0SourceCoherence` and
+  `ConcreteBridge.phase0BoundarySourceCoherence`), the balance floor
+  (`ConcreteBridge.balance_floor`), the anchor fields, the FFG interpretation
+  (`ConcreteBridge.canonicalScheduledFFGInterpretation`), the checkpoint
+  projection (`ConcreteBridge.canonical_checkpoint_projection`), and the link
+  agreement (`ConcreteBridge.canonical_link_checkpoint_agreement`) for every
+  bridge.
+* The run fields of the public premise, for the next-slot run:
+  `NextSlotBridgeRun.witnessWellFormedExecution`,
+  `NextSlotBridgeRun.witnessHonestBehavior`,
+  `NextSlotBridgeRun.witnessExternalsCoherence`,
+  `NextSlotBridgeRun.witnessPaperSafetySynchrony`,
+  `NextSlotBridgeRun.witnessStaticValidatorSet`,
+  `NextSlotBridgeRun.witnessByzantineBound`, and
+  `NextSlotPremiseWitness.witnessEpochEndsFitUint64`. The four honest nodes
+  start from one anchor store and process finite schedules. Every honest vote
+  belongs to its slot committee and meets the attestation due time. The run
+  contains no execution payload envelope, so its envelope laws are vacuous.
+  `NextSlotBridgeRun.witnessHorizonVoteDeliveryLookahead` delivers the
+  slot-fifteen vote to every honest node at second sixteen, outside the
+  verification horizon.
 * `FFGInterpretationFidelity` (outside the safety premise):
   `NextSlotPremiseWitness.ffg_interpretation_fidelity`,
   `FullTwelveWitness.ffg_interpretation_fidelity`,
   `TargetEdgePremiseWitness.ffg_interpretation_fidelity`,
   `FullTwelveEnvelopeWitness.ffg_interpretation_fidelity`,
   `ByzantinePremiseWitness.ffg_interpretation_fidelity`. Each proves the
-  fidelity record for the interpretation of its premise bundle. In the runs
-  with a carrier, the included votes are valid members of the accepted
-  carrier body.
-* `EpochCheckpointProjectionLaws`:
-  `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedEpochCheckpointProjection`.
-  The anchor, child, and carrier give concrete epoch checkpoint roots.
-* `AcceptedBlockFFGState.LinkCheckpointAgreement`:
-  `AcceptedActualFCRJointNonVacuityFFG.witnessExactLinkValidity`. Included
-  attestations on the carrier support its exact checkpoint link.
-* `AcceptedBlockFFGState.EventualCheckpointInclusion`:
+  fidelity record for the canonical interpretation of its run: the included
+  votes are valid members of the accepted carrier body.
+* `EventualCheckpointInclusion` over the view of the bridge:
   `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-eight carrier
-  includes the vote evidence for the slot-one child. It is in epoch 2, because
-  Python justification returns early in epochs 0 and 1.
-* `Execution.ImportedBlockFinalizationLag`:
-  `NextSlotPremiseWitness.witnessAcceptedRealizedFinalizationDelay`. The
-  finite FFG state meets the delay bound over the horizon.
-* `EpochEndsFitUint64`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessEpochEndsFitUint64`. The
-  four-slot epochs fit the execution's integer bounds.
-* `InitialAnchorAtEpochBoundary`:
-  `AcceptedActualFCRJointNonVacuityBase.witnessTrustedAnchorBoundaryAligned`.
-  The trusted anchor lies at its declared epoch boundary.
+  carries the unrealized justification of the slot-one child in epoch 1. It is
+  in epoch 2, because Python justification returns early in epochs 0 and 1.
 
 ## Counterexamples
 
@@ -229,17 +196,7 @@ off-committee validators.
   These counterexamples do not refute next-slot safety of an in-slot query.
   That question remains open.
 
-## Known gaps
-
-* The shorter `TwelveSecondSynchronyWitness` run does not establish
-  `Execution.NextSlotSafetyPremises`.
-  It has no FFG carrier. Its `ScheduledFFGInterpretation`,
-  `ScheduledExecutionPremises` (in particular `BeaconExternalsPremises`), and
-  `ScheduledFCRCallPremises` are not proved.
-  The bundle's semantic anchor equality, `ImportedBlockFinalizationLag`,
-  `EventualCheckpointInclusion`, `EpochCheckpointProjectionLaws`, and `LinkCheckpointAgreement`
-  are also not re-established for this run. The slot count bound and the
-  concrete anchor boundary alignment are proved separately.
+## Notes
 
 The 1 s safety run (delay 500 ms) changes a stored root. The 12-second
 full-bundle run adds real delayed block and vote receipts. The target-edge run
@@ -249,27 +206,28 @@ exercises envelope delivery and data relay through
 `FullTwelveEnvelopeWitness.data_relay_exercised`. The Byzantine run exercises
 positive non-honest weight and the slashing relay through
 `ByzantinePremiseWitness.byzantine_weight_exercised` and
-`ByzantinePremiseWitness.slashing_relay_exercised`. The previous-result
-proviso branch is not exercised by a full-bundle witness: each carrier is in
-epoch 2, and no call selects a block of an earlier epoch. Both support forms are now derived by the joint
-call and endpoint-slot induction. The six full-bundle constructors no longer
-contain support fields. The witness support lemmas remain facts about the runs.
-The historical certificate and quorum are produced from earlier votes when
-needed. No external law was added. The shorter
-synchrony-only run does not prove the full safety bundle.
-No full-bundle run exercises non-anchor finality, the previous-result proviso,
-positive Gloas discount, a PTC event, or positive proposer boost.
+`ByzantinePremiseWitness.slashing_relay_exercised`. The Byzantine run
+exercises the previous-result proviso through
+`ByzantinePremiseWitness.previous_result_proviso_exercised`. Both support forms
+are derived by the joint call and endpoint-slot induction. The witness support
+lemmas remain facts about the runs.
+No full-bundle run exercises non-anchor finality, positive Gloas discount, a
+PTC event, or positive proposer boost.
 Every positive run has proposer boost zero. The proposer-score term and
 should_apply_proposer_boost are not exercised positively. The one-second
 runs set `attestation_due_bps` to zero. The main safety runs have four or five
-validators and one validator per slot committee. Included slashing does not mark a validator slashed in state.
+validators. Each slot committee has one validator, except in the Byzantine run,
+where validator 4 joins the committees of validator 3. Included slashing does
+not mark a validator slashed in state.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public theorem set has 44 entries. Four regression checks are:
+pre-tick relay. The audited public theorem set has 46 entries. Four regression checks are:
 `CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child`,
 `CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`,
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression`, and
 `EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws`. They
 check the normalized-state control, the strict-link inclusion antecedent, the
 certified epoch-1 source after two boundaries, and that this epoch-1 behavior
-satisfies the boundary laws. They are not full-bundle runs.
+satisfies the boundary laws. They are not full-bundle runs. The epoch-1
+regression certifies its link with the votes in the body of the next-slot
+carrier (`ConcreteBridge.BodyIncludedAt`).
 -/

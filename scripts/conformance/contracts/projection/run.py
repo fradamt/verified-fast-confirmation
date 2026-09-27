@@ -12,15 +12,15 @@ import re
 import subprocess
 import sys
 import time
-import tomllib
 from collections import defaultdict
 from pathlib import Path
 
 PIN = '13f391516352f61b3ac5dcaae5be1884d104f86a'
 ROOT = Path(__file__).resolve().parents[4]
 PREMISES = ROOT / 'FastConfirmationStatements/Premises'
-INVENTORY = ROOT / 'scripts/conformance/contracts/inventory.toml'
-NAMES = ('AcceptedBlockFFGState', 'FFGStateReadAgreement',
+INTERNAL_PREMISES = ROOT / 'FastConfirmationInternal/Premises'
+CONCRETE_PROOFS = ROOT / 'FastConfirmationProofs/FFG/Concrete'
+NAMES = ('AcceptedBlockFFGState', 'FFGStateReadAgreement', 'IncludedCheckpointEvidence',
          'ScheduledFFGInterpretation', 'EventualCheckpointInclusion',
          'FFGStateAndCheckpointReadAgreement', 'EpochCheckpointProjectionLaws', 'IncludedLinkCheckpointAgreement')
 
@@ -34,27 +34,26 @@ def reads_as(raw, semantic):
 
 
 def source_statements():
-    rows = tomllib.loads(INVENTORY.read_text())['field']
+    """Field statements of the probed records, read from the Lean sources.
+    `EventualCheckpointInclusion` is public; the other records are the internal
+    FFG interpretation of the concrete bridge."""
     result = {}
-    for row in rows:
-        name = row['path']
-        if not name.startswith(NAMES):
-            continue
-        source = (PREMISES / row['file']).read_text()
-        structure, field = name.split('.', 1)
-        body = re.search(r'(?m)^structure ' + structure + r'\b[\s\S]*?\bwhere\n([\s\S]*?)(?=\n(?:end|namespace|structure|/-!|section|def |abbrev |variable )|\Z)', source)
-        if body is None:
-            raise ValueError(name)
-        match = re.search(r'(?m)^  ' + field + r'\s*:', body.group(1))
-        if match is None:
-            raise ValueError(name)
-        tail = body.group(1)[match.start():]
-        stop = re.search(r'(?m)^  (?:[A-Za-z_][\w]*\s*:|/--)', tail[len(match.group(0)):])
-        result[name] = (tail if stop is None else tail[:len(match.group(0)) + stop.start()]).strip()
-    for name, file, start, end in (
-        ('ImportedBlockFinalizationLag', 'ScheduledExecutionConditions.lean', 'def ImportedBlockFinalizationLag', '\n\nend Execution'),
-        ('GenesisOrNormalizedAnchor', 'NextSlotSafety.lean', 'def GenesisOrNormalizedAnchor', '\n\n/-- Assumptions')):
-        source = (PREMISES / file).read_text()
+    for path in [*sorted(PREMISES.glob('*.lean')), *sorted(INTERNAL_PREMISES.glob('*.lean'))]:
+        source = path.read_text()
+        for structure, body in re.findall(r'(?:^|\n)structure\s+([A-Za-z_][\w]*)[\s\S]*?\bwhere\n([\s\S]*?)(?=\n(?:end|namespace|structure|/-!|section|def |abbrev |variable )|\Z)', source):
+            if structure not in NAMES:
+                continue
+            for match in re.finditer(r'(?m)^  ([A-Za-z_][\w]*)\s*:', body):
+                tail = body[match.start():]
+                stop = re.search(r'(?m)^  (?:[A-Za-z_][\w]*\s*:|/--)', tail[len(match.group(0)):])
+                result[f'{structure}.{match.group(1)}'] = (tail if stop is None else tail[:len(match.group(0)) + stop.start()]).strip()
+    for name, path, start, end in (
+        ('ImportedBlockFinalizationLag', INTERNAL_PREMISES / 'ScheduledExecution.lean', 'def ImportedBlockFinalizationLag', '\n\nend Execution'),
+        ('GenesisOrNormalizedAnchor', INTERNAL_PREMISES / 'NextSlotSafety.lean', 'def GenesisOrNormalizedAnchor', '\n\n/-- Assumptions'),
+        ('RealizableBySlotRun', CONCRETE_PROOFS / 'CanonicalTiming.lean', 'def RealizableBySlotRun', '\n\n/--'),
+        ('HonestEarlierTargetVoteOnCarrierChain', INTERNAL_PREMISES / 'AcceptedFFGState.lean',
+         'def HonestEarlierTargetVoteOnCarrierChain', '\n\n/--')):
+        source = path.read_text()
         result[name] = source[source.index(start):source.index(end, source.index(start))].strip()
     return result
 
@@ -460,6 +459,69 @@ def check_run(run, statements):
             elif field == 'unrealized_finalized_epoch_le_unrealized_justified':
                 samples.append((uf[0] <= uj[0], detail))
         each('AcceptedBlockFFGState.' + field, samples)
+    # RealizableBySlotRun: a slot run from the state of an accepted block to a
+    # later epoch can justify a checkpoint that no selector of the block
+    # carries, for example slot 15 to slot 24. Each such checkpoint must still
+    # have formed evidence at the block: certified by body votes on its chain,
+    # on that chain, and with an earlier included target vote.
+    spe = int(run.spec.SLOTS_PER_EPOCH)
+    samples, not_carried = [], 0
+    for root in all_roots:
+        epoch = int(run.blocks[root].slot) // spe
+        formed = run.formed_and_links(root)[0]
+        carried = {run.selector(root, name) for name in ('realized_justified', 'realized_finalized',
+                                                         'unrealized_justified', 'unrealized_finalized')}
+        for target_epoch in range(epoch + 1, epoch + 4):
+            state = run.states[root].copy()
+            run.spec.process_slots(state, run.spec.Slot(target_epoch * spe))
+            raw = cp(state.current_justified_checkpoint)
+            c = run.anchor if raw[0] == 0 and run.anchor[0] == 0 else raw
+            not_carried += c not in carried
+            samples.append((c == run.anchor or c in formed,
+                            {**run.state_detail(root), 'target_slot': target_epoch * spe, 'checkpoint': c}))
+    each('RealizableBySlotRun', samples)
+    results[-1]['state'] = {**results[-1]['state'], 'not_carried_by_selectors': not_carried}
+    # Aggregate convention: Python includes aggregates, and the model reads an
+    # included aggregate as one single-validator vote per signer with the same
+    # data. The split of a signer sets only its own bit; it must index exactly
+    # that signer, keep the data, and pass the structural indexed check.
+    split_ok = {}
+    split_samples = []
+    for root in all_roots:
+        state = run.states[root]
+        for k, (a, signers) in enumerate(run.votes[root]):
+            positions, offset = {}, 0
+            for index in run.spec.get_committee_indices(a.committee_bits):
+                committee = run.spec.get_beacon_committee(state, a.data.slot, index)
+                positions.update({int(i): offset + j for j, i in enumerate(committee)})
+                offset += len(committee)
+            for i in sorted(signers):
+                single = a.copy()
+                single.aggregation_bits = type(a.aggregation_bits)(
+                    data=[j == positions[i] for j in range(len(a.aggregation_bits))])
+                indexed = run.spec.get_indexed_attestation(state, single)
+                ok = (list(map(int, indexed.attesting_indices)) == [i] and indexed.data == a.data
+                      and run.spec.is_valid_indexed_attestation(state, indexed))
+                split_ok[root, k, i] = ok
+                split_samples.append((ok, {**run.state_detail(root), 'attestation': k, 'signer': i}))
+    each('HonestEarlierTargetVoteOnCarrierChain', split_samples)
+    # IncludedCheckpointEvidence.causal: every formed non-anchor checkpoint of a
+    # block has a signer whose single-validator vote, with an earlier slot and
+    # this target, is included on the chain. Every validator of these fixtures
+    # is honest.
+    causal = []
+    for root in all_roots:
+        slot = int(run.blocks[root].slot)
+        for c in run.formed_and_links(root)[0] - {run.anchor}:
+            witness = next(((r, k, i) for r in run.chain(root)
+                            for k, (a, signers) in enumerate(run.votes[r])
+                            if cp(a.data.target) == c and int(a.data.slot) < slot
+                            for i in sorted(signers) if split_ok[r, k, i]), None)
+            causal.append((witness is not None, {**run.state_detail(root), 'checkpoint': c,
+                                                 'witness': witness and {'carrier': witness[0],
+                                                                         'attestation': witness[1],
+                                                                         'signer': witness[2]}}))
+    each('IncludedCheckpointEvidence.causal', causal)
     # Read agreements use independent store reads against the projected selectors.
     for kind in ('gj', 'gf', 'gu', 'guf'):
         field = {'gj':'realized_justified', 'gf':'realized_finalized',
@@ -486,7 +548,7 @@ def check_run(run, statements):
                         {**run.state_detail(root), 'raw_finalized': raw}))
     each('ImportedBlockFinalizationLag', samples)
     # Projection laws and exact links use accepted roots in the final prefix.
-    accept_samples, comp_samples, carrier_samples, endpoint_samples = [], [], [], []
+    accept_samples, comp_samples, endpoint_samples = [], [], []
     for root in all_roots:
         epoch = int(run.blocks[root].slot)//8
         for e in range(run.anchor[0], epoch + 3):
@@ -504,12 +566,10 @@ def check_run(run, statements):
                 continue
             detail = {**run.state_detail(root), 'source': source, 'target': target,
                       'signers': sorted(signers)}
-            carrier_samples.append((root in root_set, detail))
             endpoint_samples.append((source == run.checkpoint(root, source[0]) and
                                      target == run.checkpoint(root, target[0]), detail))
     each('EpochCheckpointProjectionLaws.checkpoint_root_accepted', accept_samples)
     each('EpochCheckpointProjectionLaws.checkpoint_comp', comp_samples)
-    each('IncludedLinkCheckpointAgreement.carrier_accepted', carrier_samples)
     each('IncludedLinkCheckpointAgreement.endpoints_on_carrier', endpoint_samples)
     reflection = []
     available_reflection = []

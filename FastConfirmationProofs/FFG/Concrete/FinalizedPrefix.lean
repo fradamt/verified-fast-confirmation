@@ -43,7 +43,7 @@ omit [DecidableEq Root] in
 /-- Under root commitment, two parent-linked chains from the genesis block
 with the same tip root have the same roots and slots. -/
 theorem rootSlots_eq_of_tipRoot_eq {S : FFGSetup Root} {B : List (FFGWireBlock Root)}
-    (hc : RootsCommit S B) :
+    (hc : RootsDetermineSlotAndParent S B) :
     ∀ (b1 b2 : List (FFGWireBlock Root)), (∀ x ∈ b1, x ∈ B) → (∀ x ∈ b2, x ∈ B) →
       ParentLinked S.genesisRoot b1 → ParentLinked S.genesisRoot b2 →
       tipRoot S.genesisRoot b1 = tipRoot S.genesisRoot b2 →
@@ -106,7 +106,7 @@ omit [DecidableEq Root] in
 chains from the genesis block that agree at a slot agree at every earlier
 slot. -/
 theorem chainRootAt_agree {S : FFGSetup Root} {b1 b2 : List (FFGWireBlock Root)}
-    (hc : RootsCommit S (b1 ++ b2))
+    (hc : RootsDetermineSlotAndParent S (b1 ++ b2))
     (ho1 : b1.Pairwise fun a b => a.slot < b.slot) (ho2 : b2.Pairwise fun a b => a.slot < b.slot)
     (hp1 : ParentLinked S.genesisRoot b1) (hp2 : ParentLinked S.genesisRoot b2)
     {x : Slot} (hx : chainRootAt S.genesisRoot b1 x = chainRootAt S.genesisRoot b2 x)
@@ -121,7 +121,7 @@ theorem chainRootAt_agree {S : FFGSetup Root} {b1 b2 : List (FFGWireBlock Root)}
 
 omit [DecidableEq Root] in
 theorem chainCheckpoint_agree {S : FFGSetup Root} {b1 b2 : List (FFGWireBlock Root)}
-    (hc : RootsCommit S (b1 ++ b2))
+    (hc : RootsDetermineSlotAndParent S (b1 ++ b2))
     (ho1 : b1.Pairwise fun a b => a.slot < b.slot) (ho2 : b2.Pairwise fun a b => a.slot < b.slot)
     (hp1 : ParentLinked S.genesisRoot b1) (hp2 : ParentLinked S.genesisRoot b2)
     {e : Epoch} (he : chainCheckpoint S b1 e = chainCheckpoint S b2 e)
@@ -173,7 +173,7 @@ theorem finalized_prefix_of_accountable {S : FFGSetup Root} (hS : S.Admissible)
     (hH1 : compute_epoch_at_slot S.cfg state1.slot ≤ S.scope.last_epoch)
     (hR2 : Reachable S blocks2 votes2 state2)
     (hH2 : compute_epoch_at_slot S.cfg state2.slot ≤ S.scope.last_epoch)
-    (hc : RootsCommit S (blocks1 ++ blocks2))
+    (hc : RootsDetermineSlotAndParent S (blocks1 ++ blocks2))
     (hacc : ConcreteCertificateAccountability S (votes1 ++ votes2))
     {f target : Checkpoint Root} (hf : FinalizationLink S blocks1 votes1 f target)
     (htarget : target.epoch ≤ S.scope.last_epoch)
@@ -246,7 +246,7 @@ theorem finalized_prefix_or_slashable {S : FFGSetup Root} (hS : S.Admissible)
     (hH1 : compute_epoch_at_slot S.cfg state1.slot ≤ S.scope.last_epoch)
     (hR2 : Reachable S blocks2 votes2 state2)
     (hH2 : compute_epoch_at_slot S.cfg state2.slot ≤ S.scope.last_epoch)
-    (hc : RootsCommit S (blocks1 ++ blocks2))
+    (hc : RootsDetermineSlotAndParent S (blocks1 ++ blocks2))
     {f target : Checkpoint Root} (hf : FinalizationLink S blocks1 votes1 f target)
     (htarget : target.epoch ≤ S.scope.last_epoch)
     {j : Checkpoint Root} (hj : Justified S votes2 j) (hjl : j.epoch ≤ S.scope.last_epoch)
@@ -285,7 +285,7 @@ theorem concrete_accountable_safety {S : FFGSetup Root} (hS : S.Admissible)
     (hH1 : compute_epoch_at_slot S.cfg state1.slot ≤ S.scope.last_epoch)
     (hR2 : Reachable S blocks2 votes2 state2)
     (hH2 : compute_epoch_at_slot S.cfg state2.slot ≤ S.scope.last_epoch)
-    (hc : RootsCommit S (blocks1 ++ blocks2))
+    (hc : RootsDetermineSlotAndParent S (blocks1 ++ blocks2))
     (hepoch : state1.finalized_checkpoint.epoch ≤ state2.finalized_checkpoint.epoch)
     (hconflict : state1.finalized_checkpoint ≠ S.stub ∧
       state1.finalized_checkpoint ≠

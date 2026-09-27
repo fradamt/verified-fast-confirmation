@@ -4,10 +4,10 @@ public import FastConfirmationWitnesses.Counterexamples.EstimateForcesBalance
 public import FastConfirmationWitnesses.Counterexamples.CheckpointSyncFilter
 public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
+public import FastConfirmationWitnesses.NonVacuity.BridgeFixture
 public import FastConfirmationWitnesses.NonVacuity.ConcreteFinality
-public import FastConfirmationWitnesses.NonVacuity.FFGEvidence
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
-public import FastConfirmationWitnesses.NonVacuity.ScheduledRun
+public import FastConfirmationWitnesses.NonVacuity.NextSlotRun
 public import FastConfirmationWitnesses.Index
 
 /-! Imports finite satisfying executions and strict-prefix counterexamples for the public FCR claims. -/

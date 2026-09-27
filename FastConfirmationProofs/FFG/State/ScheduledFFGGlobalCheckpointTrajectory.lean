@@ -2,7 +2,7 @@ module
 public import FastConfirmationProofs.FFG.SelectedSource.FFGEndpointRealization
 public import FastConfirmationModel.Execution.PayloadFrame
 
-public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
+public import FastConfirmationInternal.Premises.ScheduledExecution
 public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 

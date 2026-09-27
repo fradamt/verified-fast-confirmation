@@ -202,14 +202,15 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
         rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate
             cfg ext B hgenShort hanchor
               (E.store_causal cfg ext w (n + 1)) with
-          hFanchor | ⟨carrierF, _hcarrierF, hFcert⟩
+          hFanchor | ⟨carrierF, hcarrierF, hFcert⟩
         · dsimp only [F]
           rw [hFanchor]
           exact IncludedCertifiedJustified.anchor_prefix
-            (cfg := cfg) P V hanchorExact hCcert
+            (cfg := cfg) P V hanchorExact (B.state.formed_carrier_accepted hformed) hCcert
         · obtain ⟨hFcert⟩ := hFcert
           exact B.state.exactFinalizedPrefix_of_accountable cfg P V
-            hanchorExact haccExact hFcert hCcert hFLeC
+            hanchorExact haccExact hcarrierF.acceptedRoot
+            (B.state.formed_carrier_accepted hformed) hFcert hCcert hFLeC
       have hFrealized :=
         E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
           cfg ext B hT hanchor hboundary (w := w) (n + 1)

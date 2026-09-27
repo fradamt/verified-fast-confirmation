@@ -131,6 +131,24 @@ def parseBlock (j : J) : Except String (FFGWireBlock Nat) := do
     attestations := ← list parseVote (← field j "attestations")
   }
 
+def parseCommitteeRow (j : J) : Except String (Slot × CommitteeIndex × List ValidatorIndex) := do
+  let a ← j.getArr?
+  if a.size != 3 then throw "committee row length"
+  return (← nat a[0]!, ← nat a[1]!, ← list nat a[2]!)
+
+def parseCountRow (j : J) : Except String (Epoch × Nat) := do
+  let a ← j.getArr?
+  if a.size != 2 then throw "count row length"
+  return (← nat a[0]!, ← nat a[1]!)
+
+/-- An explicit committee schedule of a transition row. A row without one
+uses the fixed two-committee schedule of the synthetic fixtures. -/
+def parseSchedule (j : J) : Except String FixedCommitteeSchedule := do
+  return {
+    committees := ← list parseCommitteeRow (← field j "committees")
+    counts := ← list parseCountRow (← field j "counts")
+  }
+
 def errorClass : Error → String
   | .state => "state" | .slot => "slot" | .root => "root"
   | .header => "header" | .parentPayload => "parentPayload"
@@ -173,11 +191,12 @@ def runCase (j : J) : Except String J := do
     pure ((process_slots cfg preset state target).map stateJson)
   else if action == "transition" then
     let block ← parseBlock (← field j "block")
-    let schedule : FixedCommitteeSchedule := {
-      committees := block.attestations.flatMap fun vote =>
-        [(vote.data.slot, 0, [0, 1]), (vote.data.slot, 1, [2, 3])]
-      counts := block.attestations.map fun vote => (vote.data.target.epoch, 2)
-    }
+    let schedule ← match j.getObjVal? "schedule" with
+      | .ok explicit => parseSchedule explicit
+      | .error _ => pure {
+          committees := block.attestations.flatMap fun vote =>
+            [(vote.data.slot, 0, [0, 1]), (vote.data.slot, 1, [2, 3])]
+          counts := block.attestations.map fun vote => (vote.data.target.epoch, 2) }
     let accepts ← boolean (← field j "oracle_accept")
     let oracle : BlockValidityOracle Nat := ⟨fun _ _ _ => accepts⟩
     pure ((state_transition cfg preset schedule oracle state block).map stateJson)

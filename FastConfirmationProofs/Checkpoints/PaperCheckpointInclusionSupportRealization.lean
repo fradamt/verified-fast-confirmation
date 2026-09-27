@@ -67,11 +67,13 @@ private theorem concreteVote_signer_in_registry
   exact (Nat.not_lt_zero _ hbad)
 
 /-- Honest validators are absent from the generic paper view's concrete
-block-local slashing set.  The proof uses the retained inclusion evidence;
-it does not assume a broad block-body completeness principle. -/
+block-local slashing set when every included attestation was received from
+a block (`hreceived`). -/
 theorem honest_not_mem_paperA32SlashableOnChain
     (hhb : HonestBehavior cfg ext E)
     (V : CheckpointInclusionView cfg E)
+    (hreceived : ∀ {carrier : Root} {a : Attestation Root}, V.Included carrier a →
+      ∃ (w : ValidatorIndex) (n : ℕ), Event.attestation a true ∈ E.schedule w n)
     {tip : Root} {i : ValidatorIndex} (hi : i ∈ E.honest) :
     i ∉ V.slashableOnChain cfg tip := by
   classical
@@ -81,10 +83,8 @@ theorem honest_not_mem_paperA32SlashableOnChain
   obtain ⟨a₁, a₂, hinc₁, hinc₂, hi₁, hi₂, hslash⟩ := hpair
   obtain ⟨_carrier₁, _hdesc₁, hincluded₁⟩ := hinc₁
   obtain ⟨_carrier₂, _hdesc₂, hincluded₂⟩ := hinc₂
-  obtain ⟨w₁, n₁, hsched₁⟩ :=
-    (V.includedAttestations.evidence hincluded₁).received_from_block
-  obtain ⟨w₂, n₂, hsched₂⟩ :=
-    (V.includedAttestations.evidence hincluded₂).received_from_block
+  obtain ⟨w₁, n₁, hsched₁⟩ := hreceived hincluded₁
+  obtain ⟨w₂, n₂, hsched₂⟩ := hreceived hincluded₂
   obtain ⟨k₁, vote₁, _hcausal₁, hvote₁, hdata₁⟩ :=
     hhb.no_forgery w₁ n₁ a₁ true hsched₁ i hi hi₁
   obtain ⟨k₂, vote₂, _hcausal₂, hvote₂, hdata₂⟩ :=
@@ -114,6 +114,8 @@ theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
     {deadline : Slot} {target : Checkpoint Root}
     (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
     {V : CheckpointInclusionView cfg E}
+    (hreceived : ∀ {carrier : Root} {a : Attestation Root}, V.Included carrier a →
+      ∃ (w : ValidatorIndex) (n : ℕ), Event.attestation a true ∈ E.schedule w n)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hHm : E.WithinHorizon cfg m)
     (hdeadline : deadline ≤ E.slot_at cfg m)
@@ -137,7 +139,7 @@ theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
   · intro i hi
     obtain ⟨vote⟩ := Q.votes i hi
     exact E.honest_not_mem_paperA32SlashableOnChain cfg ext
-      hhb V vote.honest
+      hhb V hreceived vote.honest
   · intro i hi
     obtain ⟨vote⟩ := Q.votes i hi
     exact concreteVote_signer_in_registry (cfg := cfg) (ext := ext)
@@ -190,6 +192,8 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
       ablk.message.parent_root ≠ ablk.root)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     {V : CheckpointInclusionView cfg E}
+    (hreceived : ∀ {carrier : Root} {a : Attestation Root}, V.Included carrier a →
+      ∃ (w : ValidatorIndex) (n : ℕ), Event.attestation a true ∈ E.schedule w n)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
     {b : Root} {e : Epoch}
@@ -314,7 +318,7 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
     simp only [CheckpointInclusionView.voting_source_at]
     rw [hbEpochQuery, hbEpochView]
   exact E.paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
-    cfg ext hhb hsync hpaths hec hdiv hgenTime Q (V := V)
+    cfg ext hhb hsync hpaths hec hdiv hgenTime Q (V := V) hreceived
       hw hHm hdeadline
       (b' := b') htargetKnown htargetKeyed hsourceView
 
@@ -347,13 +351,15 @@ theorem accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum
       (S.voting_source_at cfg ext (E.store cfg ext v q) b e)) :
     S.SourceTargetSupportThroughoutEpoch cfg ext b e :=
   E.paperA32SupportThroughoutEpochCore_of_concreteQuorum cfg ext
-    hwf hhb hsync hpaths hec hdiv hgen hwalkDomain hv hqH hbQuery
+    hwf hhb hsync hpaths hec hdiv hgen hwalkDomain
+    (fun h => (S.includedAttestations.evidence h).received_from_block) hv hqH hbQuery
     hbEpochQuery hcanonical Q hsourceQuery
 
 /-- Accepted end-to-end A.3.2 consumer: one concrete fixed-source quorum
-realizes the full next-epoch support antecedent, and the paper assumption
-returns an exact AU/formed-carrier witness together with its executable
-projection.  No migration state occurs in this dependency theorem. -/
+realizes the full next-epoch support antecedent over a compatible view, and
+the paper assumption for that view returns an exact AU/formed-carrier witness.
+The witness is formed in the accepted state, which gives the executable
+projection. No migration state occurs in this dependency theorem. -/
 theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
     (hwf : WellFormedExecution E)
     (hhb : HonestBehavior cfg ext E)
@@ -369,7 +375,7 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
     {anchor : Checkpoint Root}
     {S : AcceptedBlockFFGState cfg ext E anchor}
     (hcoh : FFGStateReadAgreement cfg ext S)
-    (hpaper : S.EventualCheckpointInclusion cfg ext)
+    (hpaper : S.CompatibleCheckpointInclusion cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
     {b : Root} {e : Epoch}
@@ -387,13 +393,27 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
     ∃ seed : Root,
       PaperA32IncludedAtTip cfg (S.checkpoint_inclusion_view cfg ext)
         (E.store cfg ext w m) e b seed := by
+  obtain ⟨⟨BlockAt, Included, formed, C, GJ, GU, hce⟩, hBlockAt, hC, hGJ, hGU, hformed,
+    hreceived, hV⟩ := hpaper
+  subst hBlockAt hC hGJ hGU
   have hsupport :=
-    E.accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum cfg ext
-      hwf hhb hsync hpaths hec hdiv hgen hwalkDomain hv hqH hbQuery
+    E.paperA32SupportThroughoutEpochCore_of_concreteQuorum cfg ext
+      hwf hhb hsync hpaths hec hdiv hgen hwalkDomain
+      (V := ⟨_, Included, formed, _, _, _, hce⟩) hreceived hv hqH hbQuery
       hbEpochQuery hcanonical Q hsourceQuery
-  exact E.accepted_paperA32IncludedAtTip_of_paper_at_known cfg ext
-    hcoh hpaper hbQuery hbEpochQuery.le hcanonical hsupport
-    hw hHm hboundary
+  have hb : E.BlockKnownInScheduledPrefix cfg ext b ((E.store cfg ext v q).blocks b) :=
+    E.acceptedBlockAt_of_store_known cfg ext v q hbQuery
+  obtain ⟨seed, hseed, _hbKnown, hseedB, hseedEpoch, hseedLate, carrier, hdesc, hcarrier⟩ :=
+    hV.included hb (by simpa only [get_block_epoch] using hbEpochQuery.le) hcanonical
+      hsupport w hw m hHm hboundary
+  have hAU : (S.checkpoint_inclusion_view cfg ext).AvailableCheckpoint cfg seed
+      ((S.checkpoint_inclusion_view cfg ext).C b e) :=
+    ⟨carrier, hdesc, hformed hcarrier⟩
+  exact ⟨seed, {
+    executable :=
+      (S.paperA32RootProjectionAt cfg ext hcoh (E.store_causal cfg ext w m) hseed
+        ).a32IncludedAtTip_of_existing_AU cfg ext hseedB hseedEpoch hseedLate hAU
+    exact_AU := hAU }⟩
 
 end Execution
 

@@ -3,7 +3,7 @@ public import Mathlib.Tactic
 public import FastConfirmationProofs.Checkpoints.ResetCheckpointClassification
 public import FastConfirmationProofs.Execution.Calls.ScheduledPrefixGeometry
 
-public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
+public import FastConfirmationInternal.Premises.ScheduledExecution
 public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 
