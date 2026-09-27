@@ -24,7 +24,12 @@ structure ByzantineWeightPremises (E : Execution Root) : Prop where
       weight does not exceed `estimate_committee_weight_between_slots`.
       The stronger post-`//100` inequality used by the arithmetic is derived
       from this field and effective-balance quantization in
-      `FastConfirmationProofs/Discount/EconomicRounding.lean`. -/
+      `FastConfirmationProofs/Discount/EconomicRounding.lean`. This is a
+      class I idealization that is false for realistic registries: with
+      fixed committees and coverage it forces every slot committee to weigh
+      exactly `total_active / SLOTS_PER_EPOCH`, and the pinned 100-validator
+      run of `scripts/conformance/contracts/check_real_bundle.py` violates it
+      from slot 0. -/
   estimate_sound : ∀ a b : Slot,
     E.SlotWithinHorizon cfg a → E.SlotWithinHorizon cfg b →
     E.weight (E.span_committee a b) ≤

@@ -345,7 +345,9 @@ def BodyAttestationsDelivered (E : Execution Root) : Prop :=
 eager PJF pass on a copy of it, has a finalization link to epoch
 `GENESIS_EPOCH + 2` in the run of the state.
 
-In effect the condition says that no such state finalizes epoch
+Literally the condition admits epoch-1 finality through a link
+`GENESIS_EPOCH + 1 -> GENESIS_EPOCH + 2`. No run can form that link, so in
+effect the condition says that no such state finalizes epoch
 `GENESIS_EPOCH + 1`. A link `GENESIS_EPOCH + 1 -> GENESIS_EPOCH + 2` needs
 target-included votes with source epoch 1 and target epoch 2. A target-epoch-2
 vote must match the current justified checkpoint in epoch 2, or the previous

@@ -31,7 +31,8 @@ prefixes under the counterexample synchrony record, and a raw checkpoint-sync fi
 regression. The latter confirms a child at slot 14 and loses it at slot 20.
 See `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample`. It has no
 attestation inclusion for two epochs. The regression does not assert the full safety
-bundle or its `EventualCheckpointInclusion` premise. It shows why that premise matters;
+bundle or its `EventualCheckpointInclusion` premise (paper Assumption 3.2
+(explicit)). It shows why that premise matters;
 it is not an FCR safety failure.
 
 `NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state
@@ -43,7 +44,8 @@ checkpoint. Checkpoint-sync anchors with older state checkpoints are outside thi
 condition. The raw source age and the filter's `+2` rule need an inclusion argument.
 That argument is not formalized.
 `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` has no attestation
-inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why
+inclusion for two epochs, so it is outside `EventualCheckpointInclusion` (paper Assumption 3.2
+(explicit)). It shows why
 that premise matters; it is not an FCR safety failure.
 
 `Phase0BoundarySourceCoherence` has five fields. `process_slots_one_boundary` equates
@@ -206,7 +208,8 @@ Byzantine run has five validators.
   `ByzantinePremiseWitness.ffg_interpretation_fidelity`. Each proves the
   fidelity record for the canonical interpretation of its run: the included
   votes are valid members of the accepted carrier body.
-* `EventualCheckpointInclusion` over the view of the bridge:
+* `EventualCheckpointInclusion` (paper Assumption 3.2 (explicit)) over the
+  view of the bridge:
   `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-eight carrier
   carries the unrealized justification of the slot-one child in epoch 1. It is
   in epoch 2, because Python justification returns early in epochs 0 and 1.
