@@ -27,10 +27,14 @@ structure ByzantineWeightPremises (E : Execution Root) : Prop where
       `FastConfirmationProofs/Discount/EconomicRounding.lean`. Committee
       sampling is idealized (class I): this field takes the estimate as
       exact, and the specification claims it only with high probability
-      (`COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR`). With the fixed
-      committee schedule and coverage it gives equal slot-committee weights
-      (`EstimateForcesBalance.slot_committee_weight_forced`). The statistical
-      properties of committee sampling are out of scope by design. -/
+      (`COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR`). The idealization has
+      two intended parts: (i) equal slot-committee weights inside an epoch
+      (with the fixed schedule and coverage,
+      `EstimateForcesBalance.slot_committee_weight_forced`); (ii) a perfectly
+      mixed reshuffle across an epoch boundary, so the weight of a
+      cross-boundary span is at most the pro-rated estimate, which is the
+      expected overlap. The statistical properties of committee sampling are
+      out of scope by design. -/
   estimate_sound : ∀ a b : Slot,
     E.SlotWithinHorizon cfg a → E.SlotWithinHorizon cfg b →
     E.weight (E.span_committee a b) ≤

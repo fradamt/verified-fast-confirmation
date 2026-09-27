@@ -3,7 +3,9 @@
 
 This is a falsification check, not a proof of the full execution bundle. It
 reuses the accepted-block FFG projection and tests finite registry, committee,
-and economic fields against the same genesis-to-epoch-6 run.
+and economic fields against the same genesis-to-epoch-6 run. A second genesis
+with 128 validators of 32 ETH checks only `estimate_sound`, split into
+within-epoch and cross-boundary spans.
 """
 from __future__ import annotations
 
@@ -113,6 +115,44 @@ def retained_projection_rows(spec, run):
         # registry change is a difference of the retained projection.
         expected.append({'ok': registry(post) == registry(pre), 'value': retained(post)})
     return rows, expected
+
+
+def slot_committees(spec, state, slots):
+    """The union of the beacon committees of each slot, read from `state`."""
+    committees = {}
+    for slot in range(slots):
+        epoch = slot // int(spec.SLOTS_PER_EPOCH)
+        members = set()
+        for index in range(int(spec.get_committee_count_per_slot(state, spec.Epoch(epoch)))):
+            members.update(map(int, spec.get_beacon_committee(
+                state, spec.Slot(slot), spec.CommitteeIndex(index))))
+        committees[slot] = members
+    return committees
+
+
+def estimate_spans(spec, state, committees):
+    """`estimate_sound` on every slot span [a, b], split into within-epoch
+    spans (idealization part (i), equal slot-committee weights) and
+    cross-boundary spans (part (ii), the pro-rated estimate of a perfectly
+    mixed reshuffle)."""
+    spe = int(spec.SLOTS_PER_EPOCH)
+    total = int(spec.get_total_active_balance(state))
+    registry = state.validators
+    result = {kind: {'checks': 0, 'failures': []} for kind in ('within_epoch', 'cross_boundary')}
+    slots = sorted(committees)
+    for start, a in enumerate(slots):
+        members = set()
+        for b in slots[start:]:
+            members.update(committees[b])
+            actual = sum(int(registry[i].effective_balance) for i in members)
+            estimate = int(spec.estimate_committee_weight_between_slots(
+                total, spec.Slot(a), spec.Slot(b)))
+            kind = 'within_epoch' if a // spe == b // spe else 'cross_boundary'
+            result[kind]['checks'] += 1
+            if actual > estimate:
+                result[kind]['failures'].append({'a': a, 'b': b, 'weight': actual,
+                                                 'estimate': estimate})
+    return result
 
 
 def epoch_registry_change(spec, run):
@@ -231,14 +271,7 @@ def main() -> int:
     ):
         failed = next((root for ok, root in cases if not ok), None)
         field(name, failed is None and bool(cases), len(cases), {'root': failed} if failed else None)
-    committees = {}
-    for slot in range(48):
-        epoch = slot // slots_per_epoch
-        members = set()
-        for index in range(int(spec.get_committee_count_per_slot(anchor_state, spec.Epoch(epoch)))):
-            members.update(map(int, spec.get_beacon_committee(
-                anchor_state, spec.Slot(slot), spec.CommitteeIndex(index))))
-        committees[slot] = members
+    committees = slot_committees(spec, anchor_state, 48)
     unique = all(sum(len(committees[s]) for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch))
                  == len(set().union(*(committees[s] for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch))))
                  for e in range(6))
@@ -248,28 +281,25 @@ def main() -> int:
     field('ConcreteExternalsPremises.committee_coverage', covered, 6)
     member_active = all(committees[s] <= active[s // slots_per_epoch] for s in committees)
     field('ConcreteExternalsPremises.committee_members_active', member_active, len(committees))
-    total = int(spec.get_total_active_balance(anchor_state))
-    span_checks = 0
-    estimate_failures = []
-    fraction_failures = []
-    for a in range(48):
-        members = set()
-        for b in range(a, 48):
-            members.update(committees[b])
-            actual = sum(int(registry[i].effective_balance) for i in members)
-            estimate = int(spec.estimate_committee_weight_between_slots(
-                total, spec.Slot(a), spec.Slot(b)))
-            span_checks += 1
-            if actual > estimate:
-                estimate_failures.append({'a': a, 'b': b, 'weight': actual, 'estimate': estimate})
-            # All validators in this run are honest, so this is a vacuous check
-            # of the per-span bound. The report names this limit.
-            if actual < 0:  # 0 Byzantine weight cannot exceed a nonnegative threshold.
-                fraction_failures.append({'a': a, 'b': b})
+    mixed = estimate_spans(spec, anchor_state, committees)
+    estimate_failures = mixed['within_epoch']['failures'] + mixed['cross_boundary']['failures']
+    estimate_failures.sort(key=lambda f: (f['a'], f['b']))
+    span_checks = mixed['within_epoch']['checks'] + mixed['cross_boundary']['checks']
     field('ByzantineWeightPremises.estimate_sound', not estimate_failures,
           span_checks, estimate_failures[0] if estimate_failures else None)
-    field('ByzantineWeightPremises.span_fraction', not fraction_failures,
-          span_checks, fraction_failures[0] if fraction_failures else None)
+    # All validators in this run are honest, so the per-span fault bound holds
+    # vacuously: zero Byzantine weight cannot exceed a nonnegative threshold.
+    field('ByzantineWeightPremises.span_fraction', True, span_checks)
+    # Part (i) of the committee-sampling idealization on a real pyspec genesis
+    # with equal balances: within-epoch spans must pass. Cross-boundary spans
+    # fail by part (ii): the real reshuffle is one sample, and the pro-rated
+    # estimate is the expected overlap.
+    uniform_state = genesis(spec, [32 * 10**9] * 128, spec.MIN_ACTIVATION_BALANCE)
+    uniform = estimate_spans(spec, uniform_state, slot_committees(spec, uniform_state, 48))
+    for kind in ('within_epoch', 'cross_boundary'):
+        failures = uniform[kind]['failures']
+        field(f'ByzantineWeightPremises.estimate_sound.uniform_{kind}', not failures,
+              uniform[kind]['checks'], failures[0] if failures else None)
     # A5: the retained projection of every accepted block. The Lean concrete
     # transition, with an accepting oracle and the committees that the block
     # reads, must give the retained fields of the Python post-state.
@@ -287,20 +317,29 @@ def main() -> int:
     for row in projection.check_run(run, projection.source_statements()):
         results.append({'field': row['field'], 'status': row['status'],
                         'checks': 1, 'first_failure': row['state'] if row['status'] == 'FAIL' else None})
-    expected_failures = {'ByzantineWeightPremises.estimate_sound'}
+    expected_failures = {'ByzantineWeightPremises.estimate_sound',
+                         'ByzantineWeightPremises.estimate_sound.uniform_cross_boundary'}
+    split = {name: {kind: {'checks': spans[kind]['checks'],
+                           'failures': len(spans[kind]['failures'])}
+                    for kind in spans}
+             for name, spans in (('mixed', mixed), ('uniform', uniform))}
     actual_failures = {row['field'] for row in results if row['status'] == 'FAIL'}
     summary = {'run': run.name, 'validators': len(registry), 'balances_gwei': sorted(set(
                    int(v.effective_balance) for v in registry)),
                'blocks': len(run.roots), 'max_slot': int(tail.slot),
                'fields': len(results), 'failures': sorted(actual_failures),
                'estimate_violations': len(estimate_failures),
+               'estimate_split': split,
                'not_established': sorted(row['field'] for row in results if row['status'] == 'NOT_ESTABLISHED'),
                'results': results,
                'limits': ['single accepted chain and one honest view; network relay, multi-view vote behavior, BLS, engine and KZG are not evaluated',
                           'span_fraction passes vacuously because this fixture has no Byzantine validators']}
     args.output.write_text(json.dumps(summary, indent=2) + '\n')
     print(f'whole-bundle sample: {len(results)} fields; failures={sorted(actual_failures)}; '
-          f'estimate violations={len(estimate_failures)}; NOT_ESTABLISHED={summary["not_established"]}')
+          f'estimate violations={len(estimate_failures)}; estimate within/cross: '
+          f'mixed {split["mixed"]["within_epoch"]["failures"]}/{split["mixed"]["cross_boundary"]["failures"]}, '
+          f'uniform {split["uniform"]["within_epoch"]["failures"]}/{split["uniform"]["cross_boundary"]["failures"]}; '
+          f'NOT_ESTABLISHED={summary["not_established"]}')
     if actual_failures != expected_failures:
         print(f'unexpected field result: expected {sorted(expected_failures)}, got {sorted(actual_failures)}', file=sys.stderr)
         return 1

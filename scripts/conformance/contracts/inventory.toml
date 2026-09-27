@@ -51,7 +51,7 @@ test = "ByzantineWeightPremises.effective_balance_quantized"
 path = "ByzantineWeightPremises.estimate_sound"
 file = "Economics.lean"
 class = "I"
-reason = "Committee sampling is idealized: the premise takes the high-probability committee-weight estimate of the specification as exact. With the fixed schedule and coverage this gives equal slot-committee weights. Sampling statistics are out of scope by design."
+reason = "Committee sampling is idealized: the premise takes the high-probability committee-weight estimate of the specification as exact. Part (i): equal slot-committee weights inside an epoch. Part (ii): a perfectly mixed reshuffle across an epoch boundary, so a cross-boundary span weighs at most the pro-rated estimate (the expected overlap). Sampling statistics are out of scope by design."
 
 [[field]]
 path = "ByzantineWeightPremises.span_fraction"

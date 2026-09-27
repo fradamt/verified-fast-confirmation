@@ -173,7 +173,11 @@ Byzantine run has five validators.
   `NextSlotBridgeRun.witnessExternalsCoherence` (the internal record; the
   public field is its residual part),
   `NextSlotBridgeRun.witnessPaperSafetySynchrony`,
-  `NextSlotBridgeRun.witnessByzantineBound`, and
+  `NextSlotBridgeRun.witnessByzantineBound` (it meets the cross-boundary
+  part of the committee-sampling idealization only through the 1000-Gwei
+  rounding of `adjust_committee_weight_estimate_to_ensure_safety`: every
+  estimate is at least 1005 Gwei, more than the total stake of 400 Gwei; a
+  witness at realistic scale with a mixed schedule is deferred), and
   `NextSlotPremiseWitness.witnessEpochEndsFitUint64`. The four honest nodes
   start from one anchor store and process finite schedules. Every honest vote
   belongs to its slot committee and meets the attestation due time. The run
