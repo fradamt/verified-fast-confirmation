@@ -275,7 +275,7 @@ run_cmd do
   | some (.defnInfo info) =>
       fingerprint := hash (fingerprint, info.value)
   | _ => throwError "missing claim definition"
-  unless fingerprint == (5450425737038397445 : UInt64) do
+  unless fingerprint == (7242260387970156940 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
   let mut witnessFingerprint : UInt64 := 0
   for name in publicWitnesses do

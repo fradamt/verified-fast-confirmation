@@ -177,9 +177,10 @@ theorem targetIncludedAt_evidence (hB : B.Admissible) {E : Execution Root}
     refine ⟨((hlt.trans hwlt).le.trans (Nat.le_add_right _ _)).trans hnum, ?_⟩
     rw [hscope]
     exact Nat.lt_succ_of_le ((compute_epoch_at_slot_mono hlt.le).trans hep)
-  refine ⟨b, hbk, hdel carrier b hbk _ ?_, hwithin, ?_, htarget, ?_⟩
-  · rw [hm.2.2.2.2.2.1]
-    exact List.mem_map_of_mem hvin
+  obtain ⟨w, n, hwn⟩ := hdel carrier b hbk _ (by
+    rw [hm.2.2.2.2.2.1]
+    exact List.mem_map_of_mem hvin)
+  refine ⟨b, hbk, ⟨w, n + 1, hwn⟩, hwithin, ?_, htarget, ?_⟩
   · rw [hm.1]
     exact hlt
   · intro i hi
@@ -218,9 +219,10 @@ theorem bodyIncludedAt_received (hB : B.Admissible) {E : Execution Root}
   obtain ⟨wire', ho', -, hm, -⟩ := hrest hne
   rw [hopen] at ho'
   obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj ho')
-  refine hdel carrier (store.blocks carrier) ⟨store, hstore, hr, rfl⟩ _ ?_
-  rw [hm.2.2.2.2.2.1]
-  exact List.mem_map_of_mem hvin
+  obtain ⟨w, n, hwn⟩ := hdel carrier (store.blocks carrier) ⟨store, hstore, hr, rfl⟩ _ (by
+    rw [hm.2.2.2.2.2.1]
+    exact List.mem_map_of_mem hvin)
+  exact ⟨w, n + 1, hwn⟩
 
 /-- **The canonical inclusion relation** `I`: target-included body votes of
 accepted blocks, with their inclusion evidence. -/

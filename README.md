@@ -98,7 +98,7 @@ an idealization.
 │                              │                     │ slashable pair, and are not forged.                                          │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
 │ body_attestations_delivered  │ E-network/behavior  │ Each attestation in an accepted block body reaches some node as a block      │
-│                              │                     │ attestation.                                                                 │
+│                              │                     │ attestation at a positive second (the run ignores events at second 0).       │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
 │ synchrony                    │ E-network/behavior  │ GST-0 delivery and handler service by the next boundary for votes, blocks,   │
 │                              │                     │ envelopes, and slashing evidence. DeadlineBlockRelay puts every root stored  │
