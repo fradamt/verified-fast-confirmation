@@ -33,7 +33,7 @@ bridge below turns a strict attestation-score-plus-boost inequality into the
 `get_weight` strict inequality: the losing sibling gets the boost charged in
 full, the winner keeps at least its bare score. -/
 
-variable {Root : Type*} [LinearOrder Root] [Inhabited Root] (cfg : Config)
+variable {Root : Type*} [LinearOrder Root] (cfg : Config)
 
 /-- `get_weight` is at most the bare attestation score plus the full proposer
 boost: the boost is added at most once, and only when the boost root is set and
@@ -47,8 +47,12 @@ theorem get_weight_le (store : Store Root) (node : ForkChoiceNode Root) :
   split_ifs
   · exact Nat.zero_le _
   · exact Nat.le_add_right _ _
-  · exact Nat.le_refl _
-  · exact Nat.add_le_add_left (Nat.zero_le _) _
+  · refine Nat.add_le_add_left ?_ _
+    split
+    · exact Nat.zero_le _
+    · split_ifs
+      · exact Nat.le_refl _
+      · exact Nat.zero_le _
 
 /-- A node which is not a previous-slot payload decision keeps its bare
 attestation score. Gloas gives previous-slot resolved nodes zero weight. -/
@@ -61,7 +65,6 @@ theorem get_weight_ge_of_not_payload_decision (store : Store Root)
   simp only [get_weight, h, Bool.false_eq_true, if_false]
   split_ifs
   · exact Nat.le_refl _
-  · exact Nat.le_add_right _ _
   · exact Nat.le_add_right _ _
 
 /-- Pending beacon-root support is a lower bound for its Gloas weight. -/
@@ -97,7 +100,6 @@ contributes a *lower* bound — reducing result 1 (`H0 + Hnew ≤ score c`) to
 the membership fact that every old honest supporter and every new honest voter
 records a `c`-supporting latest message at `w/m`. -/
 
-omit [Inhabited Root] in
 /-- **Recorded-support lower bound (set form).** On a registry-constant balance
 source, the attestation score of `node` at `store` is at least the ground-truth
 weight of any validator set `HS` all of whose members support `node` there
@@ -120,7 +122,6 @@ theorem recorded_support_lower {E : Execution Root} {store : Store Root}
   rw [List.mem_toFinset]
   exact hmem i hi
 
-omit [Inhabited Root] in
 /-- **Score = ground-truth supporter weight.** On a registry-constant balance
 source, the attestation score of `node` at `store` is exactly the ground-truth
 weight of its supporter set (the `Nodup` list `AttSupporters`, its balance-source

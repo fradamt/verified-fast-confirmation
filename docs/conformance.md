@@ -13,10 +13,13 @@ Use an existing local Python environment and a local source checkout:
 scripts/conformance/run.sh /path/to/fradamt-consensus-specs gloas minimal out/gloas-minimal.jsonl
 ```
 
-The runner uses the checkout's Python environment. It performs no setup. It writes Python and Lean logs next to the trace and returns a nonzero status for an empty export, schema error, test failure, or Lean mismatch. `FCR_EXPORT_ONLY=1` exports and checks the trace without invoking Lean. The Lean runner is a script outside the library.
+The runner uses the checkout's Python environment. It performs no setup. The checkout must be at the source pin `13f391516352f61b3ac5dcaae5be1884d104f86a`; each trace records that pin, and both trace readers reject another pin. It writes Python and Lean logs next to the trace and returns a nonzero status for an empty export, schema error, test failure, or Lean mismatch. `FCR_EXPORT_ONLY=1` exports and checks the trace without invoking Lean. The Lean runner is a script outside the library.
 Repository validation uses `scripts/validate.sh --fast` for source and
-boundary checks. Full validation builds the libraries and audits 39 public
-theorem witnesses. Neither check makes a trace match a refinement theorem.
+boundary checks. With the pinned interpreter, both modes and CI also run
+`scripts/conformance/check_smoke.sh`: the example traces, a wrong-pin trace,
+and the Gloas helper comparison. Full validation builds the libraries and
+audits 40 public theorem witnesses. Neither check makes a trace match a
+refinement theorem.
 
 Schema v2 records payload membership, Payload Timeliness Committee (PTC) vote maps, block deadlines, bid hashes, message slots and payload flags, and committee reads. The projection keeps a source state identity for opaque external calls. The runner checks executable configuration conditions. It does not replay block, envelope, or PTC handlers, prove `BeaconExternalsPremises`, or implement execution engine validation. Each imported payload must already have passed source validation. A trace match is an observation comparison.
 
@@ -38,17 +41,17 @@ proposer slashings. The test helpers disable BLS checks. The tests do not
 establish BLS unforgeability, hash collision resistance, execution-engine
 validity, KZG availability, network delivery, or a refinement theorem. A
 Python exception is recorded as a failed total Boolean law. Known false laws
-remain in the result JSON with a counterexample. New failures stop validation. regression.process_slots_checkpoint_epoch_without_balance_guard shows that one active increment can make an empty vote set pass the two-thirds test. regression.process_slots_two_boundaries_from_epoch_one shows why the two-boundary law starts in epoch 2. regression.anchor_state_checkpoints_raw_checkpoint_sync shows that a later raw anchor with older state checkpoints fails the named anchor condition. All three are labelled expected failures. The tests record them as known findings.
+remain in the result JSON with a counterexample. New failures stop validation. regression.process_slots_checkpoint_epoch_without_balance_guard shows that one active increment can make an empty vote set pass the two-thirds test. regression.process_slots_two_boundaries_from_epoch_one shows why the two-boundary law starts in epoch 2. regression.pjf_checkpoint_epoch_out_of_domain and regression.state_transition_checkpoint_epoch_out_of_domain show that the PJF and `state_transition` checkpoint-epoch laws need their antecedent. regression.anchor_state_checkpoints_raw_checkpoint_sync shows that a later raw anchor with older state checkpoints fails the named anchor condition. All five are labelled expected failures. The tests record them as known findings. Because BLS is disabled, the attestation-validity probe checks only the structure of the indexed attestation.
 
 Run the checker with an existing interpreter in the pinned checkout:
 
 ```sh
 python3 scripts/conformance/contracts/check_inventory.py \
-  --repo /path/to/consensus-specs-pending-discount \
+  --repo /path/to/fradamt-consensus-specs \
   --output /tmp/contract-results.json
 ```
 
-`scripts/validate.sh --consensus-repo /path/to/consensus-specs-pending-discount`
+`scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs`
 runs the same check. The contract runner fails if the checkout interpreter is absent. Fast validation
 can check the inventory alone when no interpreter is installed. CI installs the pinned fork in a separate job and runs the contract suite, full projection, realized-gap regression, and concrete differential.
 
@@ -94,7 +97,7 @@ slashing state, so its result is marked as not established. Unexcluded FAIL resu
 
 ### Whole-bundle sample
 
-`scripts/conformance/contracts/check_real_bundle.py` imports 48 normally participating blocks from a 100-validator Gloas genesis with 32, 33, 34, and 35 ETH effective balances. On this one accepted run it evaluates 76 finite fields, and the uniform genesis adds two: 52 FFG projection checks, 17 registry, committee, economic, anchor, and configuration checks, five state-law samples on accepted keyed states, one retained-projection comparison, and one negative control. Ten of the 76 are public premise fields; 64 are laws of the derived internal records, including the external contracts and the static validator set that the bridge proves. The comparison sends each of the 48 accepted blocks, the retained fields of its parent state, and the committees that its attestations read to the Lean `state_transition` with an accepting oracle. The Lean result must equal the retained fields of the Python post-state, and the Python registry must not change. The comparison uses the Lean evaluator of the concrete differential. No block of this run has a full parent payload or an operation outside the fixed scope. The negative control lowers the balance of one validator below the hysteresis threshold before an epoch-crossing block. Python then lowers its effective balance, so the registry changes and the run is outside the scope; the check must detect this change. `ByzantineWeightPremises.estimate_sound` fails on 211 of 1176 checked spans: 96 of 216 within-epoch spans (first at slots 0 to 1: 846e9 Gwei against an estimate of 837.5e9 Gwei) and 115 of 960 cross-boundary spans. A second genesis with 128 validators of 32 ETH (16 validators in each slot committee) checks only `estimate_sound`, in two fields. No within-epoch span fails (0 of 216), so a real pyspec registry meets part (i) of the committee-sampling idealization. 120 of 960 cross-boundary spans fail (for example slots 1 to 14: 4096e9 Gwei against 4052.16e9 Gwei), because the pro-rated estimate is the expected overlap of a reshuffle and the real reshuffle is one sample; this is part (ii). The checker lists these failures as expected. The other checked fields pass, except `EventualCheckpointInclusion.included`, which is NOT_ESTABLISHED. This run has one view and no Byzantine validators; it cannot test network relay, all honest views, BLS, KZG, engine validity, or a nonvacuous span fault bound. CI runs this sample and fails if an unlabelled field fails.
+`scripts/conformance/contracts/check_real_bundle.py` imports 48 normally participating blocks from a 100-validator Gloas genesis with 32, 33, 34, and 35 ETH effective balances. On this one accepted run it evaluates 78 finite fields, and the uniform genesis adds two (80 in total): 53 FFG projection checks, 18 registry, committee, economic, anchor, and configuration checks, five state-law samples on accepted keyed states, one retained-projection comparison, and one negative control. Ten of the 78 are public premise fields; 66 are laws of the derived internal records, including the external contracts and the static validator set that the bridge proves. Each run reads the committees of each epoch from its own Python states. The comparison sends each of the 48 accepted blocks, the retained fields of its parent state, and the committees that its attestations read to the Lean `state_transition` with an accepting oracle. The Lean result, including its registry, must equal the retained fields of the Python post-state, and the Python registry must not change. The comparison uses the Lean evaluator of the concrete differential. No block of this run has a full parent payload or an operation outside the fixed scope. The negative control lowers the balance of one validator below the hysteresis threshold before an epoch-crossing block. Python then lowers its effective balance, so the registry changes and the run is outside the scope; the same comparator must detect this change. `ByzantineWeightPremises.estimate_sound` fails on 208 of 1176 checked spans: 104 of 216 within-epoch spans (first at slots 0 to 1: 846e9 Gwei against an estimate of 837.5e9 Gwei) and 104 of 960 cross-boundary spans. A second genesis with 128 validators of 32 ETH (16 validators in each slot committee) checks only `estimate_sound`, in two fields. No within-epoch span fails (0 of 216), so a real pyspec registry meets part (i) of the committee-sampling idealization. 106 of 960 cross-boundary spans fail (first at slots 1 to 14: 4096e9 Gwei against 4052.16e9 Gwei), because the pro-rated estimate is the expected overlap of a reshuffle and the real reshuffle is one sample; this is part (ii). The checker lists these failures as expected. The other checked fields pass, except `EventualCheckpointInclusion.included`, which is NOT_ESTABLISHED. This run has one view and no Byzantine validators; it cannot test network relay, all honest views, BLS, KZG, engine validity, or a nonvacuous span fault bound. CI runs this sample and fails if an unlabelled field fails.
 
 ## Scope of the checks
 
@@ -108,8 +111,8 @@ early in epochs 0 and 1 as Python does.
 
 The active field inventory is checked with the type-based Statements reachability
 audit. `IncludedAttestationEvidence.attesters_in_committee` is class I because
-it uses one fixed committee map across forks. A3.2 requires epoch-1 evidence in
-an epoch-2-or-later block; the regression in
+it uses one fixed committee map across forks. For e = 1, A3.2 requires a carrier of
+epoch 2 or later for C(b, 1); the regression in
 `scripts/conformance/contracts/test_realized_gap.py` records a confirmed block
 lost when that evidence is seeded too early. Finality has a two-epoch lag, the
 boundary source law covers two or more epoch crossings, and the `F = 1` scope

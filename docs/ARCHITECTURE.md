@@ -63,17 +63,20 @@ membership and executable ancestry.
 ┌────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────┐
 │Check                       │What it enforces                                                                             │
 ├────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
-│check_consensus_source.py   │The Python tag and the pinned source objects match the recorded hashes.                      │
+│check_consensus_source.py   │The Python tag and the 44 pinned source files match the recorded hashes; the generated pyspec│
+│                            │modules of eight forks are fresh.                                                            │
 │check_review_boundary.py    │Lean parser import closure of Statements contains only Model and Statements modules; every   │
 │                            │Statements source is included.                                                               │
-│StatementReachability.lean  │59 source declarations are claim-reachable from the claim type; no exception remains. No     │
+│StatementReachability.lean  │30 source declarations are claim-reachable from the claim type; no exception remains. No     │
 │                            │other unreachable source declaration is allowed.                                             │
-│ReviewSurfaceShape.lean     │Field names and types of 18 records and the claim body remain exact.                         │
+│ReviewSurfaceShape.lean     │Field names of 13 records, field types of 17 records, the claim-type dependency closure, and │
+│                            │the types of the 40 public witnesses remain exact.                                           │
 │PremiseFieldUse.lean        │The proof of the claim reads each Prop field of each premise record; no exception remains.   │
 │check_imports.py            │The five-library import direction holds.                                                     │
 │check_doc_names.py          │Backticked Lean names in current documents resolve to declarations or files.                 │
-│Audit.lean                  │The 39 audited public theorems have only standard axiom dependencies. No forbidden           │
+│Audit.lean                  │The 40 audited public theorems have only standard axiom dependencies. No forbidden           │
 │                            │declaration is allowed.                                                                      │
+│check_kernel.sh             │The kernel replays all 307 project modules.                                                  │
 │validate.sh                 │Fast checks above; full mode also builds every library and runs Lean checks.                 │
 └────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -88,12 +91,13 @@ projection does not model. `FastConfirmationProofs/FFG/Concrete/` computes the
 FFG interpretation from the bridge and proves the internal records in
 `FastConfirmationInternal`. The inclusion relation counts body votes that set
 the timely-target flag; Python `process_attestation` does not check the target
-root. A 59-case differential and a 48-block retained-projection comparison test
+root. The A3.2 view counts every body vote (`BodyIncludedAt`) and reads the
+carried checkpoints (`Carried`). A 59-case differential and a 48-block retained-projection comparison test
 the concrete transition against pinned Python. The projection harness checks
 each interpretation law on real pyspec runs. Full-bundle witnesses show
 consistency, while the contract and differential checks test Python behavior.
 
-The active inventory has 59 authored claim-reachable fields: 17 definitions (the A3.2 view and antecedent), 7 record fields whose own fields are listed, and 35 assumed leaves. The bridge proves the other internal external contracts and the static validator set (`ExternalsLaws.lean`), so they are not premise fields. The Lean reachability audit also checks two outside Prop boundaries. The leaf labels separate tested state laws, execution scope, network and behavior, and idealizations. `boundary_envelope_prefix` has both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
+The active inventory has 59 authored claim-reachable fields: 17 definitions (the A3.2 view and antecedent), 7 record fields whose own fields are listed, and 35 assumed leaves. The bridge proves the other internal external contracts and the static validator set (`ExternalsLaws.lean`), so they are not premise fields. The Lean reachability audit also checks two outside Prop boundaries. The leaf labels separate tested state laws, execution scope, network and behavior, and idealizations. `boundary_envelope_prefix` and `HorizonVoteDeliveryLookahead.attestation_delivery` have both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
 The field list is checked against the claim-type reachability audit. CI runs the
 Python contract, projection, realized-gap, and concrete differential checks in
 a separate pinned-pyspec job.

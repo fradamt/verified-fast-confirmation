@@ -5,7 +5,12 @@ abstract: >-
   Lean 4 proof that the Ethereum Fast Confirmation Rule is safe: a confirmed
   block stays on every honest head from the next slot, under explicit synchrony
   and stake assumptions, over a concrete Gloas FFG model tested against the
-  consensus-specs Python specification.
+  consensus-specs Python specification. The model follows the fork
+  fradamt/consensus-specs at tag fcr-gloas-fix, whose empty-slot discount
+  differs from upstream. The result holds up to a finite horizon, for
+  genesis-anchored runs with a fixed validator registry and one fixed committee
+  assignment; it takes the committee-weight estimate as exact and assumes paper
+  Assumption 3.2 (eventual checkpoint inclusion).
 type: software
 version: 0.1.0
 date-released: "2026-09-27"

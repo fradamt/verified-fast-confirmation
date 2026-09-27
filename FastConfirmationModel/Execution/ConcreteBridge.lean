@@ -335,10 +335,12 @@ def BodyIncludedAt (E : Execution Root) (carrier : Root) (a : Attestation Root) 
 `on_attestation(store, attestation, is_from_block=True)` call. Python
 `on_block` does not process body attestations; the pyspec fork-choice test
 steps add them: "An on_block step implies receiving block's attestations"
-(`tests/core/pyspec/eth_consensus_specs/test/helpers/fork_choice.py:397`). -/
+(`tests/core/pyspec/eth_consensus_specs/test/helpers/fork_choice.py:397`).
+The receiving second `n + 1` is positive: the execution does not process
+`schedule w 0` (`Execution.store`), so an event there is not a call. -/
 def BodyAttestationsDelivered (E : Execution Root) : Prop :=
   ∀ r b, E.BlockKnownInScheduledPrefix B.setup.cfg B.interface r b →
-    ∀ a ∈ b.attestations, ∃ w n, Event.attestation a true ∈ E.schedule w n
+    ∀ a ∈ b.attestations, ∃ w n, Event.attestation a true ∈ E.schedule w (n + 1)
 
 /-- **Scope condition, not a protocol law.** A finalized checkpoint of epoch
 `GENESIS_EPOCH + 1` in the committed state of an accepted block, or after one

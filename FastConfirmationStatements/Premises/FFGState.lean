@@ -216,8 +216,10 @@ together; the state then carries only the later checkpoint
 The descendant must be in an epoch above `GENESIS_EPOCH + 1` unless
 `e = GENESIS_EPOCH`.  Python `process_justification_and_finalization`
 returns early at epochs up to `GENESIS_EPOCH + 1`, so it never computes the
-unrealized justification of epoch 1 in a block of epoch 1: the epoch-1 votes
-must be included in a block of epoch 2 or later.  Without this bound the
+unrealized justification of epoch 1 in a block of epoch 1: the carrier that
+makes `C(b,1)` available must be a block of epoch 2 or later.  Epoch-1 votes
+included in epoch 1 count at such a carrier, because its eager PJF reads
+previous-epoch participation.  Without this bound the
 premise admits a run in which the Python FCR confirms a block and then loses
 it (`regression.fcr_confirmed_block_reorged_epoch_one` in
 `scripts/conformance/contracts/test_realized_gap.py`). -/

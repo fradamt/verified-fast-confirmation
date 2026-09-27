@@ -121,7 +121,7 @@ def on_tick_per_slot (store : Store Root) (time : ℕ) : Store Root :=
   -- If this is a new slot, reset store.proposer_boost_root
   let store :=
     if current_slot > previous_slot then
-      { store with proposer_boost_root := (default : Root) }
+      { store with proposer_boost_root := none }
     else store
   -- If a new epoch, pull-up justification and finalization from previous epoch
   if current_slot > previous_slot ∧
@@ -363,7 +363,7 @@ if is_timely and is_first_block and is_same_dependent_root:
     store.proposer_boost_root = root
 ``` -/
 def update_proposer_boost_root (store : Store Root) (head root : Root) : Store Root :=
-  let is_first_block := decide (store.proposer_boost_root = (default : Root))
+  let is_first_block := store.proposer_boost_root.isNone
   let is_timely := ((store.block_timeliness root).getD (false, false)).1
   let epoch := get_current_store_epoch cfg store
   let head_dependent_root := get_shuffling_dependent_root cfg store head epoch
@@ -373,7 +373,7 @@ def update_proposer_boost_root (store : Store Root) (head root : Root) : Store R
   -- Add proposer score boost if the block is timely, not conflicting with an
   -- existing block, with the same dependent root as the canonical chain head
   if is_timely && is_first_block && is_same_dependent_root then
-    { store with proposer_boost_root := root }
+    { store with proposer_boost_root := some root }
   else store
 
 /-- Source: `specs/gloas/fork-choice.md:1115`.
@@ -671,7 +671,7 @@ def get_forkchoice_store (anchor_state : BeaconState Root)
   let anchor_epoch := get_current_epoch cfg anchor_state
   let justified_checkpoint := Checkpoint.mk anchor_epoch anchor_root
   let finalized_checkpoint := Checkpoint.mk anchor_epoch anchor_root
-  let proposer_boost_root : Root := default
+  let proposer_boost_root : Option Root := none
   { time := anchor_state.genesis_time + cfg.slot_duration_ms * anchor_state.slot / 1000
     genesis_time := anchor_state.genesis_time
     justified_checkpoint := justified_checkpoint

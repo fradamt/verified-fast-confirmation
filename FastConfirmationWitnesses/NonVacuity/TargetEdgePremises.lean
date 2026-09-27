@@ -551,7 +551,7 @@ theorem witnessBodyAttestationsDelivered :
   rcases acceptedBlockAt_cases hb with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩
   · simp [anchorSignedBlock] at ha
   · simp [childSignedBlock] at ha
-  · refine ⟨0, 8, ?_⟩
+  · refine ⟨0, 7, ?_⟩
     simp only [carrierSignedBlock, List.mem_cons, List.not_mem_nil, or_false] at ha
     rcases ha with rfl | rfl | rfl <;> simp [witnessExecution, witnessSchedule]
 

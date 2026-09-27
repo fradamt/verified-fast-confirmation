@@ -39,6 +39,7 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.NextSlotPremiseWitness.next_slot_premises_nonempty,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.ffg_interpretation_fidelity,
     ``FastConfirmation.Spec.GenesisStubPremiseWitness.genesis_stub_full_bundle_witness,
+    ``FastConfirmation.Spec.GenesisStubPremiseWitness.ffg_interpretation_fidelity,
     ``FastConfirmation.Spec.FullTwelveWitness.full_bundle_witness,
     ``FastConfirmation.Spec.FullTwelveWitness.changed_root_safe_from_next_slot,
     ``FastConfirmation.Spec.FullTwelveWitness.delayed_receipts_are_first,
@@ -275,14 +276,14 @@ run_cmd do
   | some (.defnInfo info) =>
       fingerprint := hash (fingerprint, info.value)
   | _ => throwError "missing claim definition"
-  unless fingerprint == (5450425737038397445 : UInt64) do
+  unless fingerprint == (13571509296887298206 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
   let mut witnessFingerprint : UInt64 := 0
   for name in publicWitnesses do
     let some info := env.find? name
       | throwError "missing public witness {name}"
     witnessFingerprint := hash (witnessFingerprint, name, info.type)
-  unless witnessFingerprint == (14189070914049255717 : UInt64) do
+  unless witnessFingerprint == (6115175776016925080 : UInt64) do
     throwError "public witness statement type changed: {witnessFingerprint}"
   IO.println s!"public witness statements passed ({witnessFingerprint})"
   IO.println s!"review surface types passed ({fingerprint})"

@@ -77,7 +77,7 @@ def store (inputs : Inputs) : Store Nat := {
   finalized_checkpoint := checkpoint
   unrealized_justified_checkpoint := checkpoint
   unrealized_finalized_checkpoint := checkpoint
-  proposer_boost_root := inputs.boostRoot
+  proposer_boost_root := if inputs.boostRoot = 0 then none else some inputs.boostRoot
   equivocating_indices := ∅
   block_roots := [1, 2, 3, 4]
   blocks := block inputs

@@ -2,7 +2,9 @@
 
 `run_differential.py` sends one JSON fixture list to the pinned Gloas minimal
 pyspec and to `FFGDifferential.lean`. It compares the retained state after each
-call. It compares the failing guard class when a call is rejected. Validation
+call: slot, `genesis_time`, the four retained fields of every validator, the
+latest block header, checkpoints, justification bits, participation, block roots,
+availability, and the latest block and bid hashes. It compares the failing guard class when a call is rejected. Validation
 runs the comparison when the pinned `.venv/bin/python` is present.
 
 The fixture uses one fixed committee schedule: committee 0 is `[0, 1]`, and
@@ -48,8 +50,9 @@ excludes that structural check.
 
 A transition row can carry an explicit committee schedule. The whole-bundle
 sample (`check_real_bundle.py`) uses this form: it sends the 48 accepted blocks
-of a 100-validator pyspec run with their real committees and compares the Lean
-result with the retained fields of each Python post-state. That run uses the
+of a 100-validator pyspec run with the real committees of each epoch and compares
+the Lean result, including its registry, with the retained fields of each Python
+post-state. That run uses the
 unmodified pyspec transition with BLS disabled, not the oracle mode above.
 
 The pinned `anchor_semantics_probe.py` separately tests the a1

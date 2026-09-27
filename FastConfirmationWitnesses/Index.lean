@@ -210,7 +210,8 @@ Byzantine run has five validators.
   `FullTwelveWitness.ffg_interpretation_fidelity`,
   `TargetEdgePremiseWitness.ffg_interpretation_fidelity`,
   `FullTwelveEnvelopeWitness.ffg_interpretation_fidelity`,
-  `ByzantinePremiseWitness.ffg_interpretation_fidelity`. Each proves the
+  `ByzantinePremiseWitness.ffg_interpretation_fidelity`,
+  `GenesisStubPremiseWitness.ffg_interpretation_fidelity`. Each proves the
   fidelity record for the canonical interpretation of its run: the included
   votes are valid members of the accepted carrier body.
 * `EventualCheckpointInclusion` (paper Assumption 3.2 (explicit)) over the

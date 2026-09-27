@@ -188,8 +188,8 @@ reason = "The unscheduled anchor parent is a projected-store boundary condition.
 [[field]]
 path = "HorizonVoteDeliveryLookahead.attestation_delivery"
 file = "Synchrony.lean"
-class = "E-network/behavior"
-reason = "Each honest in-horizon vote must reach every honest node by the next boundary."
+class = "E-network/behavior+I"
+reason = "Each honest in-horizon vote must reach every honest node by the next boundary. Idealization: each single-validator vote reaches every honest node at the exact next boundary second; real gossip uses subnets and aggregates."
 
 [[field]]
 path = "NextSlotSynchronyPremises.delivery_lookahead"
@@ -267,7 +267,7 @@ reason = "Record field: its fields are listed under HonestBehavior with their ow
 path = "SafetyPremises.body_attestations_delivered"
 file = "ConcreteSafety.lean"
 class = "E-network/behavior"
-reason = "Every attestation in an accepted block body must reach some node as a block attestation, as in the pyspec fork-choice test steps."
+reason = "Every attestation in an accepted block body must reach some node as a block attestation at a positive second, as in the pyspec fork-choice test steps. The run does not process events at second 0."
 
 [[field]]
 path = "SafetyPremises.synchrony"
@@ -285,7 +285,7 @@ reason = "Record field: its fields are listed under ByzantineWeightPremises with
 path = "SafetyPremises.epoch_ends_fit"
 file = "ConcreteSafety.lean"
 class = "E-scope"
-reason = "The selected horizon must fit the finite uint64 slot range."
+reason = "SLOTS_PER_EPOCH must divide 2^64, so each epoch that starts in the uint64 slot range ends in it. This is a configuration condition; it does not bound the horizon."
 
 [[field]]
 path = "SafetyPremises.slots_per_epoch_gt_one"

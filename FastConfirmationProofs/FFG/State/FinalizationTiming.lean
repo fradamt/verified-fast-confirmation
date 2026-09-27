@@ -574,7 +574,7 @@ theorem AcceptedFinalizationLagAt.after_on_tick_per_slot_next
   let timed : Store Root := { store with time := time }
   let reset : Store Root :=
     if get_current_slot cfg timed > get_current_slot cfg store then
-      { timed with proposer_boost_root := (default : Root) }
+      { timed with proposer_boost_root := none }
     else timed
   have hresetSlot : get_current_slot cfg reset = get_current_slot cfg timed := by
     simp only [reset]
@@ -1447,7 +1447,7 @@ theorem AcceptedFinalizationCertificateAt.after_on_tick_per_slot_next
   let timed : Store Root := { store with time := time }
   let reset : Store Root :=
     if get_current_slot cfg timed > get_current_slot cfg store then
-      { timed with proposer_boost_root := (default : Root) }
+      { timed with proposer_boost_root := none }
     else timed
   have hresetSlot : get_current_slot cfg reset = get_current_slot cfg timed := by
     simp only [reset]

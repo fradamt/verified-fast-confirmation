@@ -74,6 +74,11 @@ def rootValue (j : J) : Except String Nat := do
 def rootField (j : J) (name : String) : Except String Nat := do
   rootValue (← field j name)
 
+/-- Python `Root()`, the zero hash, is the value for no proposer boost. -/
+def boostRootField (j : J) (name : String) : Except String (Option Nat) := do
+  let root ← rootField j name
+  return if root = 0 then none else some root
+
 def rootText (root : Nat) : String :=
   let digit (n : Nat) : Char :=
     if n < 10 then Char.ofNat ('0'.toNat + n)
@@ -312,7 +317,7 @@ def parseStore (cfg : Config) (j : J) : Except String ParsedStore := do
     finalized_checkpoint := finalized
     unrealized_justified_checkpoint := unrealizedJustified
     unrealized_finalized_checkpoint := unrealizedFinalized
-    proposer_boost_root := ← rootField j "proposer_boost_root"
+    proposer_boost_root := ← boostRootField j "proposer_boost_root"
     equivocating_indices := equivocating.toList.toFinset
     block_roots := blockList.map Prod.fst
     blocks := fun root => (lookupNat root blockList).getD default
@@ -557,8 +562,10 @@ def nodeText (node : ForkChoiceNode Nat) : String :=
 /-- Check the complete state-read domain that Gloas proposer boost can use.
 The exporter fills this domain even when its first head call skips it. -/
 def missingHeadRead (cfg : Config) (store : Store Nat) : Option String := do
-  if store.proposer_boost_root == 0 then none else do
-    let block := store.blocks store.proposer_boost_root
+  match store.proposer_boost_root with
+  | none => none
+  | some proposer_boost_root => do
+    let block := store.blocks proposer_boost_root
     let parent := store.blocks block.parent_root
     if parent.slot + 1 < block.slot then none else do
       let state := store.block_states block.parent_root
