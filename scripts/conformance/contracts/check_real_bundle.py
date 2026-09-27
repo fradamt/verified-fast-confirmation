@@ -14,7 +14,105 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / 'projection'))
+sys.path.insert(0, str(HERE.parent / 'concrete'))
 import run as projection  # noqa: E402
+import run_differential as differential  # noqa: E402
+
+
+def retained_projection_rows(spec, run):
+    """Differential rows for every accepted block of the run.
+
+    Each row holds the retained FFG fields of the parent post-state, the wire
+    fields of the block, and the committees that the block attestations read.
+    Roots and hashes become consistent integer labels; the zero root is 0. The
+    header root is the root of the latest header after `process_slot` fills
+    its state root, as Python `process_block_header` reads it."""
+    labels = {bytes(32): 0}
+
+    def label(value):
+        return labels.setdefault(bytes(value), len(labels))
+
+    def checkpoint(value):
+        return [int(value.epoch), label(value.root)]
+
+    def header_root(state):
+        header = state.latest_block_header.copy()
+        if header.state_root == spec.Root():
+            header.state_root = spec.hash_tree_root(state)
+        return label(spec.hash_tree_root(header))
+
+    def retained(state):
+        return {
+            'slot': int(state.slot),
+            'header_slot': int(state.latest_block_header.slot),
+            'header_root': header_root(state),
+            'bits': [bool(x) for x in state.justification_bits],
+            'previous_justified': checkpoint(state.previous_justified_checkpoint),
+            'current_justified': checkpoint(state.current_justified_checkpoint),
+            'finalized': checkpoint(state.finalized_checkpoint),
+            'previous_participation': [int(x) for x in state.previous_epoch_participation],
+            'current_participation': [int(x) for x in state.current_epoch_participation],
+            'block_roots': [label(x) for x in state.block_roots],
+            'availability': [bool(x) for x in state.execution_payload_availability],
+            'latest_block_hash': label(state.latest_block_hash),
+            'latest_bid_block_hash': label(state.latest_execution_payload_bid.block_hash),
+        }
+
+    def registry(state):
+        return [{'effective_balance': int(v.effective_balance), 'slashed': bool(v.slashed),
+                 'activation_epoch': int(v.activation_epoch), 'exit_epoch': int(v.exit_epoch)}
+                for v in state.validators]
+
+    rows, expected = [], []
+    for root in run.events:
+        block = run.blocks[root]
+        body = block.body
+        # The fixture has no operation that the projection erases.
+        if (body.proposer_slashings or body.attester_slashings or body.voluntary_exits
+                or body.bls_to_execution_changes or body.deposits):
+            raise RuntimeError(f'block {root} has an erased operation')
+        pre = run.states[run.parents[root]]
+        at_slot = pre.copy()
+        spec.process_slots(at_slot, block.slot)
+        bid = body.signed_execution_payload_bid.message
+        requests = body.parent_execution_requests
+        committees, counts = {}, {}
+        votes = []
+        for a in body.attestations:
+            slot = int(a.data.slot)
+            epoch = int(spec.compute_epoch_at_slot(a.data.slot))
+            count = int(spec.get_committee_count_per_slot(at_slot, spec.Epoch(epoch)))
+            counts[epoch] = count
+            for index in range(count):
+                committees[slot, index] = [int(i) for i in spec.get_beacon_committee(
+                    at_slot, a.data.slot, spec.CommitteeIndex(index))]
+            votes.append({'aggregation_bits': [bool(x) for x in a.aggregation_bits],
+                          'committee_bits': [bool(x) for x in a.committee_bits],
+                          'data': {'slot': slot, 'index': int(a.data.index),
+                                   'beacon_block_root': label(a.data.beacon_block_root),
+                                   'source': checkpoint(a.data.source),
+                                   'target': checkpoint(a.data.target)}})
+        rows.append({
+            'name': f'accepted_slot_{int(block.slot)}', 'action': 'transition',
+            'state': {**retained(pre), 'validators': registry(pre)},
+            'oracle_accept': True,
+            'schedule': {'committees': [[s, i, m] for (s, i), m in sorted(committees.items())],
+                         'counts': [[e, n] for e, n in sorted(counts.items())]},
+            'block': {'slot': int(block.slot), 'parent_root': label(block.parent_root),
+                      'proposer_index': int(block.proposer_index),
+                      'root': label(spec.hash_tree_root(block)),
+                      'parent_block_hash': label(bid.parent_block_hash),
+                      'block_hash': label(bid.block_hash),
+                      'parent_requests_empty': requests == spec.ExecutionRequests(),
+                      'parent_requests_match': spec.hash_tree_root(requests)
+                      == at_slot.latest_execution_payload_bid.execution_requests_root,
+                      'deposit_count': len(body.deposits), 'attestations': votes},
+        })
+        post = run.states[root]
+        # The Lean state keeps the registry of the fixed scope, so a Python
+        # registry change is a difference of the retained projection.
+        expected.append({'ok': registry(post) == registry(pre), 'value': retained(post)})
+    return rows, expected
 
 
 def main() -> int:
@@ -147,6 +245,16 @@ def main() -> int:
           span_checks, estimate_failures[0] if estimate_failures else None)
     field('ByzantineWeightPremises.span_fraction', not fraction_failures,
           span_checks, fraction_failures[0] if fraction_failures else None)
+    # A5: the retained projection of every accepted block. The Lean concrete
+    # transition, with an accepting oracle and the committees that the block
+    # reads, must give the retained fields of the Python post-state.
+    rows, expected = retained_projection_rows(spec, run)
+    actual = differential.lean_evaluate(rows)
+    mismatch = next(({'block': row['name'], 'pyspec': want, 'lean': got}
+                     for row, want, got in zip(rows, expected, actual, strict=True)
+                     if want != got), None)
+    field('ConcreteFFG.state_transition.retained_projection',
+          mismatch is None and len(rows) == 48, len(rows), mismatch)
     for row in projection.check_run(run, projection.source_statements()):
         results.append({'field': row['field'], 'status': row['status'],
                         'checks': 1, 'first_failure': row['state'] if row['status'] == 'FAIL' else None})

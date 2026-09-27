@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml)
 
-The Fast Confirmation Rule (FCR) selects a block root from fork-choice state. Under the stated premises, the Lean theorem proves that every honest observer stores that root and keeps it on its head from the next slot until the finite horizon. The fixed-committee premises force every slot committee to weigh exactly total_active / SLOTS_PER_EPOCH; ordinary 100-validator genesis and mainnet-like registries do not meet this condition. The theorem covers genesis-anchored runs in which epoch 1 is not finalized. In Python, honest votes finalize epoch 1 only through a 1 -> 3 link; this occurs when epoch-2 justification needs votes included in epoch 3. The horizon is an absolute epoch limit (`Execution.verification_horizon`). The proof uses a supplied FFG interpretation; the Python checks do not establish the full premise bundle.
+The Fast Confirmation Rule (FCR) selects a block root from fork-choice state. Under the stated premises, the Lean theorem proves that every honest observer stores that root and keeps it on its head from the next slot until the finite horizon. The fixed-committee premises force every slot committee to weigh exactly total_active / SLOTS_PER_EPOCH; ordinary 100-validator genesis and mainnet-like registries do not meet this condition. The theorem covers genesis-anchored runs in which epoch 1 is not finalized. In Python, honest votes finalize epoch 1 only through a 1 -> 3 link; this occurs when epoch-2 justification needs votes included in epoch 3. The horizon is an absolute epoch limit (`Execution.verification_horizon`). The premise fixes a concrete bridge: a concrete Gloas FFG transition, state and block commitments, and an opaque block-validity oracle. The proof computes its FFG interpretation from that bridge. The Python checks do not establish the full premise bundle.
 
 - **Stored boundary output:** The confirmed root saved after a scheduled slot-boundary call.
 - **Handler-successful prefix:** The state after a scheduled event whose handler returns successfully.
@@ -10,7 +10,7 @@ The Fast Confirmation Rule (FCR) selects a block root from fork-choice state. Un
 - **AU:** An available or unrealized checkpoint with evidence on an accepted block's ancestry.
 - **PJF:** `process_justification_and_finalization`. An eager PJF call reads a copy of a state before normal epoch processing. A slot-processed read runs `process_slots` first.
 - **Keyed state:** The beacon state stored under a block root. An honest in-horizon prefix is the result of accepted scheduled events at an honest node before the absolute epoch limit.
-- **Full bundle:** One witness of every field of `NextSlotSafetyPremises`. An exercised field has a true guard or a nonzero event in that run.
+- **Full bundle:** One witness of every field of `ConcreteBridge.SafetyPremises`. An exercised field has a true guard or a nonzero event in that run.
 - **GST-0:** The delivery laws hold from the start of this execution.
 - **Checked span:** An in-horizon slot interval used by the stake bound.
 - **Joint witness:** A proof of several records for one run.
@@ -30,19 +30,20 @@ Run `scripts/validate.sh` with the pinned Python checkout, then inspect `FastCon
 
 The result concerns stored boundary outputs. It does not cover an arbitrary query within a slot.
 
-The proof takes an FFG interpretation as a premise: `AcceptedBlockFFGState`
-with an inclusion relation and checkpoint selectors. It must agree with every
-checkpoint read of successful handlers through `FFGStateAndCheckpointReadAgreement`
-and satisfy eventual checkpoint inclusion (paper Assumption 3.2 style), link and
-checkpoint agreement, checkpoint projection laws, and finalization lag. The
-inclusion relation need not equal block-body membership. The theorem holds for
-every relation with these laws. The intended relation selects included attestations whose target matches the
-checkpoint. Python `process_attestation` does not check the target root.
-`FFGInterpretationFidelity` states body membership and valid-vote facts, and
-every full-bundle witness proves them for its supplied relation. The projection harness checks sampled interpretation fields on pinned pyspec runs. It marks `EventualCheckpointInclusion.included` (A3.2) as NOT_ESTABLISHED: its every-view antecedent and full implication are not tested. A concrete FFG state
-and 34 Gloas functions exist in `FastConfirmationModel`; 59 differential cases
-agreed with Python. The theorem does not yet use this concrete model. A client
-still must supply the interpretation and show its laws.
+The premise `ConcreteBridge.SafetyPremises` fixes a concrete bridge. The
+bridge runs the concrete Gloas FFG transition of `FastConfirmationModel` for
+`process_slots`, `state_transition`, and PJF. An opaque block-validity oracle
+(class I) stands for BLS, hash roots, proposer selection, and the operations
+that the projection erases; the theorem holds for every oracle. The proof
+computes the FFG interpretation from the bridge
+(`SafetyPremises.nextSlotSafetyPremises`). Its inclusion relation counts the
+body votes of accepted blocks that set the timely-target flag. Python
+`process_attestation` does not check the target root, so a vote with a wrong
+target root does not count. The premise keeps eventual checkpoint inclusion
+(paper Assumption 3.2) over this view. The projection harness checks the
+interpretation laws on pinned pyspec runs. It marks `EventualCheckpointInclusion.included` (A3.2) as NOT_ESTABLISHED: its every-view antecedent and full implication are not tested. The concrete
+transition agreed with Python in 59 differential cases and on the retained
+fields of 48 accepted blocks of a 100-validator run.
 
 A3.2 requires an epoch-1 attestation to appear in a block of epoch 2 or later.
 The Python FCR regression in `scripts/conformance/contracts/test_realized_gap.py`
@@ -131,7 +132,7 @@ external calls with stated contracts. The Lean kernel checks the proofs. The tru
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
-A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 72 finite premise fields. `ByzantineWeightPremises.estimate_sound` fails on 211 spans; A3.2 remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
+A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 75 finite premise fields and the retained fields of the concrete transition. `ByzantineWeightPremises.estimate_sound` fails on 211 spans; A3.2 remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
 
 The [contract conformance checks](docs/conformance.md#contract-conformance) cover 160
 claim-reachable premise fields, split into tested state laws (T), execution scope (E-scope), network and behavior (E-network/behavior), supplied FFG interpretation (E-interpretation), and idealizations (I). Run `python3
@@ -161,33 +162,33 @@ path must name the pinned local checkout.
 
 ## Premise ledger
 
-The records in this table are in `FastConfirmationStatements/Premises/`. The last column gives the source of each condition.
+The records in this table are in `FastConfirmationStatements/Premises/`, except the derived internal record. The last column gives the source of each condition.
 
 ```text
 ┌──────────────┬──────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────┐
 │ Claim        │ Premise record                       │ Fields in plain words                                                            │ Source                        │
 ├──────────────┼──────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
-│ Safety field │ Execution.NextSlotSafetyPremises     │ Exact FFG state at every handler-successful prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
-│              │                                      │ completed FCR calls; epoch arithmetic; anchor alignment; finalization            │ extension; model idealisation │
-│              │                                      │ delay; more than one slot per epoch; checkpoint and link evidence.               │                               │
-│ Safety field │ Execution.ScheduledExecutionPremises │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
-│              │                                      │ behavior with an attestation deadline, and a valid genesis store.                │ Phase0/Gloas; model premise   │
-│ Safety field │ Execution.ScheduledFCRCallPremises   │ Six delivery laws; fixed active validators; committee and Byzantine              │ Paper Assumptions 1 and 2;    │
-│              │                                      │ weight bounds; Phase0 source coherence; a two-increment balance floor;           │ Gloas extension; model        │
-│              │                                      │ next-slot vote receipt.                                                          │ idealisation                  │
-│ Safety field │ NextSlotSynchronyPremises            │ Positive delay parameter; delivery and handler-service laws for blocks,          │ Paper synchrony; Gloas        │
-│              │                                      │ envelopes, data and evidence; pre-tick exclusion before boundary votes.          │ extension                     │
+│ Premise      │ ConcreteBridge.SafetyPremises        │ An admissible bridge; the concrete genesis store; a horizon tied to the          │ Paper Assumption 3.2; Gloas   │
+│              │                                      │ fixed scope; whole seconds; a well formed scheduled run; delivered body          │ extension; model idealisation │
+│              │                                      │ attestations; the epoch-1 finalization scope; checkpoint inclusion.              │                               │
 │ Safety field │ BeaconExternalsPremises              │ Slot and state transition coherence, committee and attestation                   │ Model idealisation            │
 │              │                                      │ validity, and deterministic envelope verification.                               │                               │
+│ Safety field │ HonestBehavior                       │ Honest head votes by the assigned committee, a vote deadline, no forgery,        │ Paper; model premise          │
+│              │                                      │ no slashable honest vote pair, and unslashed honest validators.                  │                               │
+│ Safety field │ NextSlotSynchronyPremises            │ Positive delay parameter; delivery and handler-service laws for blocks,          │ Paper synchrony; Gloas        │
+│              │                                      │ envelopes, data and evidence; pre-tick exclusion before boundary votes.          │ extension                     │
+│ Safety field │ StaticValidatorSet                   │ Fixed active validators in the horizon.                                          │ Model idealisation            │
 │ Safety field │ ByzantineWeightPremises              │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
 │              │                                      │ fraction bound for every span, including one slot. A global fault                │ executable estimate           │
 │              │                                      │ share does not establish this span bound.                                        │                               │
-│ Safety field │ ScheduledFFGInterpretation;          │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
-│              │ EpochCheckpointProjectionLaws        │ checkpoint roots.                                                                │ idealisation                  │
+│ Safety field │ EventualCheckpointInclusion          │ Paper A3.2 over the view of the bridge: carried checkpoints and body             │ Paper Assumption 3.2          │
+│              │                                      │ votes of accepted blocks.                                                        │                               │
+│ Derived      │ Execution.NextSlotSafetyPremises     │ Internal record. The translation proves its FFG interpretation, Phase0           │ Lean proof                    │
+│              │                                      │ source laws, balance floor, and anchor facts from the bridge premise.            │                               │
 └──────────────┴──────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
-`Execution.NextSlotSafetyPremises` supplies the safety premise to the review claim. The FFG and finalization laws can quantify over successful handler prefixes beyond the safety endpoint. The finite conclusion does not shorten those premise ranges.
+`ConcreteBridge.SafetyPremises` is the premise of the review claim. The proof uses the internal record `Execution.NextSlotSafetyPremises` that `SafetyPremises.nextSlotSafetyPremises` computes. The FFG and finalization laws can quantify over successful handler prefixes beyond the safety endpoint. The finite conclusion does not shorten those premise ranges.
 
 ## Witnesses
 
@@ -243,10 +244,11 @@ coverage limits, not claims about unreachable protocol states.
 
 ## Scope limits
 
-- `BeaconExternalsPremises.registry_static_in_horizon` fixes keyed states and slot-processed reads to the anchor registry. Included slashings, deposits, activations, exits, or effective-balance changes can break it. On mainnet this can limit a horizon to about one epoch. The pending-deposit probe shows an excluded registry change.
+- `BeaconExternalsPremises.registry_static_in_horizon` fixes keyed states and slot-processed reads to the anchor registry. Included slashings, voluntary exits, withdrawal or consolidation requests that start an exit, deposits, activations, ejections, or effective-balance changes can break it. `FixedFFGScope` states the same exclusions for the concrete transition. On mainnet this can limit a horizon to about one epoch. The pending-deposit probe shows an excluded registry change.
 - The model imports only validated payloads. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
 - `BeaconExternalsPremises` supplies contracts for external state transitions and validation. `on_attestation_committee` constrains successful delivered attestations. Indexed attester-slashing evidence can have off-committee signers; its handler only updates the equivocating set. The Lean proof does not implement an execution engine.
-- `AcceptedBlockAttestationInclusion.Included` is a supplied carrier-vote relation. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.
+- The concrete block-validity oracle is opaque (class I). Agreement with Python needs an oracle that accepts the blocks that Python accepts. `ConcreteBridge.StateRootsCommit` (class I, collision resistance on the states of one run) makes the bridge accept each such in-scope block; the safety theorem does not need it.
+- `AcceptedBlockAttestationInclusion.Included` is the canonical carrier-vote relation of the bridge. An included aggregate stands for one single-validator vote of each signer with the same data. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.
 - `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
 - `EstimateForcesBalance.slot_committee_weight_forced` proves that exact `estimate_sound` plus committee coverage forces equal per-slot weight in each full in-horizon epoch. Whether Python FCR thresholds tolerate committee-weight rounding remains open.
 - `AcceptedBlockFFGState.epoch_one_finalization_one_step` excludes honest genesis runs with epoch-1 finality through 1 -> 3. Extending the proof to that path remains open.

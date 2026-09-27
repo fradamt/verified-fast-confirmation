@@ -40,6 +40,12 @@ than its validator registry. Python can construct such a state, but it is
 outside the well-formed fixed-scope domain. The Python/Lean differential count
 excludes that structural check.
 
+A transition row can carry an explicit committee schedule. The whole-bundle
+sample (`check_real_bundle.py`) uses this form: it sends the 48 accepted blocks
+of a 100-validator pyspec run with their real committees and compares the Lean
+result with the retained fields of each Python post-state. That run uses the
+unmodified pyspec transition with BLS disabled, not the oracle mode above.
+
 The pinned `anchor_semantics_probe.py` separately tests the a1
 checkpoint-sync negative trace. The differential runner does not test network
 delivery, BLS authenticity, or SSZ hashing outside the stated oracle mode.

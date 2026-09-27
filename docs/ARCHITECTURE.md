@@ -48,8 +48,9 @@ least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active b
 are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
-reads. The static-registry condition excludes included slashings, deposits, activations,
-exits, and effective-balance changes that alter validator records in the horizon.
+reads. The static-registry condition excludes included slashings, voluntary exits,
+withdrawal and consolidation requests that start an exit, deposits, activations,
+ejections, and effective-balance changes that alter validator records in the horizon.
 `on_attestation_committee` confines successful delivered attestations in honest
 in-horizon prefixes to their slot committee. Attester-slashing evidence can name
 off-committee validators.
@@ -79,14 +80,18 @@ membership and executable ancestry.
 
 ## FFG boundary and checks
 
-`FastConfirmationStatements` holds the safety premise and the supplied FFG
-interpretation. The intended inclusion relation uses body attestations whose
-target matches the checkpoint. Python `process_attestation` does not check that
-target root. `FastConfirmationModel` also contains a concrete FFG state and 34
-Gloas functions. A 59-case differential compares them with pinned Python. The
-public safety theorem still consumes the supplied interpretation. The projection
-harness checks each interpretation law on real pyspec runs. Full-bundle witnesses
-show consistency, while the contract and differential checks test Python behavior.
+`FastConfirmationStatements` holds the safety premise `ConcreteBridge.SafetyPremises`.
+`FastConfirmationModel` contains the concrete FFG state, 34 Gloas functions, and
+the bridge that runs them for `process_slots`, `state_transition`, and PJF. An
+opaque block-validity oracle (class I) stands for the Python checks that the
+projection does not model. `FastConfirmationProofs/FFG/Concrete/` computes the
+FFG interpretation from the bridge and proves the internal records in
+`FastConfirmationInternal`. The inclusion relation counts body votes that set
+the timely-target flag; Python `process_attestation` does not check the target
+root. A 59-case differential and a 48-block retained-projection comparison test
+the concrete transition against pinned Python. The projection harness checks
+each interpretation law on real pyspec runs. Full-bundle witnesses show
+consistency, while the contract and differential checks test Python behavior.
 
 The active inventory has 161 authored claim-reachable premise fields. The Lean reachability audit also checks two inherited projections and two outside Prop boundaries. Its labels separate tested state laws, execution scope, network and behavior, supplied interpretation, and idealizations. Two relay fields have both network and idealization labels.
 The field list is checked against the claim-type reachability audit. CI runs the

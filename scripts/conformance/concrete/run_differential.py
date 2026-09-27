@@ -405,6 +405,22 @@ def attestation_error_class(exc: BaseException) -> str:
     raise RuntimeError(f"unclassified pyspec attestation error: {frames[-1]}")
 
 
+def lean_evaluate(rows: list[dict]) -> list[dict]:
+    """Evaluate fixture rows with the checked Lean functions."""
+    with tempfile.TemporaryDirectory(prefix="ffg-diff-") as temp:
+        input_path = Path(temp) / "cases.json"
+        input_path.write_text(json.dumps(rows), encoding="utf-8")
+        result = subprocess.run(
+            ["lake", "env", "lean", "--run",
+             "scripts/conformance/concrete/FFGDifferential.lean", str(input_path)],
+            cwd=ROOT, text=True, capture_output=True,
+            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}, timeout=600,
+        )
+    if result.returncode:
+        raise RuntimeError(result.stderr or result.stdout)
+    return [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--consensus-repo", required=True, type=Path)
@@ -462,19 +478,11 @@ def main() -> int:
     bad_initial["name"] = "bad_initial_state"
     bad_initial["state"]["current_participation"].pop()
     lean_rows = [*rows, bad_initial]
-    with tempfile.TemporaryDirectory(prefix="ffg-diff-") as temp:
-        input_path = Path(temp) / "cases.json"
-        input_path.write_text(json.dumps(lean_rows), encoding="utf-8")
-        result = subprocess.run(
-            ["lake", "env", "lean", "--run",
-             "scripts/conformance/concrete/FFGDifferential.lean", str(input_path)],
-            cwd=ROOT, text=True, capture_output=True,
-            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}, timeout=600,
-        )
-    if result.returncode:
-        print(result.stderr or result.stdout, file=sys.stderr)
-        return result.returncode
-    actual = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+    try:
+        actual = lean_evaluate(lean_rows)
+    except RuntimeError as exc:
+        print(exc, file=sys.stderr)
+        return 1
     if len(actual) != len(lean_rows):
         print(f"Lean evaluation count differs: {len(actual)} != {len(lean_rows)}", file=sys.stderr)
         return 1

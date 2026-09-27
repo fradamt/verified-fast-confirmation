@@ -161,7 +161,9 @@ def main() -> int:
                                if row["path"].startswith("EventualCheckpointInclusion.")}
         expected_projection.update(key for key in source_fields(folder=INTERNAL_PREMISES)
                                    if key.split(".", 1)[0] in PROJECTED)
-        expected_projection.update(("ImportedBlockFinalizationLag", "GenesisOrNormalizedAnchor"))
+        expected_projection.update(("ImportedBlockFinalizationLag", "GenesisOrNormalizedAnchor",
+                                    "RealizableBySlotRun", "HonestEarlierTargetVoteOnCarrierChain",
+                                    "IncludedCheckpointEvidence.causal"))
         missing_projection = expected_projection - projection_names
         if missing_projection:
             raise ValueError(f"projection coverage missing={sorted(missing_projection)}")
