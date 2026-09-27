@@ -35,6 +35,12 @@ stub, a skipped slot, and the opaque oracle result. The block test keeps the
 Python header, attestation, and operation order. It replaces cryptography and
 the other block operations with the same documented oracle mode.
 
+Four Lean-only rows check the fixed-scope guard. A block with a proposer
+slashing, an attester slashing, a voluntary exit, or a non-empty parent
+execution request list must fail with the `scope` class. Python would apply
+these operations; the Lean transition rejects the block instead of erasing the
+effect.
+
 One separate Lean check rejects a state whose participation array is shorter
 than its validator registry. Python can construct such a state, but it is
 outside the well-formed fixed-scope domain. The Python/Lean differential count

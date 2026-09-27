@@ -179,6 +179,7 @@ def state_transition_pointwise (cfg : Config) (preset : FFGPreset)
     state.current_epoch_participation.length == state.validators.length &&
     state.block_roots.length == preset.slots_per_historical_root &&
     state.execution_payload_availability.length == preset.slots_per_historical_root) .state
+  guard block.InFixedScope .scope
   let atSlot ← process_slots cfg preset state block.slot
   let result ← process_block_pointwise cfg preset schedule atSlot block
   guard (oracle.accepts atSlot block result) .oracle

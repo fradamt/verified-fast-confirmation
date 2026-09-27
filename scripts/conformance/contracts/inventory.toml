@@ -79,7 +79,7 @@ test = "BeaconExternalsPremises.process_slots_slot"
 path = "BeaconExternalsPremises.registry_static_in_horizon"
 file = "Externals.lean"
 class = "E-scope"
-reason = "Keyed and slot-processed in-horizon states must retain the anchor validator registry."
+reason = "Keyed and slot-processed in-horizon states must retain the anchor validator registry. Under the bridge this holds when the execution registry is the scope registry; Python registry changes are excluded by the transition scope guard and the epoch-step condition of FixedFFGScope."
 
 [[field]]
 path = "BeaconExternalsPremises.state_transition_slot"

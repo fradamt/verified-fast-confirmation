@@ -27,7 +27,8 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │ Opaque block-validity oracle          │ Separates BLS, hash roots, proposer selection, and erased        │ The theorem holds for every oracle; agreement with Python validity is class I.    │
 │                                       │ operations from the FFG transition.                              │                                                                                   │
 │ Supplied FFG validation state         │ Prepares the keyed target block state from an honest store.      │ Stated in FFGInterpretationFidelity only; the prepared state may be unkeyed.      │
-│ Static validator registry             │ Fixes balances and slashed flags in the horizon.                 │ Included slashing never marks a validator slashed in state; see FixedFFGScope.    │
+│ Static validator registry             │ Fixes the registry in the horizon.                               │ Blocks with slashings, exits, or parent requests are rejected; an epoch-step      │
+│                                       │                                                                  │ registry change in Python is outside the scope.                                   │
 │ Finite horizon                        │ Makes endpoints and next-slot receipt precise.                   │ Conclusions do not extend beyond the checked horizon.                             │
 │ Global FFG and finalization laws      │ Connects opaque beacon transitions to exact checkpoint state.    │ The premises range over handler-successful prefixes beyond a conclusion endpoint. │
 │ Derived FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms follow from the joint call and endpoint-slot induction.                │
@@ -146,7 +147,7 @@ need.
 1. `HonestBehavior.votes_head` requires every honest committee member to vote for its fork-choice head. It excludes abstention and other vote choices. The proof uses this vote support.
 2. `HonestBehavior.not_slashable` requires all scheduled honest votes to be pairwise non-slashable. With `votes_head`, it constrains honest head votes across slots. The proof uses it to exclude honest equivocation.
 3. `HonestBehavior.no_forgery` covers every scheduled attestation that names an honest validator, even before validation. It lets the proof identify honest vote data in received copies.
-4. `BeaconExternalsPremises.registry_static_in_horizon` fixes the registry in keyed states of honest causal stores and in the slot-processed states that handlers read. It excludes runs where included slashings, voluntary exits, withdrawal or consolidation requests that start an exit, deposits or deposit requests, activations, ejections, or effective-balance updates change those records in the horizon. The concrete scope `FixedFFGScope` states the same exclusions. Withdrawals, rewards, and penalties change only balances, which the projection does not retain. The proof uses one anchor registry for weights and committees.
+4. `BeaconExternalsPremises.registry_static_in_horizon` fixes the registry in keyed states of honest causal stores and in the slot-processed states that handlers read. Under the bridge it holds when the execution registry is the scope registry. The concrete transition rejects blocks with slashings, voluntary exits, or parent execution requests. A Python run with an epoch-step registry change (effective-balance update, activation, ejection, or pending deposit) is outside the scope; see [the registry scope](#current-ffg-and-execution-scope). Withdrawals, rewards, and penalties change only balances, which the projection does not retain. The proof uses one anchor registry for weights and committees.
 5. `StaticValidatorSet.activity_constant` fixes active status across the horizon. It lets committee and stake facts use one active set.
 6. `BeaconExternalsPremises.committees_agree` and `on_attestation_committee` model committees as one fixed ground-truth assignment `E.committee`. `committees_agree` makes every honest store query for every in-horizon slot return this assignment. In the real protocol, the committees of epoch e depend on the RANDAO mix of epoch e − 2 and on the branch of the reading state, so two honest nodes can read different committees. These RANDAO-seeded, fork-dependent committees are not modeled. A weaker model needs per-branch committees in the execution, with each weight bound stated for the committees of the reading branch.
 7. `BeaconExternalsPremises.on_attestation_committee` confines successful delivered attestations to their slot committee. The Lean handler receives an indexed wire object. This premise stands for Python's committee-derived `get_indexed_attestation` path, with the fixed assignment of item 6 in place of the committee of the target checkpoint state. It does not constrain attester-slashing evidence; off-committee evidence can validate and only adds indices to the equivocating set.
@@ -421,22 +422,16 @@ names the validator and has the same data.
 The block-validity oracle is opaque and class I. It can reject a block, but it
 supplies no FFG state. It stands for BLS signatures, SSZ hash roots, proposer
 selection, the execution-requests commitment, RANDAO, eth1 data, sync
-aggregates, withdrawals, payload attestations, and the validity of the erased
-operations. The safety theorem holds for every oracle, including one that
-accepts every block. A bridge represents a Python run only if its oracle
-accepts the blocks that Python accepts, and if the erased operations keep the
-retained fields fixed. `ConcreteBridge.StateRootsCommit` (class I) is collision
+aggregates, withdrawals, payload attestations, and BLS-to-execution changes;
+none of these writes a retained field. The safety theorem holds for every
+oracle, including one that accepts every block. A bridge represents a Python
+run only if its oracle accepts the blocks that Python accepts and the run
+satisfies the registry scope below. `ConcreteBridge.StateRootsCommit` (class I) is collision
 resistance of the Python state hash root on the states of one run. With it, the bridge
 accepts each in-scope scheduled block that Python accepts. The safety theorem
 does not need it.
 
-The fixed scope (`FixedFFGScope`) keeps the registry constant. It excludes
-proposer and attester slashings, voluntary exits, withdrawal and consolidation
-requests that start an exit, deposits and deposit requests that add a
-validator, registry updates (activations and ejections), and effective-balance
-updates. Withdrawals, rewards, penalties, and the slashing penalty change only
-balances, which the projection does not retain. Deposits in a block body fail
-the Gloas `process_operations` guard in both Python and Lean.
+The concrete transition keeps every validator record fixed. It rejects a block with a proposer or attester slashing, a voluntary exit, or a parent execution request (`FFGWireBlock.InFixedScope`, error `scope`); a body deposit fails the Python guard. An epoch step can still change a record in Python: an effective-balance update, an activation, an ejection, or a pending deposit. The model has no balances and cannot detect these steps, so a Python run is in scope only if no epoch step in the horizon changes a validator record. The whole-bundle sample checks this condition on its run, and a negative control shows that the check detects an effective-balance change. Under the bridge, `registry_static_in_horizon` holds when the execution registry is the scope registry; it does not by itself exclude a Python registry change. Withdrawals, rewards, penalties, and the slashing penalty change only balances, which the projection does not retain.
 
 The concrete differential compares 59 cases with pinned Python. The whole-bundle
 sample compares the retained fields after each of 48 accepted blocks of a

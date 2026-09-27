@@ -48,9 +48,10 @@ least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active b
 are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
-reads. The static-registry condition excludes included slashings, voluntary exits,
-withdrawal and consolidation requests that start an exit, deposits, activations,
-ejections, and effective-balance changes that alter validator records in the horizon.
+reads. The concrete transition rejects blocks with slashings, voluntary exits, or
+parent execution requests, and a Python run with an epoch-step registry change
+(effective-balance update, activation, ejection, or pending deposit) is outside the
+scope (`FixedFFGScope`).
 `on_attestation_committee` confines successful delivered attestations in honest
 in-horizon prefixes to their slot committee. Attester-slashing evidence can name
 off-committee validators.

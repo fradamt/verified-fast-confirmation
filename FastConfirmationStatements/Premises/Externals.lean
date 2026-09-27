@@ -4,7 +4,7 @@ public import FastConfirmationStatements.Premises.Synchrony
 
 @[expose] public section
 
-/-! Defines coherence conditions for abstract state transitions, committees, signatures, and payload observations. -/
+/-! Defines coherence conditions for the bridge interface: state transitions, committees, signatures, and payload observations. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -32,9 +32,13 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
   /-- The execution-scope static-registry condition. Every keyed state in an
       honest in-horizon causal store and every in-horizon `process_slots`
       result computed from one has the anchor registry. This includes successful scheduled
-      imports at honest nodes. Real runs with included slashings or deposits,
-      or activations, exits, or effective-balance changes taking effect in the
-      horizon do not satisfy this condition. -/
+      imports at honest nodes. Under the concrete bridge the transition never
+      writes a validator record, so this field holds when the execution
+      registry is the scope registry; it does not by itself exclude a Python
+      registry change. The concrete transition rejects blocks with slashings,
+      exits, or parent execution requests, and a Python run is in scope only
+      if no epoch step in the horizon changes a validator record
+      (`FixedFFGScope`). -/
   registry_static_in_horizon : ∀ state,
     RegistryStateInHorizon cfg ext E state → state.validators = E.registry
   /-- A valid state transition lands on the block's slot. -/

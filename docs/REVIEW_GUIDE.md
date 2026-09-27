@@ -31,9 +31,9 @@ are unchanged and the same guard holds at every intermediate state.
 The admissible setup (`FFGSetup.Admissible`) requires two increments of active weight,
 and the translation gives `ScheduledFCRCallPremises.balance_floor`. With
 `registry_static_in_horizon`, this floor supplies the guard on in-horizon reads. The
-static-registry condition and `FixedFFGScope` exclude included slashings, voluntary
-exits, withdrawal and consolidation requests that start an exit, deposits, activations,
-ejections, and effective-balance changes that alter validator records in the horizon.
+concrete transition rejects blocks with slashings, voluntary exits, or parent execution
+requests, and a Python run with an epoch-step registry change (effective-balance update,
+activation, ejection, or pending deposit) is outside the scope (`FixedFFGScope`).
 `on_attestation_committee` confines successful delivered attestations in honest
 in-horizon prefixes to their slot committee. Attester-slashing evidence can name
 off-committee validators.
@@ -99,13 +99,14 @@ these events.
 │ Included carrier votes  │ The canonical relation counts body votes of accepted blocks that set the timely-target flag. Body membership │
 │                         │ and validity are also in FFGInterpretationFidelity, outside the premise.                                     │
 │ Block validity          │ The block-validity oracle is opaque (class I) and supplies no FFG state. The theorem holds for every oracle. │
+│                         │ No oracle can accept a block outside the fixed scope.                                                        │
 │ Interpretation fidelity │ Each full-bundle witness proves FFGInterpretationFidelity for its interpretation. Validation uses a prepared │
 │                         │ target checkpoint state from a reachable keyed target block state.                                           │
 │ Committee span bound    │ The fault fraction applies to every in-horizon span, including one slot. A global fault share does not       │
 │                         │ establish it.                                                                                                │
 │ Opaque validation       │ BeaconExternalsPremises and verified envelope events supply the engine verdict and deterministic behavior.   │
-│ Static registry         │ The registry, including balances and slashed flags, is fixed in the horizon. Included slashing does not      │
-│                         │ mark a validator slashed in state.                                                                           │
+│ Static registry         │ The registry is fixed in the horizon. The transition rejects blocks with slashings, exits, or parent         │
+│                         │ execution requests (scope error). A Python run with an epoch-step registry change is outside the scope.      │
 │ Paper Algorithm 1       │ SafeConfirmedAlg1Inputs requires future rule confirmation for each honest-view-safe block. This is stronger  │
 │                         │ than paper Assumption 6.                                                                                     │
 │ Gloas discount          │ The pinned fork counts matching-status or PENDING parent votes. Upstream can count opposite resolved-status  │

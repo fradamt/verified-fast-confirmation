@@ -405,6 +405,11 @@ def attestation_error_class(exc: BaseException) -> str:
     raise RuntimeError(f"unclassified pyspec attestation error: {frames[-1]}")
 
 
+def fixture_row(rows: list[dict], name: str = "transition_accept") -> dict:
+    """The named accepted transition fixture."""
+    return next(row for row in rows if row["name"] == name)
+
+
 def lean_evaluate(rows: list[dict]) -> list[dict]:
     """Evaluate fixture rows with the checked Lean functions."""
     with tempfile.TemporaryDirectory(prefix="ffg-diff-") as temp:
@@ -477,7 +482,22 @@ def main() -> int:
         row for row in rows if row["name"] == "transition_accept")))
     bad_initial["name"] = "bad_initial_state"
     bad_initial["state"]["current_participation"].pop()
-    lean_rows = [*rows, bad_initial]
+    # Scope regressions (Lean only): blocks with a registry-changing operation,
+    # or with parent execution requests, are outside the fixed scope. Python
+    # would apply these operations; the Lean transition must reject the block
+    # instead of accepting it with the effect erased.
+    scope_rows = []
+    for field in ("proposer_slashing_count", "attester_slashing_count",
+                  "voluntary_exit_count"):
+        row = json.loads(json.dumps(fixture_row(rows)))
+        row["name"] = f"scope_{field}"
+        row["block"][field] = 1
+        scope_rows.append(row)
+    row = json.loads(json.dumps(fixture_row(rows, "transition_parent_full")))
+    row["name"] = "scope_parent_requests"
+    row["block"]["parent_requests_empty"] = False
+    scope_rows.append(row)
+    lean_rows = [*rows, *scope_rows, bad_initial]
     try:
         actual = lean_evaluate(lean_rows)
     except RuntimeError as exc:
@@ -487,15 +507,19 @@ def main() -> int:
         print(f"Lean evaluation count differs: {len(actual)} != {len(lean_rows)}", file=sys.stderr)
         return 1
     differences = 0
-    for row, want, got in zip(rows, expected, actual[:-1], strict=True):
+    for row, want, got in zip(rows, expected, actual[:len(rows)], strict=True):
         if want != got:
             differences += 1
             print(f"MISMATCH {row['name']}: pyspec={want} lean={got}", file=sys.stderr)
+    for row, got in zip(scope_rows, actual[len(rows):-1], strict=True):
+        if got != {"ok": False, "error": "scope"}:
+            differences += 1
+            print(f"MISMATCH {row['name']}: lean={got}", file=sys.stderr)
     if actual[-1] != {"ok": False, "error": "state"}:
         differences += 1
         print(f"MISMATCH bad_initial_state: lean={actual[-1]}", file=sys.stderr)
     print(f"concrete differential: cases={len(rows)} agree={len(rows)-differences} "
-          f"differences={differences}; structural_bad_state=1")
+          f"differences={differences}; scope_rejections={len(scope_rows)}; structural_bad_state=1")
     return 1 if differences else 0
 
 

@@ -28,13 +28,15 @@ structure FFGPreset where
 
 /-- The fixed registry view holds every field that can affect FFG weights.
 `is_active_validator` must have the same result throughout the horizon.
-The registry is constant in the scope. Thus the scope excludes each Python
-operation that changes a retained validator field: proposer and attester
-slashings, voluntary exits, withdrawal and consolidation requests that start
-an exit, deposits and deposit requests that add a validator, registry
-updates (activations and ejections), and effective-balance updates.
-Withdrawals, rewards, penalties, and the slashing penalty change only
-balances, which the projection does not retain.
+The concrete transition keeps every validator record fixed. It rejects a
+block with a slashing, a voluntary exit, or a parent execution request
+(`FFGWireBlock.InFixedScope`), and Python rejects a body deposit. An epoch
+step can still change a record in Python: an effective-balance update, an
+activation, an ejection, or a pending deposit. The projection has no
+balances, so it cannot detect these steps; a Python run is in the scope only
+if no epoch step in the horizon changes a validator record. Withdrawals,
+rewards, penalties, and the slashing penalty change only balances, which the
+projection does not retain.
 Python: `specs/phase0/beacon-chain.md:741-749,1088`. -/
 structure FixedFFGScope where
   validators : List Validator
@@ -150,6 +152,18 @@ structure FFGWireBlock (Root : Type*) where
   payload_attestation_count : ℕ := 0
   attestations : List (FFGWireAttestation Root)
   deriving Inhabited
+
+/-- The block operations that the fixed scope admits. Proposer and attester
+slashings and voluntary exits change retained validator records (`slashed`,
+`exit_epoch`). Parent execution requests (deposit, withdrawal, and
+consolidation requests) can add a validator, start an exit, or change a
+balance and then an effective balance. The concrete transition does not model
+these effects, so it rejects a block that carries one (`Error.scope`) rather
+than erase the effect. Body deposits fail the Python `process_operations`
+guard already. Python: `specs/gloas/beacon-chain.md:1801-1813,2170-2205`. -/
+def FFGWireBlock.InFixedScope {Root : Type*} (block : FFGWireBlock Root) : Bool :=
+  block.proposer_slashing_count == 0 && block.attester_slashing_count == 0 &&
+    block.voluntary_exit_count == 0 && block.parent_requests_empty
 
 /-- The retained FFG fields of Gloas `BeaconState`. Ring cells are ordered by
 slot modulo `slots_per_historical_root`. Reachable-state checks bind the root

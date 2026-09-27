@@ -13,9 +13,11 @@ open FastConfirmation.Spec
 /-- Altair participation flag index used for timely target FFG weight. -/
 def TIMELY_TARGET_FLAG_INDEX : ℕ := 1
 
+/-- The failing guard class of a checked call. `scope` is not a Python
+rejection: it marks a block outside the fixed scope (`FFGWireBlock.InFixedScope`). -/
 inductive Error where
   | state | slot | root | header | parentPayload | operations | committee
-  | bitfield | target | inclusion | payloadIndex | source | indexed | oracle
+  | bitfield | target | inclusion | payloadIndex | source | indexed | oracle | scope
   deriving DecidableEq, Repr
 
 abbrev Checked (α : Type*) := Except Error α
@@ -429,15 +431,18 @@ def process_block (cfg : Config) (preset : FFGPreset)
 supplies no FFG state. It stands for the Python checks that the projection
 does not model: BLS signatures, SSZ hash roots, proposer selection, the
 execution-requests commitment, RANDAO, eth1 data, sync aggregates,
-withdrawals, payload attestations, and the validity of the erased
-operations. An erased operation must also keep the retained fields fixed
-(`FixedFFGScope`). The safety theorem holds for every oracle, including one
+withdrawals, payload attestations, and BLS-to-execution changes. These
+operations do not write a retained field. Operations that change the
+registry are outside the scope, and `state_transition` rejects them
+(`FFGWireBlock.InFixedScope`). The safety theorem holds for every oracle, including one
 that accepts every block. -/
 structure BlockValidityOracle (Root : Type) where
   accepts : FFGBeaconState Root → FFGWireBlock Root → FFGBeaconState Root → Bool
 
 /-- `state_transition`: slots, concrete block, then commitment validity.
-Python: `specs/phase0/beacon-chain.md:1769-1782`. -/
+A block outside the fixed scope is rejected with `Error.scope` before any
+processing, so its registry effect is never erased. Python:
+`specs/phase0/beacon-chain.md:1769-1782`. -/
 def state_transition (cfg : Config) (preset : FFGPreset)
     (schedule : FixedCommitteeSchedule) {Root : Type} (oracle : BlockValidityOracle Root)
     [BEq Root] (state : FFGBeaconState Root) (block : FFGWireBlock Root) :
@@ -448,6 +453,7 @@ def state_transition (cfg : Config) (preset : FFGPreset)
     state.current_epoch_participation.length == state.validators.length &&
     state.block_roots.length == preset.slots_per_historical_root &&
     state.execution_payload_availability.length == preset.slots_per_historical_root) .state
+  guard block.InFixedScope .scope
   let atSlot ← process_slots cfg preset state block.slot
   let result ← process_block cfg preset schedule atSlot block
   guard (oracle.accepts atSlot block result) .oracle
