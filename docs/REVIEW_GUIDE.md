@@ -247,7 +247,7 @@ The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13
 
 ## Known limits
 
-The conclusion covers stored boundary outputs in a finite horizon. Exact `estimate_sound` and coverage force equal slot-committee weights. The epoch-1 one-step condition excludes honest 1 -> 3 finalization. A3.2 remains an untested implication. It does
+The conclusion covers stored boundary outputs in a finite horizon. Exact `estimate_sound` and coverage force equal slot-committee weights. The epoch-1 scope condition excludes runs in which an accepted block state finalizes epoch 1. A3.2 remains an untested implication. It does
 not cover an arbitrary in-slot query. The confirmed root is in each honest
 observer's block store from the next slot. The active validator set is fixed.
 No witness has non-anchor finalization, positive Gloas discount, or a PTC

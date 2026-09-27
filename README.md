@@ -49,7 +49,7 @@ A3.2 requires an epoch-1 attestation to appear in a block of epoch 2 or later.
 The Python FCR regression in `scripts/conformance/contracts/test_realized_gap.py`
 loses a confirmed block when epoch-1 evidence is included during the genesis
 epochs. Finality evidence has a two-epoch lag (`k = 2`). The source law covers
-two or more epoch boundaries, and `epoch_one_finalization_one_step` is the
+two or more epoch boundaries, and `epoch_one_finalization_scope` is the
 `F = 1` scope field.
 
 The [review guide](docs/REVIEW_GUIDE.md) explains anchor states, checkpoint reads, and the five boundary-source laws. It also lists the guards that the pinned Python probes check.
@@ -58,49 +58,81 @@ The [review guide](docs/REVIEW_GUIDE.md) explains anchor states, checkpoint read
 
 ## Assumptions at a glance
 
-```text
-┌──────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Assumption           │ Plain meaning and premise record                                                                 │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Honest actions       │ Scheduled events and head votes. `HonestBehavior.votes_head` fixes each honest committee vote.   │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ No forgery           │ `HonestBehavior.no_forgery` covers scheduled votes that name an honest validator.                │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ No slashing          │ `HonestBehavior.not_slashable` makes honest votes pairwise non-slashable.                        │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Root labels          │ `WellFormedExecution.blocks_root_injective` identifies blocks with equal root labels.            │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Timing               │ `NextSlotSynchronyPremises` requires receipt and handler service by the next boundary.           │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Registry             │ `registry_static_in_horizon` fixes the anchor registry in keyed states and slot-processed reads. │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Balance floor        │ `balance_floor` requires two increments of anchor active weight.                                 │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Anchor               │ `anchor_state_checkpoints` covers genesis with a stub or a state with both checkpoints equal to  │
-│                      │ the anchor.                                                                                      │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ FFG inclusion        │ A3.2 needs epoch-1 evidence in a block of epoch 2 or later.                                      │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ FFG state            │ `ScheduledFFGInterpretation` supplies accepted-block state, links, and checkpoint reads.         │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Epoch-1 finality     │ `epoch_one_finalization_one_step` excludes genesis runs that finalize epoch 1 through 1 -> 3.  │
-│                      │ Python takes that path when epoch-2 justification needs votes included in epoch 3.             │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Phase0 source        │ `Phase0SourceCoherence` and `Phase0BoundarySourceCoherence` constrain source reads.              │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Committee            │ `on_attestation_committee` covers successful delivered attestations. Slashing evidence can be    │
-│                      │ off-committee.                                                                                   │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Committee model      │ Idealization. `committees_agree` and `on_attestation_committee` use one fixed ground-truth       │
-│                      │ assignment `E.committee`. RANDAO-seeded, fork-dependent committees of the real protocol are not  │
-│                      │ modeled.                                                                                         │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Equal slot weight    │ `estimate_sound` plus coverage forces each slot committee to weigh exactly `total_active / S`.   │
-│                      │ Ordinary 100-validator genesis and mainnet-like balances do not satisfy this idealization.       │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Payload validity     │ `BeaconExternalsPremises` and the external contract govern imported payloads.                    │
-└──────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+The premise `ConcreteBridge.SafetyPremises` has 15 fields. The class is the
+inventory class: E-scope limits the execution, E-network/behavior states
+delivery or behavior, E-interpretation states external contracts, and I marks
+an idealization.
+
+text
+┌──────────────────────────────┬─────────────────────┬──────────────────────────────────────────────────────────────────────────────┐
+│ SafetyPremises field         │ Class               │ Plain meaning                                                                │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ admissible                   │ E-scope             │ The fixed setup starts at genesis, has two increments of active weight, lets │
+│                              │                     │ the root ring cover two epochs, and fits uint64 root reads.                  │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ genesis                      │ E-scope + I         │ The run starts from the genesis store of the setup; the state commitment     │
+│                              │                     │ opens the genesis state root. The genesis state differs from Python only in  │
+│                              │                     │ payload availability and the latest block hash (see below).                  │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ horizon_scope                │ E-scope             │ The verification horizon is the epoch after the last epoch of the fixed      │
+│                              │                     │ scope.                                                                       │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ whole_seconds                │ E-scope             │ The slot duration is a whole number of seconds.                              │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ wellFormed                   │ E-interpretation    │ Block root labels are injective (class I root labels), and the anchor parent │
+│                              │                     │ is unscheduled.                                                              │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ externals_coherence          │ E-interpretation    │ BeaconExternalsPremises: committee, signature, and envelope contracts.       │
+│                              │                     │ Committees are one fixed ground-truth assignment (class I); RANDAO-seeded,   │
+│                              │                     │ fork-dependent committees are not modeled.                                   │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ honest_behavior              │ E-network/behavior  │ Honest committee members vote for their head by the deadline, sign no        │
+│                              │                     │ slashable pair, and are not forged.                                          │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ body_attestations_delivered  │ E-network/behavior  │ Each attestation in an accepted block body reaches some node as a block      │
+│                              │                     │ attestation.                                                                 │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ synchrony                    │ E-network/behavior  │ GST-0 delivery and handler service by the next boundary for votes, blocks,   │
+│                              │                     │ envelopes, data, and slashing evidence.                                      │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ static_validators            │ E-scope             │ Active status is fixed in the horizon, and the genesis epoch is in the       │
+│                              │                     │ horizon.                                                                     │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ byzantine_bound              │ E-network/behavior  │ Quantized balances, sound committee estimates, and a fault bound on every    │
+│                              │                     │ slot span. With coverage, estimate_sound forces each slot committee to weigh │
+│                              │                     │ exactly total_active / S; ordinary registries do not meet this.              │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ epoch_ends_fit               │ E-scope             │ The horizon fits the uint64 slot range.                                      │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ slots_per_epoch_gt_one       │ E-scope             │ An epoch has more than one slot.                                             │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ epoch_one_finalization_scope │ E-scope             │ No accepted block state finalizes epoch 1. Python can finalize it only when  │
+│                              │                     │ epoch-2 justification needs votes included in epoch 3.                       │
+├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+│ checkpoint_inclusion         │ E-network/behavior  │ Paper Assumption 3.2 over the view of the bridge: after sustained honest     │
+│                              │                     │ link support, proposers include the votes by epoch e + 2.                    │
+└──────────────────────────────┴─────────────────────┴──────────────────────────────────────────────────────────────────────────────┘
+
+Proved from the bridge, not assumed: the FFG interpretation
+(`ScheduledFFGInterpretation`, with its inclusion relation and checkpoint
+reads), the anchor conditions (`anchor_state_checkpoints`, `anchor_eq`,
+`anchor_boundary`), the Phase0 source laws (`Phase0SourceCoherence`,
+`Phase0BoundarySourceCoherence`), the balance floor, the finalization lag, the
+checkpoint projection, and the link agreement. `SafetyPremises.nextSlotSafetyPremises`
+computes them. The block-validity oracle of the bridge is opaque (class I): the
+theorem holds for every oracle, and no oracle can accept a block outside the
+fixed scope.
+
+Applicability: the transition rejects blocks with slashings, voluntary exits,
+or parent execution requests, and a Python run is in scope only if no epoch
+step in the horizon changes a validator record. See [scope limits](#scope-limits).
+
+The genesis state of the setup sets every payload-availability bit to false and
+the latest block hash to the zero root. Python genesis sets every bit to true
+and the hash to the genesis payload hash. These fields affect only the
+timely-head flag and the parent-payload branch of a genesis child. The
+timely-target flag, the FFG selectors, and the fork-choice read state do not
+read them.
 
 Prediction support is derived by joint induction over calls and endpoint slots.
 Current-epoch crossings use exact targets. Previous-epoch results use descendant
@@ -127,8 +159,10 @@ The executable model follows the `fradamt/consensus-specs` fork at tag `fcr-gloa
 fork's empty-slot discount counts parent votes with a matching payload status or PENDING
 status. Unmodified upstream can also count votes for the opposite resolved status. See the
 [source map](docs/SPEC_MAP.md) and [counterexample](docs/history/gloas-negative-result.md).
-Cryptography, beacon transitions, committee reads, and execution validation are opaque
-external calls with stated contracts. The Lean kernel checks the proofs. The trust audit
+The bridge runs the concrete Gloas FFG transition for slot processing, block
+transitions, and PJF. Cryptography, the other block-validity checks, payload
+envelopes, data availability, and execution validation are opaque, with stated
+contracts. Committees are one fixed assignment (class I). The Lean kernel checks the proofs. The trust audit
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
@@ -169,15 +203,15 @@ The records in this table are in `FastConfirmationStatements/Premises/`, except 
 │ Claim        │ Premise record                       │ Fields in plain words                                                            │ Source                        │
 ├──────────────┼──────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
 │ Premise      │ ConcreteBridge.SafetyPremises        │ An admissible bridge; the concrete genesis store; a horizon tied to the          │ Paper Assumption 3.2; Gloas   │
-│              │                                      │ fixed scope; whole seconds; a well formed scheduled run; delivered body          │ extension; model idealisation │
+│              │                                      │ fixed scope; whole seconds; a well formed scheduled run; delivered body          │ extension; model idealization │
 │              │                                      │ attestations; the epoch-1 finalization scope; checkpoint inclusion.              │                               │
-│ Safety field │ BeaconExternalsPremises              │ Slot and state transition coherence, committee and attestation                   │ Model idealisation            │
+│ Safety field │ BeaconExternalsPremises              │ Slot and state transition coherence, committee and attestation                   │ Model idealization            │
 │              │                                      │ validity, and deterministic envelope verification.                               │                               │
 │ Safety field │ HonestBehavior                       │ Honest head votes by the assigned committee, a vote deadline, no forgery,        │ Paper; model premise          │
 │              │                                      │ no slashable honest vote pair, and unslashed honest validators.                  │                               │
 │ Safety field │ NextSlotSynchronyPremises            │ Positive delay parameter; delivery and handler-service laws for blocks,          │ Paper synchrony; Gloas        │
 │              │                                      │ envelopes, data and evidence; pre-tick exclusion before boundary votes.          │ extension                     │
-│ Safety field │ StaticValidatorSet                   │ Fixed active validators in the horizon.                                          │ Model idealisation            │
+│ Safety field │ StaticValidatorSet                   │ Fixed active validators in the horizon.                                          │ Model idealization            │
 │ Safety field │ ByzantineWeightPremises              │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
 │              │                                      │ fraction bound for every span, including one slot. A global fault                │ executable estimate           │
 │              │                                      │ share does not establish this span bound.                                        │                               │
@@ -188,7 +222,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`, except 
 └──────────────┴──────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
-`ConcreteBridge.SafetyPremises` is the premise of the review claim. The proof uses the internal record `Execution.NextSlotSafetyPremises` that `SafetyPremises.nextSlotSafetyPremises` computes. The FFG and finalization laws can quantify over successful handler prefixes beyond the safety endpoint. The finite conclusion does not shorten those premise ranges.
+`ConcreteBridge.SafetyPremises` is the premise of the review claim. The proof uses the internal record `Execution.NextSlotSafetyPremises` that `SafetyPremises.nextSlotSafetyPremises` computes; its FFG and finalization laws are proved, not assumed.
 
 ## Witnesses
 
@@ -251,7 +285,7 @@ coverage limits, not claims about unreachable protocol states.
 - `AcceptedBlockAttestationInclusion.Included` is the canonical carrier-vote relation of the bridge. An included aggregate stands for one single-validator vote of each signer with the same data. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.
 - `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
 - `EstimateForcesBalance.slot_committee_weight_forced` proves that exact `estimate_sound` plus committee coverage forces equal per-slot weight in each full in-horizon epoch. Whether Python FCR thresholds tolerate committee-weight rounding remains open.
-- `AcceptedBlockFFGState.epoch_one_finalization_one_step` excludes honest genesis runs with epoch-1 finality through 1 -> 3. Extending the proof to that path remains open.
+- `SafetyPremises.epoch_one_finalization_scope` excludes genesis runs that finalize epoch 1. No target-included link from epoch 1 to epoch 2 can exist, so in effect the field says that no accepted block state finalizes epoch 1 (finding.epoch_two_target_source_is_genesis in `test_realized_gap.py`). Python finalizes epoch 1 when epoch-2 justification needs votes included in epoch 3. Extending the proof to that path remains open.
 - `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
 - The result covers stored boundary outputs. The two extra-query counterexamples refute same-second head agreement at a mid-second prefix under the counterexample synchrony record. Next-slot safety of an in-slot query is open.
 

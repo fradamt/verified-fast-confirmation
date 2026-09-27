@@ -24,13 +24,13 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                       │                                                                  │ argument.                                                                         │
 │ Canonical FFG inclusion relation      │ Reads body votes of accepted blocks through the concrete         │ Counts only votes that set the timely-target flag; an aggregate stands for        │
 │                                       │ transition (TargetIncludedAt).                                   │ single-validator votes of its signers.                                            │
-│ Opaque block-validity oracle          │ Separates BLS, hash roots, proposer selection, and erased        │ The theorem holds for every oracle; agreement with Python validity is class I.    │
-│                                       │ operations from the FFG transition.                              │                                                                                   │
+│ Opaque block-validity oracle          │ Separates BLS, hash roots, proposer selection, and other         │ The theorem holds for every oracle; agreement with Python validity is class I.    │
+│                                       │ unmodeled checks from the FFG transition.                        │                                                                                   │
 │ Supplied FFG validation state         │ Prepares the keyed target block state from an honest store.      │ Stated in FFGInterpretationFidelity only; the prepared state may be unkeyed.      │
 │ Static validator registry             │ Fixes the registry in the horizon.                               │ Blocks with slashings, exits, or parent requests are rejected; an epoch-step      │
 │                                       │                                                                  │ registry change in Python is outside the scope.                                   │
 │ Finite horizon                        │ Makes endpoints and next-slot receipt precise.                   │ Conclusions do not extend beyond the checked horizon.                             │
-│ Global FFG and finalization laws      │ Connects opaque beacon transitions to exact checkpoint state.    │ The premises range over handler-successful prefixes beyond a conclusion endpoint. │
+│ Global FFG and finalization laws      │ The translation proves them from the concrete transition.        │ They range over handler-successful prefixes beyond a conclusion endpoint.         │
 │ Derived FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms follow from the joint call and endpoint-slot induction.                │
 │ Gloas payload-aware discount          │ Counts matching or PENDING parent votes in an empty slot.        │ Diverges from upstream rule; public fix at fcr-gloas-fix.                         │
 │ Envelope and data relay               │ Carries verified payload state to honest receivers.              │ The finite next-slot witness has no envelope event.                               │
@@ -43,8 +43,9 @@ Each row states a choice in the executable or paper model, why it is used, and t
 
 On a failed indexed attestation, Python may retain the target checkpoint-state cache write. Lean returns none, and the scheduled fold keeps the prior store. The cache value comes from the target block state and deterministic `process_slots` when the target entry is absent. A later successful call computes the same value if the keyed block state is unchanged. This is an argument for later successful attestation validation, not a refinement proof for all later reads. A direct `checkpoint_states` read can observe the Python write before any successful call; the Lean model omits that effect.
 
-The safety claim holds for every carrier-vote relation that meets the stated
-fields. It does not alone certify the votes in real block bodies.
+The inclusion relation is the canonical relation of the bridge: the body votes
+of accepted blocks, read through the concrete transition. It is not a free
+input.
 `review_claims` has one safety field. `DeadlineBlockRelay` supplies operational store retention close to membership; the proof removes permanent exclusion and proves executable ancestry.
 
 The `ByzantineWeightPremises.span_fraction` bound applies to every in-horizon
@@ -157,7 +158,7 @@ need.
 11. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. Literal Python can reject evidence when its justified state lacks a signer.
 12. `NextSlotSafetyPremises.anchor_state_checkpoints` admits the genesis anchor with a raw stub or a state with both checkpoints equal to the anchor. Older raw checkpoints in a checkpoint-sync state are outside its scope. Under `ConcreteBridge.SafetyPremises` the run starts from the concrete genesis (`ConcreteBridge.ConcreteGenesis`), and the translation proves this field.
 13. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With the static registry, this supplies the exact intermediate-state guard for `Phase0BoundarySourceCoherence.process_slots_checkpoint_epoch`. Under the concrete premise the translation proves it from the admissible setup (`FFGSetup.Admissible`).
-14. `AcceptedBlockFFGState.epoch_one_finalization_one_step` restricts the scope. The concrete premise states it as `ConcreteBridge.EpochOneFinalizationScope` over the committed states of accepted blocks: a finalization of epoch `GENESIS_EPOCH + 1` in the horizon has a link to the next epoch. Python can also finalize epoch `GENESIS_EPOCH + 1` through the link 1 -> 3 alone. With honest votes this is the only way to finalize epoch 1: PJF returns early in epoch 1, so honest epoch-2 votes have source 0. The proof does not cover this case for two reasons. First, an honest vote of epoch 2 with a head in epoch 1 can have a source older than the finalized epoch. Second, Assumption 3.2 does not make a finalized epoch-1 checkpoint canonical during epoch 2. `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (regression.finalized_epoch_one_two_step_above_voter_justified). Finalizations of later epochs through two-epoch links are in scope: `realized_finalized_evidence` and `unrealized_finalized_evidence` state the `k = 2` Python law, and `Phase0BoundarySourceCoherence.process_slots_two_boundaries` gives the honest source of a stale head.
+14. `SafetyPremises.epoch_one_finalization_scope` (`ConcreteBridge.EpochOneFinalizationScope`, internally `AcceptedBlockFFGState.epoch_one_finalization_one_step`) restricts the scope: a finalization of epoch `GENESIS_EPOCH + 1` in a committed state of an accepted block, or in an eager copy, has a link to the next epoch. No such link can exist. A target-epoch-2 vote must match the current justified checkpoint in epoch 2 or the previous justified checkpoint in epoch 3, and both have epoch 0 because PJF returns early at the ends of epochs 0 and 1. So in effect the field says that no accepted block state finalizes epoch 1; the pyspec check finding.epoch_two_target_source_is_genesis tests the source epochs. Python finalizes epoch 1 when epoch-2 justification needs votes included in epoch 3, through the link 1 -> 3. The proof does not cover this case for two reasons. First, an honest vote of epoch 2 with a head in epoch 1 can have a source older than the finalized epoch. Second, Assumption 3.2 does not make a finalized epoch-1 checkpoint canonical during epoch 2. `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (regression.finalized_epoch_one_two_step_above_voter_justified). Finalizations of later epochs through two-epoch links are in scope: `realized_finalized_evidence` and `unrealized_finalized_evidence` state the `k = 2` Python law, and `Phase0BoundarySourceCoherence.process_slots_two_boundaries` gives the honest source of a stale head.
 
 ## Derived prediction support
 
@@ -324,7 +325,7 @@ argument excludes the late case: the vote's target epoch is one more than its
 source epoch. For a link of two epochs, the head can be one epoch older than
 the vote's source requires; `process_slots_two_boundaries` then reads the
 source as the head's `GU` when the head epoch is at least `GENESIS_EPOCH + 2`,
-and `epoch_one_finalization_one_step` excludes the epoch-1 case.
+and `epoch_one_finalization_scope` excludes the epoch-1 case.
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression` records both boundary
 outcomes and the included certificate for the newer source.
 `EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws` shows
@@ -457,4 +458,4 @@ epoch-1 vote to be included in a block of epoch 2 or later. The Python FCR
 regression in `scripts/conformance/contracts/test_realized_gap.py` loses a
 confirmed block when epoch-1 evidence is seeded too early. The finality law uses
 a two-epoch lag (`k = 2`), the source law covers two or more boundaries, and the
-`epoch_one_finalization_one_step` field gives the `F = 1` scope.
+`epoch_one_finalization_scope` field gives the `F = 1` scope.

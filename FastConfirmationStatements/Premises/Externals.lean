@@ -4,7 +4,8 @@ public import FastConfirmationStatements.Premises.Synchrony
 
 @[expose] public section
 
-/-! Defines coherence conditions for the bridge interface: state transitions, committees, signatures, and payload observations. -/
+/-! Defines coherence conditions for the bridge interface: state transitions,
+committees, signatures, and payload observations. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

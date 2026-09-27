@@ -473,6 +473,35 @@ def run_checks(projections, fork, voter):
           epoch_one_statement + " (`late` finalizes epoch 1 through 1 -> 3; the run is outside "
           "the scope of this field)",
           roots(lambda P, r: P.run.name == "late"), epoch_one_one_step, expected="FAIL")
+    # Finding: a target-included link 1 -> 2 cannot exist. A vote with target
+    # epoch 2 must match the current justified checkpoint when it is included
+    # in epoch 2, and the previous justified checkpoint when it is included in
+    # epoch 3. PJF returns early at the ends of epochs 0 and 1, and the end of
+    # epoch 2 copies the current justified checkpoint (epoch 0) to the
+    # previous one. Both have epoch 0, so Python `process_attestation` rejects
+    # every vote with source epoch 1 and target epoch 2. Hence
+    # `epoch_one_finalization_scope` holds exactly when no committed state or
+    # eager copy finalizes epoch 1.
+    spe = int(projections[0].spec.SLOTS_PER_EPOCH)
+
+    def matching_source_epoch(d):
+        P, r, t = d
+        st = P.run.store.block_states[r].copy()
+        if int(st.slot) < t:
+            P.spec.process_slots(st, P.spec.Slot(t))
+        epoch = t // spe
+        c = st.current_justified_checkpoint if epoch == 2 else st.previous_justified_checkpoint
+        return int(c.epoch) == GENESIS_EPOCH, {"slot": t, "source_epoch": int(c.epoch)}
+    check("finding.epoch_two_target_source_is_genesis",
+          "Every state of epoch 2 (current justified) and of epoch 3 (previous justified) "
+          "that a target-epoch-2 vote must match has justified epoch GENESIS_EPOCH",
+          [(f"{P.run.name}:{P.slot[r]}->{t}", (P, r, t)) for P in projections for r in P.roots
+           for t in range(2 * spe, 4 * spe) if P.slot[r] <= t],
+          matching_source_epoch)
+    check("finding.no_included_link_epoch_one_to_two",
+          "No included body vote has source epoch GENESIS_EPOCH + 1 and target epoch GENESIS_EPOCH + 2",
+          roots(), lambda d: (not [k for k in d[0].links[d[1]] if k[0][0] == 1 and k[1][0] == 2],
+                              {"links": sorted(k for k in d[0].links[d[1]] if k[0][0] == 1)}))
     check("regression.unrealized_finalized_evidence_strict_timing",
           "Unrealized finalization with the realized bound child.epoch < epoch b "
           "(`late`: an epoch-4 block finalizes epoch 2 through the link 2 -> 4)",

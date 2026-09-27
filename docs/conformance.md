@@ -72,7 +72,7 @@ epoch 6, slot 16, delayed two-thirds inclusion, a skipped epoch, two forks, a
 later raw anchor, and two runs with two-epoch finality. In both, epoch-2 votes
 are included at slot 24 and epoch-3 votes at slot 32. The first run finalizes
 epoch 1 through the link 1 -> 3 and epoch 2 through the link 2 -> 4. It is
-labelled out of scope for `epoch_one_finalization_one_step`. The second run
+labelled out of scope for `epoch_one_finalization_scope` (the internal law `epoch_one_finalization_one_step` in the JSON). The second run
 never includes epoch-1 votes; it finalizes epoch 2 only through the link
 2 -> 4 and passes the `k = 2` finalized evidence fields. The later anchor is labelled out of scope because it fails
 `GenesisOrNormalizedAnchor`.
