@@ -260,7 +260,7 @@ The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13
 
 ## Known limits
 
-The conclusion covers stored boundary outputs in a finite horizon. Exact `estimate_sound` and coverage force equal slot-committee weights; `estimate_sound` is a class I idealization that is false for realistic registries, and the pinned 100-validator run of `check_real_bundle.py` violates it from slot 0. Store membership follows mostly from `DeadlineBlockRelay`; head ancestry is the substantive part of the claim. The epoch-1 scope condition excludes runs in which an accepted block state finalizes epoch 1. Paper Assumption 3.2 (explicit) remains an untested implication. It does
+The conclusion covers stored boundary outputs in a finite horizon. Committee sampling is idealized: `estimate_sound` (class I) takes the high-probability committee-weight estimate of the specification as exact, and with coverage this gives equal slot-committee weights. The statistical properties of committee sampling are out of scope by design. Store membership follows mostly from `DeadlineBlockRelay`; head ancestry is the substantive part of the claim. The epoch-1 scope condition excludes runs in which an accepted block state finalizes epoch 1. Paper Assumption 3.2 (explicit) remains an untested implication. It does
 not cover an arbitrary in-slot query. The confirmed root is in each honest
 observer's block store from the next slot. The active validator set is fixed.
 No witness has non-anchor finalization, positive Gloas discount, or a PTC
