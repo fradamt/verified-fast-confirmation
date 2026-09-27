@@ -60,7 +60,7 @@ exceptions = {'module', 'public', 'Model', 'Statements', 'Internal', 'Proofs',
               'Lean', 'Python', 'README', 'SUMMARY', 'end', 'propext',
               'Classical.choice', 'Quot.sound'}
 # These are expressions or Python spec fields, not Lean declaration names.
-exceptions.update({'E.committee', 'BeaconBlockBody.attestations'})
+exceptions.update({'E.committee', 'BeaconBlockBody.attestations', 'store.payloads'})
 missing = []
 checked = 0
 for doc in DOCS:
