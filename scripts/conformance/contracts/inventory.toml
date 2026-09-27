@@ -285,7 +285,7 @@ reason = "Record field: its fields are listed under ByzantineWeightPremises with
 path = "SafetyPremises.epoch_ends_fit"
 file = "ConcreteSafety.lean"
 class = "E-scope"
-reason = "The selected horizon must fit the finite uint64 slot range."
+reason = "SLOTS_PER_EPOCH must divide 2^64, so each epoch that starts in the uint64 slot range ends in it. This is a configuration condition; it does not bound the horizon."
 
 [[field]]
 path = "SafetyPremises.slots_per_epoch_gt_one"

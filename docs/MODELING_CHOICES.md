@@ -162,7 +162,7 @@ need.
 11. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. Literal Python can reject evidence when its justified state lacks a signer.
 12. `NextSlotSafetyPremises.anchor_state_checkpoints` admits the genesis anchor with a raw stub or a state with both checkpoints equal to the anchor. Older raw checkpoints in a checkpoint-sync state are outside its scope. Under `ConcreteBridge.SafetyPremises` the run starts from the concrete genesis (`ConcreteBridge.ConcreteGenesis`), and the translation proves this field.
 13. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With the static registry, this supplies the exact intermediate-state guard for `Phase0BoundarySourceCoherence.process_slots_checkpoint_epoch`. Under the concrete premise the translation proves it from the admissible setup (`FFGSetup.Admissible`).
-14. `SafetyPremises.epoch_one_finalization_scope` (`ConcreteBridge.EpochOneFinalizationScope`, internally `AcceptedBlockFFGState.epoch_one_finalization_one_step`) restricts the scope: a finalization of epoch `GENESIS_EPOCH + 1` in a committed state of an accepted block, or in an eager copy, has a link to the next epoch. No such link can exist. A target-epoch-2 vote must match the current justified checkpoint in epoch 2 or the previous justified checkpoint in epoch 3, and both have epoch 0 because PJF returns early at the ends of epochs 0 and 1. So in effect the field says that no accepted block state finalizes epoch 1. Lean proves this (`ConcreteBridge.epochOneFinalizationScope_finalized_ne_one`), and the pyspec check finding.epoch_two_target_source_is_genesis tests the source epochs. Python finalizes epoch 1 when epoch-2 justification needs votes included in epoch 3, through the link 1 -> 3. The proof does not cover this case for two reasons. First, an honest vote of epoch 2 with a head in epoch 1 can have a source older than the finalized epoch. Second, Assumption 3.2 does not make a finalized epoch-1 checkpoint canonical during epoch 2. `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (regression.finalized_epoch_one_two_step_above_voter_justified). Finalizations of later epochs through two-epoch links are in scope: `realized_finalized_evidence` and `unrealized_finalized_evidence` state the `k = 2` Python law, and `Phase0BoundarySourceCoherence.process_slots_two_boundaries` gives the honest source of a stale head.
+14. `SafetyPremises.epoch_one_finalization_scope` (`ConcreteBridge.EpochOneFinalizationScope`, internally `AcceptedBlockFFGState.epoch_one_finalization_one_step`) restricts the scope: a finalization of epoch `GENESIS_EPOCH + 1` in a committed state of an accepted block, or in an eager copy, has a link to the next epoch. No such link can exist. A target-epoch-2 vote must match the current justified checkpoint in epoch 2 or the previous justified checkpoint in epoch 3, and both have epoch 0 because PJF returns early at the ends of epochs 0 and 1. So in effect the field says that no accepted block state, and no eager PJF pass on a copy of one, finalizes epoch 1. Lean proves this (`ConcreteBridge.epochOneFinalizationScope_finalized_ne_one`), and the pyspec check finding.epoch_two_target_source_is_genesis tests the source epochs. Python finalizes epoch 1 when epoch-2 justification needs votes included in epoch 3, through the link 1 -> 3. The proof does not cover this case for two reasons. First, an honest vote of epoch 2 with a head in epoch 1 can have a source older than the finalized epoch. Second, Assumption 3.2 does not make a finalized epoch-1 checkpoint canonical during epoch 2. `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (regression.finalized_epoch_one_two_step_above_voter_justified). Finalizations of later epochs through two-epoch links are in scope: `realized_finalized_evidence` and `unrealized_finalized_evidence` state the `k = 2` Python law, and `Phase0BoundarySourceCoherence.process_slots_two_boundaries` gives the honest source of a stale head.
 
 ## Derived prediction support
 
@@ -353,9 +353,12 @@ anchor unrealized justification, even when its chain includes a supermajority
 of epoch-1 votes. Only a block of epoch 2 or later can justify epoch 1 through
 unrealized justification.
 
-`EventualCheckpointInclusion.included` therefore asks for an inclusion block
+`EventualCheckpointInclusion.included` therefore asks for a carrier block
 of epoch `GENESIS_EPOCH + 2` or later when the target epoch is above
-`GENESIS_EPOCH`. `AcceptedBlockFFGState.unrealized_justified_max` has the same
+`GENESIS_EPOCH`. The carrier bound is on the block that makes the checkpoint
+available, not on the block that includes the votes: epoch-1 votes included in
+epoch 1 count at an epoch-2 carrier, because its eager PJF reads
+previous-epoch participation. `AcceptedBlockFFGState.unrealized_justified_max` has the same
 epoch guard, and `AcceptedBlockFFGState.unrealized_justified_early` makes the
 realized and unrealized selectors equal at those epochs.
 `AcceptedBlockFFGState.realized_justified_max` asks for a seed
@@ -392,13 +395,16 @@ availability) come from a base interface.
 
 The FFG interpretation of the proof is not a premise.
 `SafetyPremises.nextSlotSafetyPremises` computes it from the bridge. The
-inclusion relation is `TargetIncludedAt`: the body votes of accepted blocks
-whose `process_attestation` call set the timely-target flag. Python
-`process_attestation` does not check the target root, so a body vote with a
-wrong target root does not count. The checkpoint selectors read the committed
+certificate inclusion relation is `TargetIncludedAt`: the body votes of
+accepted blocks whose `process_attestation` call set the timely-target flag.
+Python `process_attestation` does not check the target root, so a body vote
+with a wrong target root does not count. The A3.2 view uses two other
+relations: `BodyIncludedAt` counts every body vote, with or without the flag
+(the slashing evidence D_b), and `Carried` gives the checkpoints that the
+blocks carry. The checkpoint selectors read the committed
 state of a block and one eager PJF copy of that state. The premise keeps paper
-Assumption 3.2 (`checkpoint_inclusion`) over this view, and the scope condition
-`epoch_one_finalization_scope`.
+Assumption 3.2 (`checkpoint_inclusion`) over the A3.2 view, and the scope
+condition `epoch_one_finalization_scope`.
 
 The internal formed-evidence relation `CarriedOrRealizable` also admits
 `RealizableBySlotRun`: the justified checkpoint of a slot run from the
@@ -431,7 +437,7 @@ resistance of the Python state hash root on the states of one run. With it, the 
 accepts each in-scope scheduled block that Python accepts. The safety theorem
 does not need it.
 
-The concrete transition keeps every validator record fixed. It rejects a block with a proposer or attester slashing, a voluntary exit, or a parent execution request (`FFGWireBlock.InFixedScope`, error `scope`); a body deposit fails the Python guard. An epoch step can still change a record in Python: an effective-balance update, an activation, an ejection, or a pending deposit. The model has no balances and cannot detect these steps, so a Python run is in scope only if no epoch step in the horizon changes a validator record. The whole-bundle sample checks this condition on its run, and a negative control shows that the check detects an effective-balance change. Under the bridge, `registry_static_in_horizon` is a theorem (`ConcreteBridge.registry_static_in_horizon`): the concrete functions write no validator record. It is a fact of the model, so it does not by itself exclude a Python registry change; the epoch-step condition does. Withdrawals, rewards, penalties, and the slashing penalty change only balances, which the projection does not retain.
+The concrete transition keeps every validator record fixed. It rejects a block with a proposer or attester slashing, a voluntary exit, or a parent execution request (`FFGWireBlock.InFixedScope`, error `scope`); a body deposit fails the Python guard. An epoch step can still change a record in Python: an effective-balance update, an activation, an ejection, or a pending deposit. The model has no balances and cannot detect these steps, so a Python run is in scope only if no epoch step in the horizon changes a retained validator field (activation, exit, effective balance, or slashed flag). The whole-bundle sample checks this condition on its run, and a negative control shows that the check detects an effective-balance change. Under the bridge, `registry_static_in_horizon` is a theorem (`ConcreteBridge.registry_static_in_horizon`): the concrete functions write no validator record. It is a fact of the model, so it does not by itself exclude a Python registry change; the epoch-step condition does. Withdrawals, rewards, penalties, and the slashing penalty change only balances, which the projection does not retain.
 
 The concrete differential compares 59 cases with pinned Python. The whole-bundle
 sample compares the retained fields after each of 48 accepted blocks of a
@@ -452,8 +458,9 @@ The `IncludedAttestationEvidence.attesters_in_committee` field uses that map.
 
 The anchor condition has a real genesis witness. Its normalized-state branch
 is a condition, not a checkpoint-sync construction. Raw checkpoint-sync states
-with older source checkpoints are outside the current result. A3.2 requires an
-epoch-1 vote to be included in a block of epoch 2 or later. The Python FCR
+with older source checkpoints are outside the current result. For e = 1, A3.2
+requires that the carrier which makes C(b, 1) available is a block of epoch 2
+or later. The Python FCR
 regression in `scripts/conformance/contracts/test_realized_gap.py` loses a
 confirmed block when epoch-1 evidence is seeded too early. The finality law uses
 a two-epoch lag (`k = 2`), the source law covers two or more boundaries, and the

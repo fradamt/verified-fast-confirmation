@@ -12,11 +12,12 @@ Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : BeaconFunctionInterface Root)
-/-- The economic assumptions: the `CONFIRMATION_BYZANTINE_THRESHOLD` bound and
-the committee-weight-estimation soundness — both against the ground truth,
-both exactly the spec's own stated assumptions (the estimation soundness is
-the "high probability" claim behind
-`COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR`; see the spec's gist link). -/
+/-- The economic assumptions, against the ground truth: phase0-quantized
+effective balances, the idealized exact form of the specification's
+high-probability committee-weight estimate (the claim behind
+`COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR`; class I, see `estimate_sound`),
+and the `CONFIRMATION_BYZANTINE_THRESHOLD` bound on every checked span, which is
+stronger than a global fault share. -/
 structure ByzantineWeightPremises (E : Execution Root) : Prop where
   /-- Effective balances used by the economic model are phase0-quantized.
       This is an executable registry invariant, not part of the probabilistic
