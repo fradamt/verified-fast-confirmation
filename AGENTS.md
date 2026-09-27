@@ -1,12 +1,10 @@
 # Lean file conventions
 
-- The six library roots are `FastConfirmationModel`,
+- The five library roots are `FastConfirmationModel`,
   `FastConfirmationStatements`, `FastConfirmationInternal`,
-  `FastConfirmationProofs`, `FastConfirmationWitnesses`, and
-  `FastConfirmationPaper`. `FastConfirmation.lean` imports all six.
-- Spec-side imports go from Witnesses to Proofs to Internal to Statements to
-  Model, or stay within one library. Paper and the Spec side do not import
-  each other. Keep Model and Statements free of authored theorems except
+  `FastConfirmationProofs`, and `FastConfirmationWitnesses`. `FastConfirmation.lean` imports all five.
+- Imports go from Witnesses to Proofs to Internal to Statements to
+  Model, or stay within one library. Keep Model and Statements free of authored theorems except
   `SuccessfulScheduledBlockImport.processedCount_lt`, which supports the
   successor-prefix definition in Model.
 - Model files under `Spec/` follow the Python consensus specification's
@@ -40,10 +38,9 @@
 # Current review documents
 
 - `README.md` states the two public claims and the premise ledger.
-- `docs/ARCHITECTURE.md` gives the six-library layout and checks.
+- `docs/ARCHITECTURE.md` gives the five-library layout and checks.
 - `docs/CONVENTIONS.md` gives naming, module, and import rules.
 - `docs/SPEC_MAP.md` maps Python sections and functions to Model.
-- `docs/PAPER_MAP.md` maps the paper to the independent Paper library.
 - `docs/MODELING_CHOICES.md` records choices and limits.
 - `docs/REVIEW_GUIDE.md` gives the cold review reading order, audit dimensions, and current limits.
 - `docs/conformance.md` describes the trace comparison.

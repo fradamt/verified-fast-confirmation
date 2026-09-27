@@ -1,9 +1,8 @@
 # Architecture
 
-Six Lean libraries separate definitions from proof terms. An arrow means that the library on
+Five Lean libraries separate definitions from proof terms. An arrow means that the library on
 the right may import the one on the left: Model → Statements → Internal → Proofs →
-Witnesses. Paper is independent of the executable side. `FastConfirmation.lean` imports all
-six.
+Witnesses. `FastConfirmation.lean` imports all five.
 
 ```text
 ┌────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -18,11 +17,10 @@ six.
 │ FastConfirmationProofs     │ Kernel checked proofs grouped by subject; ReviewTheorem.lean proves review_claims.           │
 │ FastConfirmationWitnesses  │ Finite runs in NonVacuity/, negative results in Counterexamples/, and an inventory in        │
 │                            │ Index.lean.                                                                                  │
-│ FastConfirmationPaper      │ Independent paper definitions, claims, and proofs in Core/, LMDGhost/, and HFC/.             │
 └────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-`FastConfirmationModel` and `FastConfirmationStatements` are the trusted review surface. They contain definitions and premise propositions. Model also proves `SuccessfulScheduledBlockImport.processedCount_lt` for its successor-prefix definition. The Lean kernel checks the proof bodies in Internal, Proofs, Witnesses, and Paper. The audit in `scripts/Audit.lean` checks public theorem dependencies and permits only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` axioms.
+`FastConfirmationModel` and `FastConfirmationStatements` are the trusted review surface. They contain definitions and premise propositions. Model also proves `SuccessfulScheduledBlockImport.processedCount_lt` for its successor-prefix definition. The Lean kernel checks the proof bodies in Internal, Proofs, and Witnesses. The audit in `scripts/Audit.lean` checks public theorem dependencies and permits only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` axioms.
 
 `NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state
 has the zero-root stub. It also covers a normalized anchor state whose current justified
@@ -71,9 +69,9 @@ membership and executable ancestry.
 │StatementReachability.lean  │60 source declarations are claim-reachable from the claim type; no exception remains. No     │
 │                            │other unreachable source declaration is allowed.                                             │
 │ReviewSurfaceShape.lean     │Field names and types of 18 records and the claim body remain exact.                         │
-│check_imports.py            │The six-library import direction and Paper separation hold.                                  │
+│check_imports.py            │The five-library import direction holds.                                  │
 │check_doc_names.py          │Backticked Lean names in current documents resolve to declarations or files.                 │
-│Audit.lean                  │The 46 audited public theorems have only standard axiom dependencies. No forbidden           │
+│Audit.lean                  │The 39 audited public theorems have only standard axiom dependencies. No forbidden           │
 │                            │declaration is allowed.                                                                      │
 │validate.sh                 │Fast checks above; full mode also builds every library and runs Lean checks.                 │
 └────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘

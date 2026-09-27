@@ -29,6 +29,8 @@ mainnet value `32`).  The equality branch of the helper does not use it.
 
 No endpoint filter, safety conclusion, legacy `ChainFFGState`, or legacy FFG
 pipeline is an input.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

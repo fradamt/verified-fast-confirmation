@@ -1,7 +1,7 @@
 name = "FastConfirmation"
 version = "0.1.0"
 keywords = ["lean", "consensus", "fast-confirmation-rule", "lmd-ghost"]
-defaultTargets = ["FastConfirmationModel", "FastConfirmationStatements", "FastConfirmationInternal", "FastConfirmationProofs", "FastConfirmationWitnesses", "FastConfirmationPaper", "FastConfirmation"]
+defaultTargets = ["FastConfirmationModel", "FastConfirmationStatements", "FastConfirmationInternal", "FastConfirmationProofs", "FastConfirmationWitnesses", "FastConfirmation"]
 # Lake consumes Lean's JSON diagnostic severity and fails project-module builds
 # that emit `hasSorry`. The build wrapper also checks the diagnostic text as
 # defense in depth against direct Lean's surprising zero exit status.
@@ -37,10 +37,6 @@ globs = ["FastConfirmationProofs", "FastConfirmationProofs.+"]
 [[lean_lib]]
 name = "FastConfirmationWitnesses"
 globs = ["FastConfirmationWitnesses", "FastConfirmationWitnesses.+"]
-
-[[lean_lib]]
-name = "FastConfirmationPaper"
-globs = ["FastConfirmationPaper", "FastConfirmationPaper.+"]
 
 [[lean_lib]]
 name = "FastConfirmation"

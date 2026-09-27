@@ -24,6 +24,8 @@ There are two interfaces:
 interpretation of the included votes. The public premise
 `ConcreteBridge.SafetyPremises` fixes one accepted state: the canonical
 interpretation of the concrete bridge.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

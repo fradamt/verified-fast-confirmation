@@ -21,6 +21,8 @@ honest past supporter; it is not a phase assumption.
 The current-query / same-epoch endpoint cell is deliberately not handled
 here.  Its source lower bound is the separate paper Lemmas 22--26 history
 argument.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

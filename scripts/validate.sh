@@ -52,7 +52,7 @@ forbidden_findings="$(
     -e 'sorry' -e '#exit' -e 'native_decide' -e 'bv_decide' \
     -e 'implemented_by' -e 'native :=' -e 'native:=' \
     -e '+native' -e '+ native' -- \
-    FastConfirmation.lean FastConfirmationModel.lean FastConfirmationModel FastConfirmationStatements.lean FastConfirmationStatements FastConfirmationInternal.lean FastConfirmationInternal FastConfirmationProofs.lean FastConfirmationProofs FastConfirmationWitnesses.lean FastConfirmationWitnesses FastConfirmationPaper.lean FastConfirmationPaper lakefile.toml
+    FastConfirmation.lean FastConfirmationModel.lean FastConfirmationModel FastConfirmationStatements.lean FastConfirmationStatements FastConfirmationInternal.lean FastConfirmationInternal FastConfirmationProofs.lean FastConfirmationProofs FastConfirmationWitnesses.lean FastConfirmationWitnesses lakefile.toml
 )"
 forbidden_status=$?
 set -e
@@ -69,7 +69,7 @@ git diff --cached --check
 set +e
 whitespace_findings="$(
   git grep --untracked --exclude-standard -nI -E '[[:blank:]]+$' -- \
-    .github FastConfirmation.lean FastConfirmationModel.lean FastConfirmationModel FastConfirmationStatements.lean FastConfirmationStatements FastConfirmationInternal.lean FastConfirmationInternal FastConfirmationProofs.lean FastConfirmationProofs FastConfirmationWitnesses.lean FastConfirmationWitnesses FastConfirmationPaper.lean FastConfirmationPaper CITATION.cff LICENSE README.md \
+    .github FastConfirmation.lean FastConfirmationModel.lean FastConfirmationModel FastConfirmationStatements.lean FastConfirmationStatements FastConfirmationInternal.lean FastConfirmationInternal FastConfirmationProofs.lean FastConfirmationProofs FastConfirmationWitnesses.lean FastConfirmationWitnesses CITATION.cff LICENSE README.md \
     docs lake-manifest.json lakefile.toml lean-toolchain scripts spec_source
 )"
 whitespace_status=$?

@@ -20,7 +20,7 @@ def allowed(name: str) -> bool:
 def self_test() -> None:
     for name in ("FastConfirmationInternal.ProofVocabulary.Vocabulary",
                  "FastConfirmationProofs.ReviewTheorem",
-                 "FastConfirmationWitnesses.Index", "FastConfirmationPaper.Core"):
+                 "FastConfirmationWitnesses.Index"):
         assert not allowed(name), name
     for name in ("FastConfirmationModel", "FastConfirmationModel.Execution.Stake",
                  "FastConfirmationStatements", "FastConfirmationStatements.Review"):

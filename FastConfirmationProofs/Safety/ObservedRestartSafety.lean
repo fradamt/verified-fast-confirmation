@@ -25,6 +25,8 @@ Lemma 32: the restart guard fixes the checkpoint root in the previous block
 epoch, while accepted cache provenance bounds the checkpoint epoch from above
 by the epoch of the pre-boundary carrier.  Hence the checkpoint itself is
 exactly a previous-epoch checkpoint.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

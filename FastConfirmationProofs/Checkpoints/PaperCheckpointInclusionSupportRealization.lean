@@ -25,6 +25,8 @@ No AU inclusion, filter, head, ancestry, or safety conclusion is assumed.  The
 target root and checkpoint-state key are ordinary endpoint-domain facts; they
 remain explicit because the totalized executable maps otherwise contain junk
 outside their finite domains.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

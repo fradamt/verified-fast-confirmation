@@ -21,6 +21,8 @@ then rule out a different target root.
 
 No competing-certificate absence, pinning conclusion, latest-message
 provenance, or quorum is assumed.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

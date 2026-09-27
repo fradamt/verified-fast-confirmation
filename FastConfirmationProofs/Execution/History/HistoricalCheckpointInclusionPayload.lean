@@ -22,6 +22,8 @@ only when checkpoint reflection is available in one causal store and source
 constancy is witnessed by an actual accepted same-epoch transition segment.
 No canonicity, endpoint head conclusion, `SafeFrom`, or historical SIR result
 is a field of the payload.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCS = [ROOT / 'README.md', ROOT / 'AGENTS.md', *sorted((ROOT / 'docs').glob('*.md'))]
 LEAN = [p for lib in ('FastConfirmationModel', 'FastConfirmationStatements',
                       'FastConfirmationInternal', 'FastConfirmationProofs',
-                      'FastConfirmationWitnesses', 'FastConfirmationPaper')
+                      'FastConfirmationWitnesses')
         for p in (ROOT / lib).rglob('*.lean')]
 DECL = re.compile(r'^\s*(?:(?:private|protected|noncomputable|partial|unsafe|public|scoped|local)\s+)*'
                   r'(?:def|theorem|lemma|structure|class|inductive|abbrev|instance|opaque|'
@@ -33,7 +33,7 @@ for file in LEAN:
 # declared component, and require the cited qualification to appear in source.
 source = '\n'.join(p.read_text() for p in LEAN)
 exceptions = {'module', 'public', 'Model', 'Statements', 'Internal', 'Proofs',
-              'Witnesses', 'Paper', 'Core', 'LMDGhost', 'HFC', 'Gloas', 'VALID',
+              'Witnesses', 'Gloas', 'VALID',
               'PENDING', 'FULL', 'EMPTY', 'Nat', 'Root', 'Bool', 'List', 'Fin',
               'Lean', 'Python', 'README', 'SUMMARY', 'end', 'propext',
               'Classical.choice', 'Quot.sound'}

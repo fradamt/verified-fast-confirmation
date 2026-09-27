@@ -33,6 +33,8 @@ by itself imply that different honest heads use one common source.  The
 fact for the concrete votes produced here.  It can be discharged with the
 same-epoch common-ancestor theorems in `FFGSourceCoherence`; no quorum or A3.2
 conclusion is hidden in it.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

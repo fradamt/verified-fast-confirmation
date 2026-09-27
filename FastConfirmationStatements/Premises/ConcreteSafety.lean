@@ -12,7 +12,10 @@ public import FastConfirmationStatements.Premises.Synchrony
 fixes the configuration, the state functions, the FFG selectors, and the
 inclusion relation. The premise states the execution scope, the network and
 honest behavior, the stake bounds, and paper Assumption 3.2 over the view of
-the bridge. -/
+the bridge.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
+-/
 
 namespace FastConfirmation.Spec.ConcreteFFG
 open FastConfirmation.Spec

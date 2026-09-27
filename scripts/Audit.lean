@@ -59,14 +59,7 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws,
     ``FastConfirmation.Spec.EstimateForcesBalance.slot_committee_weight_forced,
     ``FastConfirmation.Spec.StrictPrefixExtraQuery.extra_query_changes_head_counterexample,
-    ``FastConfirmation.Spec.PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample,
-    ``FastConfirmation.LMDGhost.head_agreement_after_confirmation,
-    ``FastConfirmation.LMDGhost.confirmed_block_safety,
-    ``FastConfirmation.LMDGhost.confirmed_block_monotonicity,
-    ``FastConfirmation.HFC.gate_confirmed_block_safety,
-    ``FastConfirmation.HFC.gate_confirmed_block_monotonicity,
-    ``FastConfirmation.HFC.rule_confirmed_block_safety,
-    ``FastConfirmation.HFC.rule_confirmed_block_monotonicity
+    ``FastConfirmation.Spec.PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample
   ]
 
 private def unexpectedAxioms (axioms : Array Name) : Array Name :=
@@ -80,7 +73,7 @@ private def isProjectModule (env : Environment) (name : Name) : Bool :=
       moduleName == "FastConfirmation" ||
         (#["FastConfirmationModel", "FastConfirmationStatements",
           "FastConfirmationInternal", "FastConfirmationProofs",
-          "FastConfirmationWitnesses", "FastConfirmationPaper"].any
+          "FastConfirmationWitnesses"].any
           fun libName => moduleName == libName || moduleName.startsWith (libName ++ "."))
 
 private def isGeneratedSafePartial (env : Environment) (name : Name)
@@ -102,8 +95,8 @@ private def isGeneratedSafePartial (env : Environment) (name : Name)
 
 elab "audit_project_trust" : command => do
   let env ← getEnv
-  unless publicWitnesses.size == 46 do
-    throwError "public theorem witness set must contain exactly 46 declarations"
+  unless publicWitnesses.size == 39 do
+    throwError "public theorem witness set must contain exactly 39 declarations"
   unless publicWitnesses.toList.eraseDups.length == publicWitnesses.size do
     throwError "public theorem witness set contains duplicate declarations"
 

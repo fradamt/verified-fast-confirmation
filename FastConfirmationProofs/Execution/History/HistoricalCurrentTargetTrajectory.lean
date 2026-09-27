@@ -27,6 +27,8 @@ the selected result is current-epoch and the present retained trace has no
 epoch-crossing tentative edge, then the invocation input was already
 current-epoch.  The proof uses the complete executable parent trace, not a
 result-only lookalike.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

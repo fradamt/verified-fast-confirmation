@@ -37,6 +37,8 @@ The executable `get_head` has a justified-root fallback which need not be a
 member of the filtered output.  Consequently the final theorem deliberately
 returns either that exact fallback or the path-local Lemma-26 carrier.  It
 does not manufacture a filter witness in the fallback branch.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

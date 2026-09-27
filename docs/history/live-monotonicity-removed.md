@@ -1,6 +1,6 @@
 # Removed live monotonicity theorem
 
-The last commit that contains the theorem is `c9402973623708c2b5993836c7ac7aa0dee48fab`. The theorem was deleted after this commit.
+The last commit that contains the theorem is `c9402973623708c2b5993836c7ac7aa0dee48fab`. The theorem was deleted after this commit. The quoted source below keeps its historical numbering. Current paper citations use [arXiv:2405.00549v4](https://arxiv.org/abs/2405.00549v4); its Theorem 1 concerns LMD-GHOST-HFC, and it has no Assumption 6.
 
 ## Exact former Lean statement
 
@@ -112,7 +112,7 @@ theorem live_confirmed_root_monotonicity :
 
 The FCR can reset a stored confirmed root to an ancestor. `get_latest_confirmed` can fall back to the finalized or justified checkpoint when a guard fails. The relevant cases are a mismatch in `previous_epoch_greatest_unrealized_checkpoint`, failure of `is_head_unrealized_justified_ok`, a stale previous-slot-head voting source, and a confirmed block that is off the head chain. Monotonicity can hold only on an interval with no such reset.
 
-A proof that excludes resets needs liveness assumptions about synchrony, an honest majority, honest block production, and timely justification, in the style of paper Assumption 6. The deleted `ffg_timely_justification` field instead required the FFG store outcomes that made those guards pass. The `honest_block_each_slot` field required blocks and descendant votes from execution start with no reorg of those honest blocks. These requirements were close to the desired result and did not establish it from network and behavior assumptions.
+A proof that excludes resets needs liveness assumptions about synchrony, an honest majority, honest block production, and timely justification, in the style of the historical assumption cited in the quoted statement. The deleted `ffg_timely_justification` field instead required the FFG store outcomes that made those guards pass. The `honest_block_each_slot` field required blocks and descendant votes from execution start with no reorg of those honest blocks. These requirements were close to the desired result and did not establish it from network and behavior assumptions.
 
 The former premise also cannot hold from real genesis past epoch 2. The Python `process_justification_and_finalization` function returns early in epochs 0 and 1. It therefore cannot produce the epoch-1 unrealized justification that `ffg_timely_justification` requires at the epoch-2 boundary. The former finite witness covered only a short interval whose FFG timing used the genesis anchor.
 

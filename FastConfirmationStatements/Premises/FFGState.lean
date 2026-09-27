@@ -21,6 +21,8 @@ by `get_voting_source`.
 None of these declarations assumes that a block is canonical, safe, retained
 by the filter, or selected by the FCR. Canonicality appears only as an
 antecedent of Assumption 3.2.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

@@ -12,6 +12,8 @@ The previous-result conclusion uses execution descent, as in paper Lemma 42.
 The current-target conclusion uses a common current-epoch block, as in paper
 Lemmas 44 and 45. Support before a later endpoint slot is sufficient once
 that slot is after the end of the target epoch.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 @[expose] public section
