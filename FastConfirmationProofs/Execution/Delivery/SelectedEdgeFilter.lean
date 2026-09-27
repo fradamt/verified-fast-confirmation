@@ -45,6 +45,8 @@ This module deliberately exports no universal endpoint-outcome provider.
 That expensive producer is derived later by phase dispatch inside the
 `SelectedStrictEdgeFilterSupplyAt` lambda.  There is no filter, safety,
 selected-margin, or free finalized-placement premise here.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

@@ -4,7 +4,10 @@ public import FastConfirmationStatements.Premises.Synchrony
 
 @[expose] public section
 
-/-! Defines the Byzantine committee-weight bounds used by the safety claim. -/
+/-! Defines the Byzantine committee-weight bounds used by the safety claim.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
+-/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

@@ -46,8 +46,7 @@ theorem weight_split_honest (s : Finset ValidatorIndex) :
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- `J` decomposes as the value at `b` plus the honest weight of the committee
-growth set (paper `J_eq_add_growth`, `FastConfirmationPaper/LMDGhost/Proof/BlockAncestry.lean`). Exact equality — no
-support hypotheses. -/
+growth set. The equality needs no support hypothesis. -/
 theorem Jspec_eq_add_growth (a : Slot) {b b' : Slot} (h : b ≤ b') :
     E.Jspec a b' = E.Jspec a b
       + E.weight ((E.span_committee a b' \ E.span_committee a b).filter

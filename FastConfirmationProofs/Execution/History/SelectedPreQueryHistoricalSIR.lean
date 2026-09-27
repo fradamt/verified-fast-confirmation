@@ -41,6 +41,8 @@ unconstrained before `E.slot_at cfg 0`.  The causal-origin interfaces now carry
 the explicit lower bound `E.slot_at cfg 0 ≤ s`; every producer in this file
 consumes that bound when invoking `HonestBehavior.votes_head`.  This prevents a
 pre-anchor totalized vote from masquerading as historical FFG evidence.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

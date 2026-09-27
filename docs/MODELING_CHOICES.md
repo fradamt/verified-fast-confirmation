@@ -1,6 +1,8 @@
 # Modeling choices
 
-Each row states a choice in the executable or paper model, why it is used, and the property it does not establish. The model definitions are the source of truth; this page is a guide to their boundaries.
+Paper citations use [arXiv:2405.00549v4](https://arxiv.org/abs/2405.00549v4).
+
+Each row states a choice in the executable model, why it is used, and the property it does not establish. The model definitions are the source of truth; this page is a guide to their boundaries.
 
 ```text
 ┌───────────────────────────────────────┬──────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────┐
@@ -34,10 +36,6 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │ Derived FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms follow from the joint call and endpoint-slot induction.                │
 │ Gloas payload-aware discount          │ Counts matching or PENDING parent votes in an empty slot.        │ Diverges from upstream rule; public fix at fcr-gloas-fix.                         │
 │ Envelope and data relay               │ Carries verified payload state to honest receivers.              │ The finite next-slot witness has no envelope event.                               │
-│ Paper exact rational balances         │ Keeps the paper threshold algebra direct.                        │ Does not by itself model executable integer rounding.                             │
-│ Paper eligibility filter              │ Reuses the LMD head agreement result in HFC.                     │ The proof needs a separate never-filter premise and bridge.                       │
-│ Paper AU from block-contained votes   │ Ties justification to concrete ancestry evidence.                │ OnChainAnchorInterface still supplies visibility and formation laws.              │
-│ Algorithm 1 future confirmation input │ Discharges the later monotonicity gate.                          │ SafeConfirmedAlg1Inputs already confirms each honest-view-safe block.             │
 └───────────────────────────────────────┴──────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,7 +51,7 @@ committee span, including one slot. A global fault share does not establish
 this bound. `span_fraction` and `estimate_sound` are deterministic events
 assumed on every checked span, including one slot. Their probability under
 committee sampling is outside this development. The fault bound matches
-`CommitteeHonestMajority` in the repository's formal paper Assumption 2.
+the committee majority bound in v4 Assumption 2.
 
 The PTC assignment function, PTC signature check, ordered committee tables,
 and committee counts are unconstrained. The theorem holds for every choice of
@@ -137,7 +135,7 @@ These execution premises implement the paper's positive-delay timing at slot
 boundaries in the synchronous segment. They do not add a GST transition. The
 paper's independent view model is not a refinement proof for Python handlers.
 
-The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).
+The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [review guide](REVIEW_GUIDE.md), and [paper library history](history/paper-side-removed.md).
 
 ## Strong conditions
 
@@ -235,16 +233,6 @@ Phase0 fork choice. Gloas can suppress proposer boost for a weak previous-slot
 parent after an early same-proposer equivocation. Gloas can also replace a
 latest message with a later vote in the same epoch. The conformance harness
 therefore compares Gloas observations with the pinned Gloas source.
-
-## Paper vote payload limit
-
-The paper model computes on-chain available and unrealized justification from
-FFG votes carried in block ancestry. These votes keep their vote slot. They do
-not count as LMD-GHOST votes. The model has no block-size cap or execution
-participation flags. It ignores a validator for an epoch if that validator
-equivocates on the chain. `OnChainAnchorInterface` supplies chain payload
-formation and availability laws. `OnChainAnchorInterfacesForRule` limits that
-bridge to selected blocks and previous-slot witness blocks.
 
 ## Anchor and boundary limits
 

@@ -179,7 +179,7 @@ readings. -/
 
 /-! ## Step 4 — the honest-support majority (arithmetic assembly)
 
-`is_one_confirmed_ineq` (`Proof/Quorum.lean`) gives
+The one-confirmed inequality gives
 
 `2·score + support_discount ≥ maximum_support + proposer_score +
 2·adversarial_weight + 1`,

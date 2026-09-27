@@ -7,9 +7,9 @@ only useful historical evidence in `docs/history/`. The existing `Phase0SourceCo
 
 Every library module starts with `module`, public imports, and a module docstring. Its first sentence states the function family, premise, invariant, or theorem in that file. A Model docstring cites the Python document and section. An import-only file needs no public section. Put declarations in an `@[expose] public section`, close nested scopes, and then close that section. Keep local proof helpers private where their dependencies permit it.
 
-Add Python function definitions to Model/Spec by source section. Add run functions and external interfaces to Model/Execution. Put assumptions and claim propositions in Statements. Put intermediate records in Internal. Put proof lemmas in Proofs under the subject they establish. Put satisfying executions and counterexamples in Witnesses. Paper lemmas stay in Paper. Model and Statements stay free of authored theorems except definition obligations.
+Add Python function definitions to Model/Spec by source section. Add run functions and external interfaces to Model/Execution. Put assumptions and claim propositions in Statements. Put intermediate records in Internal. Put proof lemmas in Proofs under the subject they establish. Put satisfying executions and counterexamples in Witnesses. Model and Statements stay free of authored theorems except definition obligations.
 
 A change passes `scripts/validate.sh --fast` before commit. A library or import change also passes full `scripts/validate.sh`. The checks enforce source pinning, names, import closure, Statement reachability, exact review shape, full elaboration, and the trust audit. `scripts/check_imports.py` checks the library graph. `scripts/Audit.lean` remains a script with ordinary imports so that it can inspect proof bodies.
 The current reachability check has 60 claim-reachable source declarations and
-no approved exception. The trust audit checks 46 public
+no approved exception. The trust audit checks 39 public
 theorem witnesses. Update these counts when the check scripts change.

@@ -264,4 +264,6 @@ certified epoch-1 source after two boundaries, and that this epoch-1 behavior
 satisfies the boundary laws. They are not full-bundle runs. The epoch-1
 regression certifies its link with the votes in the body of the next-slot
 carrier (`ConcreteBridge.BodyIncludedAt`).
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/

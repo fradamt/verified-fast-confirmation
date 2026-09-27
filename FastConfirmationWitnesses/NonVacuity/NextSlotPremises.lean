@@ -16,6 +16,8 @@ not supplied by hand: it is the canonical content of the concrete bridge.
 The file proves paper Assumption 3.2 over the view of the bridge, the
 delivery of the carrier body votes, and the epoch-one finalization scope. It
 applies the public safety theorem to the confirmed root of the run.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

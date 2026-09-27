@@ -29,6 +29,8 @@ returned a fixed point.  The strict outcome retains the active recency guard,
 the exact selector equation, and the ordered input origin.  The observed arm
 also exposes every conjunct of its boundary guard.  No source recency,
 filter, safety, justification interface, or selected-margin premise appears.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

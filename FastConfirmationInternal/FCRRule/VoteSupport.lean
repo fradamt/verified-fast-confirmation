@@ -3,7 +3,10 @@ public import FastConfirmationInternal.Premises.FCRCallPremises
 
 @[expose] public section
 
-/-! Vote-support predicates derived by the joint safety proof. -/
+/-! Vote-support predicates derived by the joint safety proof.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
+-/
 
 section
 namespace FastConfirmation.Spec

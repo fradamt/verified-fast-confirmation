@@ -10,7 +10,10 @@ validator set. The public premise of a run with the concrete bridge carries
 only the fields that the bridge does not prove
 (`ConcreteBridge.ConcreteExternalsPremises`);
 `FastConfirmationProofs/FFG/Concrete/ExternalsLaws.lean` proves the others and
-builds these records. -/
+builds these records.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
+-/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

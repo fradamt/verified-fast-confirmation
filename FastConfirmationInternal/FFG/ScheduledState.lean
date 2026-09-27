@@ -4,7 +4,10 @@ public import FastConfirmationInternal.FFG.Certificates
 
 @[expose] public section
 
-/-! Concrete block-local FFG state predicates used by proofs. -/
+/-! Concrete block-local FFG state predicates used by proofs.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
+-/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the six-library import order with Lean's parsed dependency graph."""
+"""Check the five-library import order with Lean's parsed dependency graph."""
 
 from __future__ import annotations
 
@@ -12,8 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = tuple("FastConfirmation" + name for name in
              ("Model", "Statements", "Internal", "Proofs", "Witnesses"))
-PAPER = "FastConfirmationPaper"
-LIBRARIES = (*SPEC, PAPER)
+LIBRARIES = SPEC
 
 
 def owner(module: str) -> str | None:
@@ -72,19 +71,15 @@ def audit() -> tuple[int, list[str]]:
             continue
         source = owner(module)
         if source is None:
-            failures.append(f"{module}: outside the six libraries")
+            failures.append(f"{module}: outside the five libraries")
         for dep in sorted(imports):
             target = owner(dep)
             if target is None:
                 failures.append(f"{module}: unknown project import {dep}")
-            elif source == PAPER and target != PAPER:
-                failures.append(f"{module}: Paper imports Spec side {dep}")
-            elif source != PAPER and target == PAPER:
-                failures.append(f"{module}: Spec side imports Paper {dep}")
             elif source in SPEC and target in SPEC and SPEC.index(target) > SPEC.index(source):
                 failures.append(f"{module}: reverse library import {dep}")
     if graph["FastConfirmation"] != set(LIBRARIES):
-        failures.append("root aggregate must import exactly the six library roots")
+        failures.append("root aggregate must import exactly the five library roots")
     for lib in LIBRARIES:
         owned = {module for module in modules if owner(module) == lib}
         orphaned = owned - closure(lib, graph)
@@ -122,7 +117,7 @@ def main() -> int:
     except (RuntimeError, OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
         print(f"import architecture audit failed:\n{exc}", file=sys.stderr)
         return 1
-    print(f"import architecture audit passed: {count} modules, six libraries")
+    print(f"import architecture audit passed: {count} modules, five libraries")
     return 0
 
 

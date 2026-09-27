@@ -31,6 +31,8 @@ The rest of the module is mechanical:
   closure and the finalized root's slot bound; and
 * these facts assemble a `RetainedFilterTipPlacement` for an explicitly
   supplied visible leaf.
+
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec

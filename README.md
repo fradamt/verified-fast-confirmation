@@ -1,5 +1,7 @@
 # Verified Fast Confirmation
 
+Paper citations use [arXiv:2405.00549v4](https://arxiv.org/abs/2405.00549v4).
+
 [![CI](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml)
 
 The Fast Confirmation Rule (FCR) selects a block root from fork-choice state. Under the stated premises, the Lean theorem proves that every honest observer stores that root and keeps it on its head from the next slot until the finite horizon. The substantive part of the result is head ancestry. Store membership follows mostly from the block-relay and retention input `DeadlineBlockRelay` (`NextSlotSynchronyPremises.deadline_block_relay`). Committee sampling is idealized (`ByzantineWeightPremises.estimate_sound`, class I): slot committees have equal weight inside an epoch, and the reshuffle at an epoch boundary is perfectly mixed. The premise also keeps paper Assumption 3.2 (explicit), eventual checkpoint inclusion. The theorem covers genesis-anchored runs in which no accepted block state finalizes epoch 1. The premise field admits epoch-1 finality only through a 1 -> 2 finalization link, and included votes cannot form that link: a vote with target epoch 2 must have a source of epoch 0 (`ConcreteBridge.epochOneFinalizationScope_finalized_ne_one`). In Python, honest votes finalize epoch 1 only through a 1 -> 3 link; this occurs when epoch-2 justification needs votes included in epoch 3. The horizon is an absolute epoch limit (`Execution.verification_horizon`). The premise fixes a concrete bridge: a concrete Gloas FFG transition, state and block commitments, and an opaque block-validity oracle. The proof computes its FFG interpretation from that bridge. The Python checks do not establish the full premise bundle.
@@ -181,9 +183,7 @@ The bridge runs the concrete Gloas FFG transition for slot processing, block
 transitions, and PJF. Cryptography, the other block-validity checks, payload
 envelopes, data availability, and execution validation are opaque, with stated
 contracts. Committees are one fixed assignment (class I). The Lean kernel checks the proofs. The trust audit
-allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
-library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
-There is no refinement theorem from the paper model to the executable model.
+allows only `propext`, `Classical.choice`, and `Quot.sound`. The former paper library is recorded in its [history note](docs/history/paper-side-removed.md).
 A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 76 finite fields: 10 public premise fields, 64 laws of the derived internal records, and two checks of the concrete transition (the retained fields of each block, and a negative control for an epoch-step registry change). `ByzantineWeightPremises.estimate_sound` fails on 211 of 1176 spans: 96 of 216 within-epoch spans (first at slots 0 to 1: 846e9 Gwei against an estimate of 837.5e9 Gwei) and 115 of 960 cross-boundary spans. A second genesis with 128 validators of 32 ETH checks only `estimate_sound`, in two more fields: 0 of 216 within-epoch spans fail, so a real pyspec registry meets part (i), and 120 of 960 cross-boundary spans fail (for example slots 1 to 14: 4096e9 Gwei against 4052.16e9 Gwei), because the real reshuffle is one sample. These failures are the expected result of the committee-sampling idealization. Paper Assumption 3.2 (explicit) remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
 
 The [contract conformance checks](docs/conformance.md#contract-conformance) cover
@@ -209,7 +209,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 46 public theorems: 39 executable-side and seven paper-side. The Python
+and audits 39 public executable theorems. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger
@@ -303,18 +303,13 @@ coverage limits, not claims about unreachable protocol states.
 - `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
 - Committee sampling is idealized. `estimate_sound` takes the committee-weight estimate of the specification as exact; the specification claims it only with high probability (COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR and the gist that the specification cites). The idealization has two parts, and both are intended: (i) equal slot-committee weights inside an epoch; (ii) a perfectly mixed reshuffle across an epoch boundary, so the committee weight of a cross-boundary span is at most the pro-rated estimate of the specification, which is the expected overlap. `EstimateForcesBalance.slot_committee_weight_forced` proves part (i) from the field and committee coverage in each full in-horizon epoch. The statistical properties of committee sampling, and the tolerance of the FCR thresholds to sampling error, are out of scope by design.
 - `SafetyPremises.epoch_one_finalization_scope` excludes genesis runs that finalize epoch 1. No target-included link from epoch 1 to epoch 2 can exist, so in effect the field says that no accepted block state finalizes epoch 1. Lean proves this (`no_finalizationLink_epoch_one_to_two` and `ConcreteBridge.epochOneFinalizationScope_finalized_ne_one` in `FastConfirmationProofs/FFG/Concrete/EpochOneLinks.lean`), and the pyspec check finding.epoch_two_target_source_is_genesis in `test_realized_gap.py` agrees. Python finalizes epoch 1 when epoch-2 justification needs votes included in epoch 3. Extending the proof to that path remains open.
-- `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
+- `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound models the committee majority condition of v4 Assumption 2.
 - The result covers stored boundary outputs. The two extra-query counterexamples refute same-second head agreement at a mid-second prefix under the counterexample synchrony record. Next-slot safety of an in-slot query is open.
-
-## Paper library
-
-`FastConfirmationPaper/Core/` defines the abstract objects. The seven audited public theorems are `head_agreement_after_confirmation`, `confirmed_block_safety`, `confirmed_block_monotonicity`, `gate_confirmed_block_safety`, `gate_confirmed_block_monotonicity`, `rule_confirmed_block_safety`, and `rule_confirmed_block_monotonicity`. This audit is separate from the finite non-vacuity witnesses. The paper library has no non-vacuity witness. Section 4 assumes `FFG_AccountableSafety`. Algorithm 1 safety also assumes a per-call `Alg1SelectorSafetyInterface`. Algorithm 1 monotonicity assumes `SafeConfirmedAlg1Inputs`: every honest-view-safe block is already confirmed by the local rule at its safe time. This is stronger than paper Assumption 6. No refinement theorem connects the paper and executable models.
 
 ## Where to read
 
 Start with the [review guide](docs/REVIEW_GUIDE.md), [architecture](docs/ARCHITECTURE.md),
-[modeling choices](docs/MODELING_CHOICES.md), [source map](docs/SPEC_MAP.md), and [paper
-map](docs/PAPER_MAP.md). The [conformance guide](docs/conformance.md) covers trace
+[modeling choices](docs/MODELING_CHOICES.md), and [source map](docs/SPEC_MAP.md). The [conformance guide](docs/conformance.md) covers trace
 comparison. The claim and proof sources are `FastConfirmationStatements/Review.lean` and
 `FastConfirmationProofs/ReviewTheorem.lean`. The [witness
 index](FastConfirmationWitnesses/Index.lean) states each finite run's limit.

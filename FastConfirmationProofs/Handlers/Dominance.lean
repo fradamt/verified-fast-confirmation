@@ -49,6 +49,7 @@ confirm-margin strip at `es` plus the aggregate budget, and
 the `harm`/`hdelta`/`hbside`/`hsib` legs at any
 `σ ≥ es`, mirroring `GroundBeta.bval_strip`'s `σ`-generality with no min-reserve.
 
+Paper references use arXiv:2405.00549v4 (https://arxiv.org/abs/2405.00549v4).
 -/
 
 namespace FastConfirmation.Spec
