@@ -24,13 +24,6 @@ private partial def reachableFrom (env : Environment) (pending : List Name)
         | none => reachableFrom env rest seen
         | some info => reachableFrom env (info.getUsedConstantsAsSet.toList ++ rest) seen
 
-private def isProjectDeclaration (env : Environment) (decl : Name) : Bool :=
-  match env.getModuleIdxFor? decl with
-  | none => false
-  | some idx =>
-      let moduleName := (env.allImportedModuleNames[idx.toNat]!).toString
-      moduleName.startsWith "FastConfirmation"
-
 private def publicWitnesses : Array Name :=
   #[
     ``FastConfirmation.Spec.review_claims,
@@ -81,6 +74,60 @@ private def declarationValueHash (info : ConstantInfo) : UInt64 :=
   | .thmInfo value => hash value.value
   | .opaqueInfo value => hash value.value
   | _ => 0
+
+-- BEGIN witness fingerprint (scripts/test_witness_fingerprint.py runs this block)
+/-- `scripts/Audit.lean` checks that each module with this prefix resolves to the
+project build folder. -/
+private def isProjectDeclaration (env : Environment) (decl : Name) : Bool :=
+  match env.getModuleIdxFor? decl with
+  | none => false
+  | some idx =>
+      let moduleName := (env.allImportedModuleNames[idx.toNat]!).toString
+      moduleName.startsWith "FastConfirmation"
+
+/-- The project declarations that the public witness types name, closed under
+definition bodies, inductive constructors, and structure fields. The closure
+does not enter proofs: a theorem contributes its type only. -/
+private def witnessClosure (env : Environment) (roots : Array Name) : NameSet := Id.run do
+  let mut todo := roots
+  let mut seen : NameSet := {}
+  while !todo.isEmpty do
+    let decl := todo.back!
+    todo := todo.pop
+    if seen.contains decl || !isProjectDeclaration env decl then continue
+    seen := seen.insert decl
+    todo := todo ++ match env.find? decl with
+      | some (.thmInfo info) => info.type.getUsedConstants
+      | some (.inductInfo info) => info.type.getUsedConstants ++ info.ctors.toArray
+      | some info => info.getUsedConstantsAsSet.toArray
+      | none => #[]
+  return seen
+
+/-- Hash each witness name and type, then each closure declaration with its
+type, its definition body, and its structure field names. A changed, added, or
+removed field of a witness structure, or a changed fixture definition, changes
+the result. -/
+private def witnessFingerprint (env : Environment) (witnesses : Array Name) :
+    Except String UInt64 := do
+  let mut fingerprint : UInt64 := 0
+  let mut roots : Array Name := #[]
+  for name in witnesses do
+    let some info := env.find? name
+      | throw s!"missing public witness {name}"
+    fingerprint := hash (fingerprint, name, info.type)
+    roots := roots ++ info.type.getUsedConstants
+  let closure := (witnessClosure env roots).toList.mergeSort
+    (fun a b => (Name.quickCmp a b).isLE)
+  for decl in closure do
+    let some info := env.find? decl
+      | throw s!"missing witness closure declaration {decl}"
+    let body : UInt64 := match info with
+      | .defnInfo value => hash value.value
+      | _ => 0
+    let fields := if isStructure env decl then (getStructureFields env decl).toList else []
+    fingerprint := hash (fingerprint, decl, info.type, body, fields)
+  return fingerprint
+-- END witness fingerprint
 
 run_cmd do
   let env ← getEnv
@@ -278,12 +325,8 @@ run_cmd do
   | _ => throwError "missing claim definition"
   unless fingerprint == (13571509296887298206 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
-  let mut witnessFingerprint : UInt64 := 0
-  for name in publicWitnesses do
-    let some info := env.find? name
-      | throwError "missing public witness {name}"
-    witnessFingerprint := hash (witnessFingerprint, name, info.type)
-  unless witnessFingerprint == (6115175776016925080 : UInt64) do
-    throwError "public witness statement type changed: {witnessFingerprint}"
-  IO.println s!"public witness statements passed ({witnessFingerprint})"
+  let witnessHash ← ofExcept <| witnessFingerprint env publicWitnesses
+  unless witnessHash == (6428288024400322397 : UInt64) do
+    throwError "public witness statement or definition closure changed: {witnessHash}"
+  IO.println s!"public witness statements and definition closure passed ({witnessHash})"
   IO.println s!"review surface types passed ({fingerprint})"
