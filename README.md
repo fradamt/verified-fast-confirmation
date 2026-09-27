@@ -134,7 +134,7 @@ library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) se
 There is no refinement theorem from the paper model to the executable model.
 A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 75 finite premise fields and the retained fields of the concrete transition. `ByzantineWeightPremises.estimate_sound` fails on 211 spans; A3.2 remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
 
-The [contract conformance checks](docs/conformance.md#contract-conformance) cover 160
+The [contract conformance checks](docs/conformance.md#contract-conformance) cover 72
 claim-reachable premise fields, split into tested state laws (T), execution scope (E-scope), network and behavior (E-network/behavior), supplied FFG interpretation (E-interpretation), and idealizations (I). Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the

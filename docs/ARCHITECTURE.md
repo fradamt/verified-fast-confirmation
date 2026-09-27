@@ -93,7 +93,7 @@ the concrete transition against pinned Python. The projection harness checks
 each interpretation law on real pyspec runs. Full-bundle witnesses show
 consistency, while the contract and differential checks test Python behavior.
 
-The active inventory has 161 authored claim-reachable premise fields. The Lean reachability audit also checks two inherited projections and two outside Prop boundaries. Its labels separate tested state laws, execution scope, network and behavior, supplied interpretation, and idealizations. Two relay fields have both network and idealization labels.
+The active inventory has 72 authored claim-reachable premise fields. The Lean reachability audit also checks two outside Prop boundaries. Its labels separate tested state laws, execution scope, network and behavior, supplied interpretation, and idealizations. Two relay fields have both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
 The field list is checked against the claim-type reachability audit. CI runs the
 Python contract, projection, realized-gap, and concrete differential checks in
 a separate pinned-pyspec job.

@@ -27,7 +27,7 @@ Schema v1 phase0 traces remain historical and both readers reject them. Gloas FU
 ## Contract conformance
 
 The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists every
-direct field in the premise structures. T means a generated reachable-state property of the pinned Python functions. E-scope labels execution limits. E-network/behavior labels delivery, scheduling, and honest or adversarial behavior. E-interpretation labels supplied FFG obligations. I labels cryptographic, engine, or fixed-committee idealizations. Some mixed relay fields carry both E-network/behavior and I. The inventory covers 161 authored claim-reachable structure fields, two inherited Lean projections, and two outside Prop boundaries: EpochEndsFitUint64 and BeaconFunctionInterface.AnchorCommitsToState. The checker verifies their source declarations. Thirteen selector, checkpoint, and anchor fields were moved from T to E
+direct field in the premise structures. T means a generated reachable-state property of the pinned Python functions. E-scope labels execution limits. E-network/behavior labels delivery, scheduling, and honest or adversarial behavior. E-interpretation labels supplied FFG obligations. I labels cryptographic, engine, or fixed-committee idealizations. Some mixed relay fields carry both E-network/behavior and I. The inventory covers 72 authored claim-reachable structure fields and two outside Prop boundaries: EpochEndsFitUint64 and BeaconFunctionInterface.AnchorCommitsToState. The checker verifies their source declarations. Thirteen selector, checkpoint, and anchor fields were moved from T to E
 because their old probes did not test the supplied execution interpretation. The
 inventory checker fails when a Lean field has no entry.
 
