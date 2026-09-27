@@ -15,11 +15,12 @@ synchrony bundle. -/
 theorem synchrony_and_delivery_iff_nextSlot
     (E : Execution Root) :
     (Synchrony cfg ext E ∧ HorizonVoteDeliveryLookahead cfg E ∧
-      DeadlineEnvelopeDelivery cfg ext E ∧ DeadlineDataAvailabilityRelay cfg ext E) ↔
+      DeadlineEnvelopeDelivery cfg ext E ∧ DeadlineBoundaryEnvelopePrefix cfg ext E ∧
+      DeadlineDataAvailabilityRelay cfg ext E) ↔
     NextSlotSynchronyPremises cfg ext E := by
   constructor
-  · rintro ⟨hs, hl, he, hd⟩
-    exact Synchrony.toPaperSafetySynchrony cfg ext hs hl he hd
+  · rintro ⟨hs, hl, he, hp, hd⟩
+    exact Synchrony.toPaperSafetySynchrony cfg ext hs hl he hp hd
   · intro hn
     exact ⟨{
       delta := hn.delta
@@ -27,7 +28,8 @@ theorem synchrony_and_delivery_iff_nextSlot
       deadline_block_relay := hn.deadline_block_relay
       boundary_block_prefix := hn.boundary_block_prefix
       attester_slashing_relay := hn.attester_slashing_relay
-    }, hn.delivery_lookahead, hn.envelope_delivery, hn.data_availability_relay⟩
+    }, hn.delivery_lookahead, hn.envelope_delivery, hn.boundary_envelope_prefix,
+      hn.data_availability_relay⟩
 
 end FastConfirmation.Spec
 

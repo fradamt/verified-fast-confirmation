@@ -13,9 +13,10 @@ public import FastConfirmationProofs.ModelFacts
 
 This run adapts `FullTwelveBridgeRun`. It adds a verified execution payload
 envelope for the child. Nodes other than node 1 receive the envelope at
-second 168; node 1 receives it at second 170. Every node receives it again at
-second 180, the start of slot 15. The base interface of the bridge reports
-the child data as available and accepts exactly the child envelope.
+second 168; node 1 receives it at second 170. Each node receives it once,
+before the boundary at second 180, and keeps the payload. The base interface
+of the bridge reports the child data as available and accepts exactly the
+child envelope.
 -/
 
 namespace FastConfirmation.Spec
@@ -296,7 +297,7 @@ def boundarySchedule (s : Slot) : List (Event WitnessRoot) :=
   else []
 
 /-- The events of node `w` at offset `o` of slot `s`: the boundary receipts,
-three delayed or early receipts, and the child envelope. -/
+three delayed or early receipts, and one receipt of the child envelope. -/
 def slotEvents (w : ValidatorIndex) (s o : ℕ) : List (Event WitnessRoot) :=
   if s = 0 ∧ o = 4 ∧ w = 0 then [Event.attestation (vote 0) false]
   else if s = 0 ∧ o = 6 ∧ w = 1 then [Event.attestation (vote 0) false]
@@ -309,9 +310,6 @@ def slotEvents (w : ValidatorIndex) (s o : ℕ) : List (Event WitnessRoot) :=
       if w = 1 then [Event.attestation (vote 13) false]
       else [Event.execution_payload_envelope childEnvelope payloadObservation,
         Event.attestation (vote 13) false]
-    else if s = 15 then
-      [Event.execution_payload_envelope childEnvelope payloadObservation,
-        Event.attestation (vote 14) false]
     else boundarySchedule s
   else []
 
@@ -470,12 +468,11 @@ theorem block_event_cases {w n} {b : SignedBeaconBlock WitnessRoot}
   change Event.block b ∈ slotEvents w (n / 12) (n % 12) at h
   have htime := Nat.div_add_mod n 12
   unfold slotEvents at h
-  split_ifs at h with h4 h6 h14 h170 ho h1 hs14 hw1 hs15
+  split_ifs at h with h4 h6 h14 h170 ho h1 hs14 hw1
   · simp at h
   · simp at h
   · simp only [List.mem_cons, List.not_mem_nil, or_false, Event.block.injEq] at h
     exact Or.inl ⟨h, by omega⟩
-  · simp at h
   · simp at h
   · simp at h
   · simp at h
@@ -525,7 +522,7 @@ theorem scheduled_attestation {w n a ifb}
   change Event.attestation a ifb ∈ slotEvents w (n / 12) (n % 12) at h
   have htime := Nat.div_add_mod n 12
   unfold slotEvents at h
-  split_ifs at h with h4 h6 h14 h170 ho h1 hs14 hw1 hs15
+  split_ifs at h with h4 h6 h14 h170 ho h1 hs14 hw1
   · simp only [List.mem_cons, List.not_mem_nil, or_false, Event.attestation.injEq] at h
     exact ⟨0, by decide, h.1, by simp only [Slot] at *; omega⟩
   · simp only [List.mem_cons, List.not_mem_nil, or_false, Event.attestation.injEq] at h
@@ -538,8 +535,6 @@ theorem scheduled_attestation {w n a ifb}
     exact ⟨13, by decide, h.1, by simp only [Slot] at *; omega⟩
   · simp at h
     exact ⟨13, by decide, h.1, by simp only [Slot] at *; omega⟩
-  · simp at h
-    exact ⟨14, by decide, h.1, by simp only [Slot] at *; omega⟩
   · obtain ⟨s, hs, ha, hsq⟩ := boundary_vote_before h
     exact ⟨s, hs, ha, by simp only [Slot] at *; omega⟩
   · simp at h
@@ -1084,34 +1079,27 @@ theorem scheduled_envelope_cases {w : ValidatorIndex} {n : ℕ}
     {observation : EnvelopeObservation WitnessRoot}
     (h : Event.execution_payload_envelope signed observation ∈ witnessExecution.schedule w n) :
     signed = childEnvelope ∧ observation = payloadObservation ∧
-      (n = 168 ∨ n = 170 ∨ n = 180) := by
+      (n = 168 ∨ n = 170) := by
   change Event.execution_payload_envelope signed observation ∈
     slotEvents w (n / 12) (n % 12) at h
   have htime := Nat.div_add_mod n 12
   unfold slotEvents at h
-  split_ifs at h with h4 h6 h14 h170 ho h1 hs14 hw1 hs15
+  split_ifs at h with h4 h6 h14 h170 ho h1 hs14 hw1
   · simp at h
   · simp at h
   · simp at h
   · simp at h
-    exact ⟨h.1, h.2, Or.inr (Or.inl (by omega))⟩
+    exact ⟨h.1, h.2, Or.inr (by omega)⟩
   · simp at h
   · simp at h
   · simp at h
     exact ⟨h.1, h.2, Or.inl (by omega)⟩
-  · simp at h
-    exact ⟨h.1, h.2, Or.inr (Or.inr (by omega))⟩
   · unfold boundarySchedule at h
     split_ifs at h <;> simp at h
   · simp at h
 
 private theorem no_verified_at_167 : ∀ w : Fin 3, ∀ r : WitnessRoot,
     is_payload_verified (witnessExecution.store witnessConfig witnessExternals w.val 167) r =
-      false := by
-  set_option maxRecDepth 100000 in decide +kernel
-
-private theorem no_verified_at_169_node1 :
-    is_payload_verified (witnessExecution.store witnessConfig witnessExternals 1 169) childRoot =
       false := by
   set_option maxRecDepth 100000 in decide +kernel
 
@@ -1142,69 +1130,90 @@ theorem verified_root_child {v : ValidatorIndex} {n : ℕ} {r : WitnessRoot} (hn
   rw [only_child_verified_at_191 ⟨nodeClass v, nodeClass_lt v⟩ r hne] at hlate
   cases hlate
 
+private theorem child_verified_at_170 : ∀ w : Fin 3,
+    is_payload_verified (witnessExecution.store witnessConfig witnessExternals w.val 170)
+      childRoot = true := by
+  set_option maxRecDepth 100000 in decide +kernel
+
+theorem child_verified_after170 (w : ValidatorIndex) {m : ℕ} (hm : 170 ≤ m) :
+    is_payload_verified (witnessExecution.store witnessConfig witnessExternals w m)
+      childRoot = true := by
+  have h := child_verified_at_170 ⟨nodeClass w, nodeClass_lt w⟩
+  rw [← store_nodeClass w 170] at h
+  exact witnessExecution.is_payload_verified_mono witnessConfig witnessExternals w hm h
+
+/-- A verified payload is the child payload, verified from second 168 on.
+Its next boundary is at second 180 or later. -/
+private theorem verified_boundary {v : ValidatorIndex} {n : ℕ} {r : WitnessRoot}
+    (hn : witnessExecution.WithinHorizon witnessConfig n)
+    (hverified : is_payload_verified
+      (witnessExecution.store witnessConfig witnessExternals v n) r = true) :
+    r = childRoot ∧
+      180 ≤ witnessExecution.slot_start witnessConfig
+        (witnessExecution.slot_at witnessConfig n + 1) := by
+  have hn192 := time_lt_horizon hn
+  have hn168 := verified_requires_168 hverified
+  refine ⟨verified_root_child hn192 hverified, ?_⟩
+  rw [slot_start_eq, slot_at_eq]
+  simp only [Slot]
+  omega
+
 theorem envelope_delivery :
     DeadlineEnvelopeDelivery witnessConfig witnessExternals witnessExecution := by
   intro v hv n r hn hverified _hr _hdeadline w hw m hm hboundary _hlt
-  have hn192 := time_lt_horizon hn
-  have hm192 := time_lt_horizon hm
-  have hn168 := verified_requires_168 hverified
-  have hrchild := verified_root_child hn192 hverified
-  subst r
-  have hslot14 : n / 12 = 14 := by
-    have hb := hboundary
-    rw [slot_start_eq, slot_at_eq] at hb
-    simp only [Slot] at hb
-    omega
-  have hn180 : n < 180 := by omega
-  have hboundary180 :
-      witnessExecution.slot_start witnessConfig (witnessExecution.slot_at witnessConfig n + 1) =
-        180 := by
-    rw [slot_start_eq, slot_at_eq, hslot14]
-  have hm180 : 180 ≤ m := by simpa [hboundary180] using hboundary
-  have hsource : ∃ k, k ≤ n ∧
-      Event.execution_payload_envelope childEnvelope payloadObservation ∈
-        witnessExecution.schedule v k := by
-    by_cases hv1 : v = 1
-    · subst v
-      have hn170 : 170 ≤ n := by
-        by_contra hlt
-        have hlate := witnessExecution.is_payload_verified_mono witnessConfig witnessExternals 1
-          (show n ≤ 169 by omega) hverified
-        rw [no_verified_at_169_node1] at hlate
-        cases hlate
-      exact ⟨170, hn170, by simp [witnessExecution, witnessSchedule, slotEvents]⟩
-    · exact ⟨168, by omega, by simp [witnessExecution, witnessSchedule, slotEvents, hv1]⟩
-  obtain ⟨k, hk, hsourceEvent⟩ := hsource
-  right
-  refine ⟨180, k, childEnvelope, payloadObservation, payloadObservation,
-    [], [.attestation (vote 14) false], ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · omega
-  · omega
-  · omega
-  · exact hk
-  · exact hsourceEvent
-  · rfl
-  · rfl
-  · rfl
-  · simp [witnessExecution, witnessSchedule, slotEvents]
-  · simpa using (on_tick_storeLE witnessConfig
-      (witnessExecution.store witnessConfig witnessExternals w 179)
-        (witnessExecution.time_at 180)).1 (child_known_after14 w (by decide : 14 ≤ 179))
-  · intro hd a pre suf hs
-    have hs' :
-        [Event.execution_payload_envelope childEnvelope payloadObservation,
-          Event.attestation (vote 14) false] =
-            pre ++ Event.attestation a false :: suf := by
-      simpa [witnessExecution, witnessSchedule, slotEvents] using hs
-    cases pre with
-    | nil => simp at hs'
-    | cons e tail =>
-        cases tail with
-        | nil =>
-            simp at hs'
-            rcases hs' with ⟨rfl, rfl, rfl⟩
-            exact ⟨[], rfl⟩
-        | cons e' tail' => simp at hs'
+  obtain ⟨rfl, h180⟩ := verified_boundary hn hverified
+  left
+  exact child_verified_after170 w (by omega)
+
+theorem boundary_envelope_prefix :
+    DeadlineBoundaryEnvelopePrefix witnessConfig witnessExternals witnessExecution := by
+  intro v hv n r hn hverified _hr _hdeadline w hw boundary _hHboundary _hlt
+    a before after _hschedule _hnotExcluded
+  obtain ⟨rfl, h180⟩ := verified_boundary hn hverified
+  have hpred : is_payload_verified
+      (witnessExecution.store witnessConfig witnessExternals w (boundary - 1)) childRoot =
+        true :=
+    child_verified_after170 w (by
+      show 170 ≤ witnessExecution.slot_start witnessConfig
+        (witnessExecution.slot_at witnessConfig n + 1) - 1
+      omega)
+  have htick : is_payload_verified
+      (on_tick witnessConfig
+        (witnessExecution.store witnessConfig witnessExternals w (boundary - 1))
+        (witnessExecution.time_at boundary)) childRoot = true := by
+    simpa only [is_payload_verified, on_tick_payloads] using hpred
+  exact foldl_apply_event_payloadLE witnessConfig witnessExternals before _ childRoot htick
+
+/-- Regression for the envelope delivery premise: each node receives the
+child envelope once, before the boundary at second 180, and no envelope
+event occurs at or after that boundary. The delivery premise and the boundary
+prefix still hold, because the receiver keeps the verified payload. -/
+theorem single_early_envelope_receipt :
+    (∀ w n (signed : SignedExecutionPayloadEnvelope WitnessRoot)
+        (observation : EnvelopeObservation WitnessRoot),
+      Event.execution_payload_envelope signed observation ∈ witnessExecution.schedule w n →
+        n < 180) ∧
+    (∀ w, w ≠ 1 → ∀ n (signed : SignedExecutionPayloadEnvelope WitnessRoot)
+        (observation : EnvelopeObservation WitnessRoot),
+      Event.execution_payload_envelope signed observation ∈ witnessExecution.schedule w n →
+        n = 168) ∧
+    (∀ n (signed : SignedExecutionPayloadEnvelope WitnessRoot)
+        (observation : EnvelopeObservation WitnessRoot),
+      Event.execution_payload_envelope signed observation ∈ witnessExecution.schedule 1 n →
+        n = 170) ∧
+    DeadlineEnvelopeDelivery witnessConfig witnessExternals witnessExecution ∧
+    DeadlineBoundaryEnvelopePrefix witnessConfig witnessExternals witnessExecution := by
+  refine ⟨?_, ?_, ?_, envelope_delivery, boundary_envelope_prefix⟩
+  · intro w n signed observation h
+    rcases (scheduled_envelope_cases h).2.2 with rfl | rfl <;> decide
+  · intro w hw1 n signed observation h
+    rcases (scheduled_envelope_cases h).2.2 with rfl | rfl
+    · rfl
+    · simp [witnessExecution, witnessSchedule, slotEvents, hw1] at h
+  · intro n signed observation h
+    rcases (scheduled_envelope_cases h).2.2 with rfl | rfl
+    · simp [witnessExecution, witnessSchedule, slotEvents] at h
+    · rfl
 
 theorem data_availability_relay :
     DeadlineDataAvailabilityRelay witnessConfig witnessExternals witnessExecution := by
@@ -1222,7 +1231,8 @@ theorem witnessHorizonVoteDeliveryLookahead :
 theorem witnessPaperSafetySynchrony :
     NextSlotSynchronyPremises witnessConfig witnessExternals witnessExecution :=
   witnessSynchrony.toPaperSafetySynchrony witnessConfig witnessExternals
-    witnessHorizonVoteDeliveryLookahead envelope_delivery data_availability_relay
+    witnessHorizonVoteDeliveryLookahead envelope_delivery boundary_envelope_prefix
+    data_availability_relay
 
 end FullTwelveEnvelopeBridgeRun
 end FastConfirmation.Spec

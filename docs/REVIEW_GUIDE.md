@@ -92,7 +92,7 @@ these events.
 │ Optional in-slot query  │ Next-slot safety remains open. The counterexamples refute same-second head agreement under the               │
 │                         │ counterexample synchrony record.                                                                             │
 │ Payload envelope        │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and data_relay_exercised under the full      │
-│                         │ safety bundle, with an accepted envelope that one node receives two seconds late.                            │
+│                         │ safety bundle, with an accepted envelope that each node receives once, one node two seconds late.            │
 │ Guarded target edge     │ Exercised by TargetEdgePremiseWitness.target_edge_support_exercised under the full safety bundle.            │
 │ Byzantine weight        │ Exercised by ByzantinePremiseWitness.byzantine_weight_exercised: non-honest weight 200 of 4000 under the     │
 │                         │ full safety bundle.                                                                                          │
@@ -164,8 +164,9 @@ contracts and the intended behavior of any unconstrained function it uses.
 │                                      │ConcreteBridge.ConcreteGenesis gives the genesis store. No hash theorem is proved.                      │
 │get_ptc                               │Unconstrained: the theorem holds for every choice of this function. The handler reads the ordered PTC.  │
 │is_valid_indexed_payload_attestation  │Unconstrained: the theorem holds for every choice of this function. No PTC signature contract exists.   │
-│is_data_available                     │NextSlotSynchronyPremises.data_availability_relay and envelope_delivery transport true data reads. The  │
-│                                      │handler checks the local Boolean result. No KZG soundness theorem is proved.                            │
+│is_data_available                     │NextSlotSynchronyPremises.data_availability_relay transports true data reads; envelope_delivery and     │
+│                                      │boundary_envelope_prefix give the verified payload at honest receivers. The handler checks the local    │
+│                                      │Boolean result. No KZG soundness theorem is proved.                                                     │
 │verify_execution_payload_envelope     │BeaconExternalsPremises.verify_envelope_deterministic and envelope_delivery constrain verified          │
 │                                      │observations. No execution-engine or signature refinement theorem is proved.                            │
 └──────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -243,9 +244,10 @@ counterexample to exact target agreement for a previous-epoch result.
 `NextSlotSynchronyPremises` requires positive Δ and strict `A + Δ < S`. Its
 `delivery_lookahead` field also covers the first boundary beyond the public
 horizon and implies the in-horizon vote delivery law. A source observation
-must occur by its slot deadline. A receiver observation occurs at or after the
-next boundary. A receiver is later than the source. Honest votes use the vote
-deadline. `synchrony_and_delivery_iff_nextSlot` relates these bundles.
+must occur by its slot deadline. A receiver store or observation fact holds at
+or after the next boundary. A receiver is later than the source. Honest votes
+use the vote deadline. `synchrony_and_delivery_iff_nextSlot` relates these
+bundles.
 
 Block and envelope exclusion is checked before the next-slot tick. It permits only a permanent finalized-guard conflict with a known parent. The FFG, economic, and finalization-delay premises establish that each honest head's known ancestor path is admissible. Carrier-certificate accountability covers other required roots. Ready blocks and envelopes precede the boundary vote handler. Data service and deterministic envelope validation justify payload acceptance. `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope event.
 

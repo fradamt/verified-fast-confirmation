@@ -61,7 +61,7 @@ run_cmd do
   checkFields `FastConfirmation.Spec.NextSlotSynchronyPremises
     ["delta", "delivery_lookahead",
      "deadline_block_relay", "boundary_block_prefix",
-     "envelope_delivery",
+     "envelope_delivery", "boundary_envelope_prefix",
      "data_availability_relay", "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.ConcreteFFG.ConcreteBridge.ConcreteExternalsPremises
     ["committees_agree", "honest_attestation_valid", "valid_attestation_honest",
@@ -99,6 +99,7 @@ run_cmd do
 #check FastConfirmation.Spec.DeadlineBlockRelay
 #check FastConfirmation.Spec.DeadlineBoundaryBlockPrefix
 #check FastConfirmation.Spec.DeadlineEnvelopeDelivery
+#check FastConfirmation.Spec.DeadlineBoundaryEnvelopePrefix
 #check FastConfirmation.Spec.DeadlineDataAvailabilityRelay
 #check FastConfirmation.Spec.DeadlineAttesterSlashingRelay
 
@@ -233,6 +234,6 @@ run_cmd do
   | some (.defnInfo info) =>
       fingerprint := hash (fingerprint, info.value)
   | _ => throwError "missing claim definition"
-  unless fingerprint == (10074103416500337606 : UInt64) do
+  unless fingerprint == (16405738756479261541 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
   IO.println s!"review surface types passed ({fingerprint})"

@@ -121,11 +121,15 @@ def DeadlineAttesterSlashingRelay (E : Execution Root) : Prop :=
       i ∈ (E.store cfg ext w m).equivocating_indices
 
 /-- Verified envelopes are gossiped within positive Δ. The source cutoff and
-strict `A + Δ < S` put them before the next slot. Honest clients delay a
-handler until its block is known and process the ready envelope before a
-boundary vote. The exact finalized-guard exemption is evaluated before the
-tick, as in `DeadlineBlockRelay`; late and parent-missing blocks are not exempt.
-The service occurrence and the vote prefix refer to the same envelope event. -/
+strict `A + Δ < S` put them before the next slot. An honest client that
+receives a ready envelope verifies it and keeps the payload: Python
+`on_execution_payload_envelope` writes `store.payloads`, and no handler
+removes an entry. Thus the receiver store has the verified payload at every
+later in-horizon second from the next slot start. The receipt can be at any
+earlier second, and one receipt is sufficient. The exact finalized-guard
+exemption is evaluated before the tick, as in `DeadlineBlockRelay`; late and
+parent-missing blocks are not exempt. `DeadlineBoundaryEnvelopePrefix` gives
+the order before the boundary votes. -/
 def DeadlineEnvelopeDelivery (E : Execution Root) : Prop :=
   ∀ v ∈ E.honest, ∀ n r,
     E.WithinHorizon cfg n →
@@ -136,30 +140,38 @@ def DeadlineEnvelopeDelivery (E : Execution Root) : Prop :=
     ∀ w ∈ E.honest, ∀ m,
       E.WithinHorizon cfg m →
       E.slot_start cfg (E.slot_at cfg n + 1) ≤ m → n < m →
-      PermanentBlockExclusion cfg ext E v n r w
-        (E.slot_start cfg (E.slot_at cfg n + 1) - 1) ∨
-      ∃ (d k : ℕ) (signed : SignedExecutionPayloadEnvelope Root)
-        (sourceObservation receiverObservation : EnvelopeObservation Root)
-        (before after : List (Event Root)),
-        n < d ∧ d ≤ m ∧
-        E.slot_start cfg (E.slot_at cfg n + 1) ≤ d ∧ k ≤ n ∧
-        Event.execution_payload_envelope signed sourceObservation ∈ E.schedule v k ∧
-        signed.message.beacon_block_root = r ∧
-        ext.is_data_available r sourceObservation = true ∧
-        ext.verify_execution_payload_envelope
-          ((E.store cfg ext v n).block_states r) signed sourceObservation = true ∧
-        E.schedule w d = before ++
-          Event.execution_payload_envelope signed receiverObservation :: after ∧
-        r ∈ (before.foldl
+      is_payload_verified (E.store cfg ext w m) r = true ∨
+        PermanentBlockExclusion cfg ext E v n r w
+          (E.slot_start cfg (E.slot_at cfg n + 1) - 1)
+
+/-- The envelope counterpart of `DeadlineBoundaryBlockPrefix`. Strict
+`A + Δ < S` puts a cutoff-time envelope at the receiver before the next slot.
+Immediate gossip and Python's delay consideration require the honest client to
+process a ready envelope before an attestation at that boundary. Thus the
+store that the boundary vote handler reads has the verified payload. The
+envelope can arrive at an earlier second or earlier in the boundary second.
+The only exemption is the permanent finalized-guard rejection of the block,
+evaluated at `boundary - 1` as in `DeadlineBlockRelay`. Source and receiver
+seconds are distinct; this does not assert same-second inter-node state
+equality. -/
+def DeadlineBoundaryEnvelopePrefix (E : Execution Root) : Prop :=
+  ∀ v ∈ E.honest, ∀ n r,
+    E.WithinHorizon cfg n →
+    is_payload_verified (E.store cfg ext v n) r = true →
+    r ∈ (E.store cfg ext v n).block_roots →
+    n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000 →
+    ∀ w ∈ E.honest,
+      let boundary := E.slot_start cfg (E.slot_at cfg n + 1)
+      E.WithinHorizon cfg boundary → n < boundary →
+      ∀ a before after,
+        E.schedule w boundary =
+          before ++ Event.attestation a false :: after →
+        ¬ PermanentBlockExclusion cfg ext E v n r w (boundary - 1) →
+        is_payload_verified (before.foldl
           (fun store event => (apply_event cfg ext store event).getD store)
-          (on_tick cfg (E.store cfg ext w (d - 1))
-            (E.time_at d))).block_roots ∧
-        (d = E.slot_start cfg (E.slot_at cfg n + 1) →
-          ∀ (a : Attestation Root) (pre suf : List (Event Root)),
-            E.schedule w d = pre ++ Event.attestation a false :: suf →
-            ∃ middle : List (Event Root),
-              pre = before ++
-                Event.execution_payload_envelope signed receiverObservation :: middle)
+          (on_tick cfg (E.store cfg ext w (boundary - 1))
+            (E.time_at boundary))) r = true
 
 /-- Available envelope data follows the same positive-Δ gossip bound and
 source deadline. Honest data service makes it available at the receiver's
@@ -207,9 +219,10 @@ structure HorizonVoteDeliveryLookahead (E : Execution Root) : Prop where
 /-- The synchrony fragment used by the accepted spec next-slot proof.
 
 The network content is in the delivery laws: honest-attestation delivery,
-block relay, envelope delivery, data-availability relay, and
-equivocation-evidence relay. `delta` records the paper's timing parameter: a
-positive delay fits after the attestation deadline (`A + Δ < S`). The proofs
+block relay, envelope delivery, the two boundary prefixes,
+data-availability relay, and equivocation-evidence relay. `delta` records
+the paper's timing parameter: a positive delay fits after the attestation
+deadline (`A + Δ < S`). The proofs
 use the slot-level delivery laws, not the numeric delay. The exact relation to
 `Synchrony` is proved by `synchrony_and_delivery_iff_nextSlot`. -/
 structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
@@ -226,9 +239,14 @@ structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
   /-- Strict `A + Δ < S` and honest ready-message service put cutoff blocks
       before the next-slot vote handler; exclusion is tested before the tick. -/
   boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
-  /-- Positive-Δ envelope gossip and strict fit give ready service before
-      the boundary vote. The named contract has the pre-tick block exemption. -/
+  /-- Positive-Δ envelope gossip and strict fit give a verified payload
+      in every honest store from the next slot start. The named contract has
+      the pre-tick block exemption. -/
   envelope_delivery : DeadlineEnvelopeDelivery cfg ext E
+  /-- Strict `A + Δ < S` and honest ready-message service put cutoff
+      envelopes before the next-slot vote handler; exclusion is tested
+      before the tick. -/
+  boundary_envelope_prefix : DeadlineBoundaryEnvelopePrefix cfg ext E
   /-- Honest data service follows the same cutoff and positive-Δ bound;
       the receiver observation is at or after the next slot boundary. -/
   data_availability_relay : DeadlineDataAvailabilityRelay cfg ext E
