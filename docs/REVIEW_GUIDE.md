@@ -53,8 +53,8 @@ inclusion relation counts the body votes of accepted blocks that set the timely-
 flag. Python `process_attestation` accepts some votes without a target-root check;
 such votes do not count. An included aggregate stands for one single-validator vote of
 each signer, with the same data. The premise keeps eventual checkpoint inclusion (paper
-Assumption 3.2 (explicit)) over the view of the bridge. Its consequent: from the start of epoch e + 2, every honest view in the horizon stores the base block b and an accepted descendant of b, from an epoch below e + 2 (and above epoch 1 unless e = 0), that carries the checkpoint C(b, e) as an available or unrealized checkpoint. The projection harness checks the
-interpretation laws on real pyspec runs. It reports `EventualCheckpointInclusion.included` as NOT_ESTABLISHED; the every-view antecedent and the implication of paper Assumption 3.2 (explicit) remain assumed. The concrete FFG state and
+Assumption 3.2 (explicit)) over the view of the bridge. Its consequent: from the start of epoch e + 2, every honest view in the horizon stores the base block b and an accepted descendant of b, from an epoch below e + 2 (and above epoch 1 unless e = 0), that carries as an available or unrealized checkpoint either C(b, e) or a checkpoint of a later epoch whose block descends from the block of C(b, e). The second case covers one Python justification pass that justifies epochs e and e + 1 together: the state then carries only the later checkpoint (law regression.a32_exact_carried_superseded). The projection harness checks the
+interpretation laws on real pyspec runs. It reports `EventualCheckpointInclusion.included` as NOT_ESTABLISHED; the every-view antecedent and the implication of paper Assumption 3.2 (explicit) remain assumed. Where a single-view sample of the antecedent holds, it checks the consequent. The concrete FFG state and
 34 Gloas functions agree with 59 Python differential cases and with the retained fields
 of 48 accepted blocks of a 100-validator pyspec run.
 

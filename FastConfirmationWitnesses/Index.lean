@@ -218,6 +218,8 @@ Byzantine run has five validators.
   `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-eight carrier
   carries the unrealized justification of the slot-one child in epoch 1. It is
   in epoch 2, because Python justification returns early in epochs 0 and 1.
+  Each full-bundle family proves the first case of the consequent
+  (`AvailableCheckpointOrExtension`): a carrier carries `C(b, e)` itself.
 
 ## Counterexamples
 

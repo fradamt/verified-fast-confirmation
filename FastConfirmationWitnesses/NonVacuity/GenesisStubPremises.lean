@@ -519,14 +519,14 @@ theorem witnessPaperA32Inclusion :
         · rw [hlate.anchor_epoch]
           decide
         · rw [checkpointAt_anchor_zero]
-          exact ⟨anchorRoot, .refl anchorRoot, formed_anchor_anchor⟩
+          exact Or.inl ⟨anchorRoot, .refl anchorRoot, formed_anchor_anchor⟩
       · rcases h with ⟨rfl, rfl⟩
         refine ⟨childRoot, hlate.child_known, hlate.child_known, is_ancestor_refl _ _, ?_,
           Or.inl (Nat.zero_le _), ?_⟩
         · rw [hlate.child_epoch]
           decide
         · rw [checkpointAt_child_zero]
-          exact ⟨childRoot, .refl childRoot, formed_child_anchor⟩
+          exact Or.inl ⟨childRoot, .refl childRoot, formed_child_anchor⟩
       · rcases h with ⟨rfl, rfl⟩
         norm_num [carrierSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
   | succ e =>
@@ -546,7 +546,7 @@ theorem witnessPaperA32Inclusion :
             · rw [hlate.carrier_epoch]
               decide
             · rw [checkpointAt_child_one]
-              exact ⟨carrierRoot, .refl carrierRoot, formed_carrier_child⟩
+              exact Or.inl ⟨carrierRoot, .refl carrierRoot, formed_carrier_child⟩
           · rcases h with ⟨rfl, rfl⟩
             norm_num [carrierSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
       | succ e =>
@@ -755,7 +755,8 @@ theorem witnessPaperA32_child_one_conclusion :
               (witnessExecution.store witnessConfig witnessBridge.interface w m) b' < 3 ∧
           (1 ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch witnessConfig
               (witnessExecution.store witnessConfig witnessBridge.interface w m) b') ∧
-          witnessView.AvailableCheckpoint witnessConfig b' (witnessView.C childRoot 1) := by
+          witnessView.AvailableCheckpointOrExtension witnessConfig b'
+            (witnessView.C childRoot 1) := by
   have hblock : witnessView.BlockAt childRoot childSignedBlock.message := by
     change witnessExecution.BlockKnownInScheduledPrefix witnessConfig witnessBridge.interface
       childRoot childSignedBlock.message
@@ -785,7 +786,7 @@ structure JointWitnessFacts : Prop where
             (witnessExecution.store witnessConfig witnessBridge.interface 0 12) b' < 3 ∧
         (1 ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch witnessConfig
             (witnessExecution.store witnessConfig witnessBridge.interface 0 12) b') ∧
-        witnessView.AvailableCheckpoint witnessConfig b' (witnessView.C childRoot 1)
+        witnessView.AvailableCheckpointOrExtension witnessConfig b' (witnessView.C childRoot 1)
   final_vote_ground : witnessExecution.vote 3 15 = some (15, vote 15)
   final_vote_delivery : Event.attestation (vote 15) false ∈ witnessExecution.schedule 0 16
   delivery_is_outside_horizon : ¬ witnessExecution.WithinHorizon witnessConfig 16

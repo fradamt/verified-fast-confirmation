@@ -90,7 +90,7 @@ an earlier slot and that target and is included on the chain. Every validator
 of these fixtures is honest. The JSON output quotes each Lean field and gives
 a status and a state witness for each case. Structural mappings are marked
 construction; the exact Assumption 3.2 antecedent needs all honest views and
-slashing state, so its result is marked as not established. Unexcluded FAIL results make validation fail. Expected scope failures remain OUT_OF_SCOPE. `EventualCheckpointInclusion.included` is NOT_ESTABLISHED in each full run: the sampled consequence does not test the A3.2 implication.
+slashing state, so its result is marked as not established. Unexcluded FAIL results make validation fail. Expected scope failures remain OUT_OF_SCOPE. `EventualCheckpointInclusion.included` is NOT_ESTABLISHED in each full run: the sampled consequence does not test the A3.2 implication. AU in the sample is the four carried selectors of the blocks on the chain, as in the bridge view, and the consequent accepts C(b, e) or a later carried checkpoint that extends it. The law EventualCheckpointInclusion.included.sampled_consequent fails if the consequent fails in a view where a single-view sample of the antecedent holds: b is on the head chain at each block import of epoch e + 1, and the included votes there give a two-thirds link from vs(b, e) to C(b, e). `test_realized_gap.py` adds a run in which one justification pass justifies epochs 4 and 5 together. No carried selector holds the epoch-4 checkpoint (law regression.a32_exact_carried_superseded, expected FAIL), and the consequent holds with the epoch-5 checkpoint (law EventualCheckpointInclusion.included.superseded).
 
 ### Whole-bundle sample
 

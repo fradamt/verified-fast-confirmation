@@ -500,7 +500,7 @@ theorem witnessPaperA32Inclusion :
         · rw [hlate.anchor_epoch]
           decide
         · rw [checkpointAt_anchor_zero]
-          exact ⟨anchorRoot, .refl anchorRoot, formed_anchor_anchor⟩
+          exact Or.inl ⟨anchorRoot, .refl anchorRoot, formed_anchor_anchor⟩
       · rcases h with ⟨rfl, rfl⟩
         norm_num [childSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
       · rcases h with ⟨rfl, rfl⟩
@@ -522,7 +522,7 @@ theorem witnessPaperA32Inclusion :
             · rw [hlate.carrier_epoch]
               decide
             · rw [checkpointAt_child_one]
-              exact ⟨carrierRoot, .refl carrierRoot, formed_carrier_child⟩
+              exact Or.inl ⟨carrierRoot, .refl carrierRoot, formed_carrier_child⟩
           · rcases h with ⟨rfl, rfl⟩
             norm_num [carrierSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
       | succ e =>

@@ -404,7 +404,12 @@ committed state of a block to a later in-scope slot. Such a checkpoint can be
 one that no selector of the block carries, for example a run from slot 15 to
 slot 24. The public Assumption 3.2 view uses only the carried checkpoints
 (`ConcreteBridge.Carried`). The proof shows that each realizable checkpoint is
-justified by the body votes on the chain of the block.
+justified by the body votes on the chain of the block. One justification pass
+can justify epochs e and e + 1 together; then no selector carries the
+epoch-e checkpoint. The consequent of Assumption 3.2 therefore accepts a
+carried checkpoint of a later epoch whose block descends from the block of
+C(b, e) (`AvailableCheckpointOrExtension`). The proof uses only its epoch
+bound.
 
 Python includes aggregates. The model reads an included aggregate as one
 single-validator vote for each signer, with the data of the aggregate. The

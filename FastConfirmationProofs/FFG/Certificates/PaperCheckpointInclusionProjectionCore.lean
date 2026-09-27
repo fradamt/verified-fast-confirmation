@@ -35,13 +35,13 @@ structure PaperA32RootProjectionAt
     CheckpointReadsAs (store.unrealized_justifications r) (V.GU r)
 
 /-- Strong paper-facing endpoint result.  The executable GU-epoch projection
-is retained together with the exact AU witness from Assumption 3.2, including
-its underlying formed carrier. -/
+is retained together with the AU witness from Assumption 3.2: `C(selected, e)`
+or a later checkpoint that extends it, with its formed carrier. -/
 structure PaperA32IncludedAtTip
     {E : Execution Root} (V : CheckpointInclusionView cfg E)
     (store : Store Root) (e : Epoch) (selected seed : Root) : Prop where
   executable : A32IncludedAtTip cfg store e selected seed
-  exact_AU : V.AvailableCheckpoint cfg seed (V.C selected e)
+  included_AU : V.AvailableCheckpointOrExtension cfg seed (V.C selected e)
 
 namespace PaperA32IncludedAtTip
 
@@ -86,8 +86,10 @@ end AcceptedBlockFFGState
 
 namespace PaperA32RootProjectionAt
 
-/-- Exact AU inclusion at a concrete carrier implies the weaker executable
-epoch projection used by the endpoint pipeline. -/
+/-- AU inclusion of `C(selected, e)` or of a later extension at a concrete
+carrier implies the weaker executable epoch projection used by the endpoint
+pipeline.  Only the epoch bound `e ≤ J.epoch` of the included checkpoint `J`
+is used. -/
 theorem a32IncludedAtTip_of_existing_AU
     {E : Execution Root} {V : CheckpointInclusionView cfg E}
     {selected seed : Root} {e : Epoch} {store : Store Root}
@@ -96,15 +98,19 @@ theorem a32IncludedAtTip_of_existing_AU
       (get_node_for_root seed) (get_node_for_root selected) = true)
     (hseedEpoch : get_block_epoch cfg store seed < e + 2)
     (hseedLate : e ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch cfg store seed)
-    (hAU : V.AvailableCheckpoint cfg seed (V.C selected e)) :
+    (hAU : V.AvailableCheckpointOrExtension cfg seed (V.C selected e)) :
     A32IncludedAtTip cfg store e selected seed := by
   refine ⟨P.root_known, hseedSelected, hseedEpoch, ?_⟩
   rw [P.unrealized_justification.epoch_eq]
   rcases hseedLate with hgenesis | hlate
   · exact hgenesis.trans (Nat.zero_le _)
-  · have hmax : (V.C selected e).epoch ≤ (V.GU seed).epoch :=
-      P.unrealized_justified_max hlate hAU
-    simpa only [V.checkpoint_epoch] using hmax
+  · obtain ⟨J, hJepoch, hJ⟩ : ∃ J : Checkpoint Root, e ≤ J.epoch ∧
+        V.AvailableCheckpoint cfg seed J := by
+      rcases hAU with hexact | ⟨J, hlater, -, hJ⟩
+      · exact ⟨V.C selected e, (V.checkpoint_epoch selected e).ge, hexact⟩
+      · rw [V.checkpoint_epoch] at hlater
+        exact ⟨J, hlater.le, hJ⟩
+    exact hJepoch.trans (P.unrealized_justified_max hlate hJ)
 
 end PaperA32RootProjectionAt
 
@@ -140,11 +146,11 @@ theorem paperA32IncludedAtTip_of_paperCore
     executable :=
       (hprojection hseed).a32IncludedAtTip_of_existing_AU cfg ext
         hseedB hseedEpoch hseedLate hAU
-    exact_AU := hAU }⟩
+    included_AU := hAU }⟩
 
 
 /-- Strong production accepted-state consumer of the paper assumption.  The
-base block is accepted, and the exact AU/formed-carrier result survives the
+base block is accepted, and the AU/formed-carrier result survives the
 executable projection. -/
 theorem accepted_paperA32IncludedAtTip_of_paper
     {anchor : Checkpoint Root}

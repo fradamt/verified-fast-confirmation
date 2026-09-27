@@ -165,7 +165,7 @@ reason = "Part of the A3.2 antecedent that the proof must supply; not an assumpt
 path = "EventualCheckpointInclusion.included"
 file = "FFGState.lean"
 class = "E-network/behavior"
-reason = "A3.2 requires an accepted AU carrier by epoch e+2 after every-view support; with the bridge view fixed, this is a vote-inclusion and delivery assumption."
+reason = "A3.2 requires an accepted carrier by epoch e+2 after every-view support. Its chain carries C(b,e), or a later checkpoint that extends C(b,e), in a carried selector; one justification pass can justify epochs e and e+1 together. With the bridge view fixed, this is a vote-inclusion and delivery assumption."
 
 [[field]]
 path = "WellFormedExecution.blocks_root_injective"
