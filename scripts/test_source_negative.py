@@ -28,7 +28,8 @@ def main() -> None:
         repo = Path(folder) / "spec"
         subprocess.run(["git", "clone", "--quiet", "--shared", str(source), str(repo)],
                        check=True, timeout=120)
-        subprocess.run(["git", "-C", str(repo), "checkout", "--quiet", PIN],
+        subprocess.run(["git", "-c", "advice.detachedHead=false", "-C", str(repo),
+                        "checkout", "--quiet", PIN],
                        check=True, timeout=60)
         path = repo / "presets/minimal/phase0.yaml"
         original = path.read_bytes()
@@ -36,15 +37,20 @@ def main() -> None:
         run(repo, "source tree is dirty")
         path.write_bytes(original)
         (repo / ".venv").symlink_to(source / ".venv", target_is_directory=True)
-        output = repo / "tests/core/pyspec/eth_consensus_specs/gloas"
-        output.mkdir(parents=True, exist_ok=True)
-        for preset in ("minimal", "mainnet"):
-            shutil.copy2(source / "tests/core/pyspec/eth_consensus_specs/gloas" / f"{preset}.py",
-                         output / f"{preset}.py")
-        with (output / "minimal.py").open("ab") as file:
-            file.write(b"\n# stale trust negative test\n")
-        run(repo, "stale generated pyspec")
-    print("negative source tests passed: dirty source and stale pyspec rejected")
+        for fork in ("phase0", "altair", "bellatrix", "capella", "deneb",
+                     "electra", "fulu", "gloas"):
+            output = repo / "tests/core/pyspec/eth_consensus_specs" / fork
+            output.mkdir(parents=True, exist_ok=True)
+            for preset in ("minimal", "mainnet"):
+                shutil.copy2(source / "tests/core/pyspec/eth_consensus_specs" / fork / f"{preset}.py",
+                             output / f"{preset}.py")
+        for fork in ("altair", "gloas"):
+            module = repo / "tests/core/pyspec/eth_consensus_specs" / fork / "minimal.py"
+            with module.open("ab") as file:
+                file.write(b"\n# stale trust negative test\n")
+            run(repo, "stale generated pyspec")
+            shutil.copy2(source / "tests/core/pyspec/eth_consensus_specs" / fork / "minimal.py", module)
+    print("negative source tests passed: dirty source and two stale pyspec modules rejected")
 
 
 if __name__ == "__main__":

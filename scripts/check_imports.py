@@ -56,7 +56,12 @@ def external_roots() -> list[Path]:
 
 def resolved_external(module: str, roots: list[Path]) -> bool:
     relative = Path(*module.split(".")).with_suffix(".lean")
-    return any((root / relative).is_file() for root in roots)
+    for root in roots:
+        candidate = root / relative
+        if (candidate.is_file() and not candidate.is_symlink() and
+                candidate.resolve().is_relative_to(root.resolve())):
+            return True
+    return False
 
 
 def without_comments(source: str) -> str:

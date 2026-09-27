@@ -62,7 +62,18 @@ def main() -> None:
         altered(root / "docs/SPEC_MAP.md",
                 "\n```text\n│ `NoSuchRecord.synchrony` │\n```\n",
                 "check_doc_names.py", "NoSuchRecord.synchrony", root)
-    print("negative trust source tests passed: 6 mutations rejected")
+        config = root / "FastConfirmationModel/Spec/Config.lean"
+        readme = root / "README.md"
+        old_config, old_readme = config.read_text(), readme.read_text()
+        try:
+            config.write_text(old_config +
+                              "\n/-\nnamespace NoSuchRecord\ndef synchrony : True := True.intro\nend NoSuchRecord\n-/\n")
+            readme.write_text(old_readme + "\nAudit probe: `NoSuchRecord.synchrony`.\n")
+            run(root, "check_doc_names.py", "NoSuchRecord.synchrony")
+        finally:
+            config.write_text(old_config)
+            readme.write_text(old_readme)
+    print("negative trust source tests passed: 7 mutations rejected")
 
 
 if __name__ == "__main__":

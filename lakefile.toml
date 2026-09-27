@@ -10,7 +10,6 @@ moreLeanArgs = ["-E", "hasSorry"]
 [leanOptions]
 pp.unicode.fun = true
 relaxedAutoImplicit = false
-autoImplicit = false
 weak.linter.mathlibStandardSet = true
 maxSynthPendingDepth = 3
 
@@ -22,10 +21,12 @@ rev = "v4.30.0-rc2"
 [[lean_lib]]
 name = "FastConfirmationModel"
 globs = ["FastConfirmationModel", "FastConfirmationModel.+"]
+leanOptions = {autoImplicit = false}
 
 [[lean_lib]]
 name = "FastConfirmationStatements"
 globs = ["FastConfirmationStatements", "FastConfirmationStatements.+"]
+leanOptions = {autoImplicit = false}
 
 [[lean_lib]]
 name = "FastConfirmationInternal"

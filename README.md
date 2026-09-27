@@ -213,10 +213,11 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
-pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 39 public executable theorems. Full validation requires the pinned
+pinning, document names, boundaries, and hygiene. Full validation also builds the libraries,
+replays every project module through the kernel, and audits 39 public executable theorems.
+Full validation requires the pinned
 Python interpreter. The source check rejects changed source files and stale
-generated Gloas pyspec modules.
+generated fork pyspec modules.
 
 ## Premise ledger
 

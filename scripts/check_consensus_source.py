@@ -266,22 +266,26 @@ def verify_objects(repo: Path, entries: list[dict[str, Any]]) -> None:
 
 
 def verify_generated_pyspec(repo: Path) -> None:
-    """Compare used Gloas modules with fresh output from the pinned source."""
+    """Compare each inherited fork module with fresh pinned output."""
     python = repo / ".venv" / "bin" / "python"
     if not python.is_file():
         return
     from tempfile import TemporaryDirectory
     with TemporaryDirectory(prefix="fcr-pyspec-") as folder:
-        result = subprocess.run(
-            [str(python), "-m", "pysetup.generate_specs", "--fork", "gloas",
-             "--out-dir", folder], cwd=repo, capture_output=True, text=True, timeout=300)
-        if result.returncode:
-            raise ManifestError(f"pyspec generation failed: {result.stderr.strip()}")
-        for preset in ("minimal", "mainnet"):
-            generated = Path(folder) / f"{preset}.py"
-            current = repo / "tests/core/pyspec/eth_consensus_specs/gloas" / f"{preset}.py"
-            if not current.is_file() or current.read_bytes() != generated.read_bytes():
-                raise ManifestError(f"stale generated pyspec: {current}")
+        for fork in ("phase0", "altair", "bellatrix", "capella", "deneb",
+                     "electra", "fulu", "gloas"):
+            output = Path(folder) / fork
+            result = subprocess.run(
+                [str(python), "-m", "pysetup.generate_specs", "--fork", fork,
+                 "--out-dir", str(output)], cwd=repo, capture_output=True,
+                text=True, timeout=300)
+            if result.returncode:
+                raise ManifestError(f"pyspec generation failed for {fork}: {result.stderr.strip()}")
+            for preset in ("minimal", "mainnet"):
+                generated = output / f"{preset}.py"
+                current = repo / "tests/core/pyspec/eth_consensus_specs" / fork / f"{preset}.py"
+                if not current.is_file() or current.read_bytes() != generated.read_bytes():
+                    raise ManifestError(f"stale generated pyspec: {current}")
 
 
 def parse_args() -> argparse.Namespace:

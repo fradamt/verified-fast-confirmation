@@ -176,7 +176,7 @@ jobs:
           # The editable install does not build the fork modules; the pinned Makefile runs this step.
           (cd .source/consensus-specs && .venv/bin/python -m pysetup.generate_specs --all-forks)
 
-      - name: Verify pinned source and generated Gloas pyspec
+      - name: Verify pinned source and generated fork pyspec
         run: |
           python3 scripts/check_consensus_source.py --repo .source/consensus-specs
           CONSENSUS_SPECS_REPO=.source/consensus-specs python3 scripts/test_source_negative.py

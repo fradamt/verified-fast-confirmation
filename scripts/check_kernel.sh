@@ -2,7 +2,7 @@
 # Replay every project module through the checker shipped with lean-toolchain.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-mapfile -t modules < <(python3 - <<'PY'
+module_list="$(python3 - <<'PY'
 from pathlib import Path
 libs = ("FastConfirmationModel", "FastConfirmationStatements",
         "FastConfirmationInternal", "FastConfirmationProofs",
@@ -15,7 +15,8 @@ paths.append(Path("FastConfirmation.lean"))
 for path in paths:
     print(".".join(path.with_suffix("").parts))
 PY
-)
+)"
+mapfile -t modules <<< "$module_list"
 batch=()
 for module in "${modules[@]}"; do
   if [[ "$module" != *.* ]]; then

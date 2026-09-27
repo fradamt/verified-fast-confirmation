@@ -13,7 +13,8 @@ classifier = "private def isSourceDeclaration" + text.split("private def isSourc
 with tempfile.TemporaryDirectory(prefix="fcr-reachability-negative-") as folder:
     temp = Path(folder)
     (temp / "ReachabilitySource.lean").write_text("""module
-import Lean.DeclarationRange
+public import Lean.DeclarationRange
+public section
 namespace Hidden
 def _sizeOfHidden : Prop := False
 def casesOn : Prop := False
@@ -21,6 +22,7 @@ end Hidden
 """)
     (temp / "ReachabilityProbe.lean").write_text("""import ReachabilitySource
 import Lean.DeclarationRange
+import Lean.Elab.Command
 open Lean Elab Command
 """ + classifier + """
 run_cmd do
@@ -30,7 +32,7 @@ run_cmd do
       throwError "authored generated-looking declaration was omitted: {name}"
   IO.println "REACHABILITY_METADATA_NEGATIVE_TESTS 2"
 """)
-    command = '''export LEAN_PATH="$1:${LEAN_PATH:-}"; lean -o "$1/ReachabilitySource.olean" "$1/ReachabilitySource.lean" && lean "$1/ReachabilityProbe.lean"'''
+    command = '''cd "$1"; export LEAN_PATH="$1:${LEAN_PATH:-}"; lean -o ReachabilitySource.olean ReachabilitySource.lean && lean ReachabilityProbe.lean'''
     result = subprocess.run(["lake", "env", "bash", "-c", command, "bash", str(temp)],
                             cwd=ROOT, capture_output=True, text=True, timeout=120)
     if result.returncode or "REACHABILITY_METADATA_NEGATIVE_TESTS 2" not in result.stdout:

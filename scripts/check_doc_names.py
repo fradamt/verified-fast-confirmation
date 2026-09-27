@@ -3,6 +3,7 @@
 from __future__ import annotations
 import re
 from pathlib import Path
+from check_imports import without_comments
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = [ROOT / 'README.md', ROOT / 'AGENTS.md', *sorted((ROOT / 'docs').glob('*.md'))]
@@ -30,7 +31,7 @@ qualified = set()
 for file in LEAN:
     scope: list[tuple[str, str]] = []
     structure = None
-    for line in file.read_text().splitlines():
+    for line in without_comments(file.read_text()).splitlines():
         opening = re.match(r'^\s*(namespace|section)\s+([\w.₀-₉]+)', line)
         if opening:
             scope.append((opening.group(1), opening.group(2)))
