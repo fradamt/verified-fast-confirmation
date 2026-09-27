@@ -5,6 +5,8 @@ repo=$1
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$root"
 python3 scripts/check_consensus_source.py --repo "$repo"
+# lake env lean --run does not rebuild imports; build the imported model modules first.
+lake build FastConfirmationModel.Execution.Run FastConfirmationModel.Spec.FastConfirmation.SafeExecutionBlock
 export PYTHONPATH="$repo/tests/core/pyspec${PYTHONPATH:+:$PYTHONPATH}"
 temp="$(mktemp -d)"
 trap 'rm -rf "$temp"' EXIT
