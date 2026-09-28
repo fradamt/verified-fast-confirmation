@@ -2,7 +2,7 @@
 
 Paper citations use [arXiv:2405.00549v4](https://arxiv.org/abs/2405.00549v4).
 
-`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The trust audit checks 40 public executable theorems. See the [former live theorem history](history/live-monotonicity-removed.md) and [paper library history](history/paper-side-removed.md).
+`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The trust audit checks 40 public executable theorems. Notes on the removed live theorem and the removed paper library are in [Git history](https://github.com/fradamt/verified-fast-confirmation/tree/097d18f/docs/history).
 
 The premise `ConcreteBridge.SafetyPremises` starts the run from the Python genesis
 store of the bridge setup (`ConcreteBridge.ConcreteGenesis`). The genesis state has
@@ -209,7 +209,7 @@ This is part of the fixed-committee idealization.
 
 ## Premise strength and range
 
-Paper Assumption 3.2 (explicit) can allow a two-epoch FFG inclusion delay. The executable selector can close its gates before inclusion. The [history note](history/live-monotonicity-removed.md) explains the reset branches and the removed claim.
+Paper Assumption 3.2 (explicit) can allow a two-epoch FFG inclusion delay. The executable selector can close its gates before inclusion. The [history note](https://github.com/fradamt/verified-fast-confirmation/blob/097d18f/docs/history/live-monotonicity-removed.md) explains the reset branches and the removed claim.
 
 `ConcreteBridge.SafetyPremises` includes the admissible bridge, the concrete genesis store, the horizon tie to the fixed scope, whole seconds, scheduled execution, externals, honest behavior, delivery of body attestations, synchrony, a fault bound for each committee span, epoch arithmetic, the epoch-1 finalization scope, and checkpoint inclusion. `SafetyPremises.nextSlotSafetyPremises` computes the internal record `Execution.NextSlotSafetyPremises`: exact FFG state at each successful handler prefix, anchor alignment, checkpoint evidence, finalization delay, Phase0 source coherence, and a balance floor. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
 

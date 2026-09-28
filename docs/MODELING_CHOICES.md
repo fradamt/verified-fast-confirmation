@@ -141,7 +141,7 @@ boundaries in the synchronous segment; the paper's delay Δ is their
 motivation, not a premise field. They do not add a GST transition. The
 paper's independent view model is not a refinement proof for Python handlers.
 
-The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [review guide](REVIEW_GUIDE.md), and [paper library history](history/paper-side-removed.md).
+The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md) and [review guide](REVIEW_GUIDE.md).
 
 ## Strong conditions
 

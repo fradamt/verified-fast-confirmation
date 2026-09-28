@@ -27,8 +27,6 @@ Run `scripts/validate.sh` with the pinned Python checkout, then inspect `FastCon
 
 The substantive part is head ancestry. Store membership follows mostly from one input: `DeadlineBlockRelay` (`NextSlotSynchronyPremises.deadline_block_relay`) requires every root that an honest node stores by the attestation deadline to be in every honest store from the next slot, unless a permanent finalized-conflict exclusion applies.
 
-[Former live theorem history](docs/history/live-monotonicity-removed.md).
-
 The result concerns stored boundary outputs. It does not cover an arbitrary query within a slot.
 
 The premise `ConcreteBridge.SafetyPremises` fixes a concrete bridge. The
@@ -195,12 +193,12 @@ The executable model follows the `fradamt/consensus-specs` fork at tag `fcr-gloa
 (`13f391516`). Gloas is the fork that separates beacon blocks from execution payloads. The
 fork's empty-slot discount counts parent votes with a matching payload status or PENDING
 status. Unmodified upstream can also count votes for the opposite resolved status. See the
-[source map](docs/SPEC_MAP.md) and [counterexample](docs/history/gloas-negative-result.md).
+[source map](docs/SPEC_MAP.md) and [counterexample](https://github.com/fradamt/verified-fast-confirmation/blob/097d18f/docs/history/gloas-negative-result.md).
 The bridge runs the concrete Gloas FFG transition for slot processing, block
 transitions, and PJF. Cryptography, the other block-validity checks, payload
 envelopes, data availability, and execution validation are opaque, with stated
 contracts. Committees are one fixed assignment (class I). The Lean kernel checks the proofs. The trust audit
-allows only `propext`, `Classical.choice`, and `Quot.sound`. The former paper library is recorded in its [history note](docs/history/paper-side-removed.md).
+allows only `propext`, `Classical.choice`, and `Quot.sound`. The former paper library is described in a [history note](https://github.com/fradamt/verified-fast-confirmation/blob/097d18f/docs/history/paper-side-removed.md).
 A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 78 finite fields: 10 public premise fields, 64 laws of the derived internal records, a check that the finite horizon fits uint64, the sampled consequence of A3.2, and two checks of the concrete transition (the retained fields and the registry of each block, and a negative control for an epoch-step registry change). Each run reads the real committees of each epoch. `ByzantineWeightPremises.estimate_sound` fails on 208 of 1176 spans: 104 of 216 within-epoch spans (first at slots 0 to 1: 846e9 Gwei against an estimate of 837.5e9 Gwei) and 104 of 960 cross-boundary spans. A second genesis with 128 validators of 32 ETH checks only `estimate_sound`, in two more fields (80 in total): 0 of 216 within-epoch spans fail, so a real pyspec registry meets part (i), and 106 of 960 cross-boundary spans fail (first at slots 1 to 14: 4096e9 Gwei against 4052.16e9 Gwei), because the real reshuffle is one sample. These failures are the expected result of the committee-sampling idealization. Paper Assumption 3.2 (explicit) remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
 
 The [contract conformance checks](docs/conformance.md#contract-conformance) cover
