@@ -22,7 +22,29 @@ def altered(path: Path, addition: str, script: str, expected: str, root: Path) -
     original = path.read_text()
     try:
         path.write_text(original + addition)
-        run(root, script, expected)
+        if script == "check_imports.py" and expected.endswith("keyword"):
+            from test_keyword_scan import accepted, check, rejected
+            module = ".".join(path.relative_to(root).with_suffix("").parts)
+            diagnostic = f"{module}: {expected} in Model or Statements"
+            rejected(check(root), diagnostic)
+            checker = root / "scripts/check_imports.py"
+            text = checker.read_text()
+            guard = "if count > allowed.get(key, 0):"
+            assert text.count(guard) == 1
+            checker.write_text(text.replace(guard, "if False:  # removed keyword guard"))
+            try:
+                result = check(root)
+                accepted(result)
+                try:
+                    rejected(result, diagnostic)
+                except AssertionError:
+                    pass
+                else:
+                    raise AssertionError("negative test survived guard removal")
+            finally:
+                checker.write_text(text)
+        else:
+            run(root, script, expected)
     finally:
         path.write_text(original)
 
@@ -112,7 +134,7 @@ def main() -> None:
         finally:
             config.write_text(old_config)
             readme.write_text(old_readme)
-    print("negative trust source tests passed: 14 mutations rejected")
+    print("negative trust source tests passed: 14 mutations rejected; 4 keyword guard-removal controls")
 
 
 if __name__ == "__main__":

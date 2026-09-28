@@ -31,10 +31,12 @@ private def isProjectDeclaration (env : Environment) (decl : Name) : Bool :=
   | none => false
   | some idx => (env.header.moduleNames[idx.toNat]!).toString.startsWith "FastConfirmation"
 
-/-- The head constant of a field type after all of its binders. An antecedent
+/-- The reduced head constant of a binder or field type. An antecedent
 of an implication is a binder, so the closure below does not enter it. -/
 private def resultHead? (type : Expr) : Meta.MetaM (Option Name) :=
-  Meta.forallTelescope type fun _ body => return body.getAppFn.constName?
+  Meta.withTransparency .default <|
+    Meta.forallTelescopeReducing type fun _ body => do
+      return (← Meta.whnf body).getAppFn.constName?
 
 /-- A proof-valued field: its type, after its binders, is a proposition. -/
 private def isPropValued (type : Expr) : Meta.MetaM Bool :=
