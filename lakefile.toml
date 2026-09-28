@@ -1,5 +1,5 @@
 name = "FastConfirmation"
-version = "0.2.0"
+version = "0.2.1"
 keywords = ["lean", "consensus", "fast-confirmation-rule", "lmd-ghost"]
 defaultTargets = ["FastConfirmationModel", "FastConfirmationStatements", "FastConfirmationInternal", "FastConfirmationProofs", "FastConfirmationWitnesses", "FastConfirmation"]
 # Lake consumes Lean's JSON diagnostic severity and fails project-module builds
