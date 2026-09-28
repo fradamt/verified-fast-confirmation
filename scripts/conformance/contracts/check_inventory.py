@@ -223,7 +223,9 @@ def main() -> int:
                                    if key.split(".", 1)[0] in PROJECTED)
         expected_projection.update(("ImportedBlockFinalizationLag", "GenesisOrNormalizedAnchor",
                                     "RealizableBySlotRun", "HonestEarlierTargetVoteOnCarrierChain",
-                                    "IncludedCheckpointEvidence.causal"))
+                                    "IncludedCheckpointEvidence.causal",
+                                    # Some runs have no sample; all runs together must have one.
+                                    "EventualCheckpointInclusion.included.sampled_consequent"))
         missing_projection = expected_projection - projection_names
         if missing_projection:
             raise ValueError(f"projection coverage missing={sorted(missing_projection)}")

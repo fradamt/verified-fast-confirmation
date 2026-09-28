@@ -72,7 +72,7 @@ a record field, the column gives the classes of the leaves of the record.
 ┌──────────────────────────────┬─────────────────────┬──────────────────────────────────────────────────────────────────────────────┐
 │ SafetyPremises field         │ Class               │ Plain meaning                                                                │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
-│ admissible                   │ E-scope             │ The fixed setup starts at genesis, has two increments of active weight, lets │
+│ admissible                   │ record: E-scope     │ The fixed setup starts at genesis, has two increments of active weight, lets │
 │                              │                     │ the root ring cover two epochs, fits uint64 root reads, and has a uint64     │
 │                              │                     │ genesis time.                                                                │
 ├──────────────────────────────┼─────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
@@ -131,6 +131,15 @@ a record field, the column gives the classes of the leaves of the record.
 └──────────────────────────────┴─────────────────────┴──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+The input data also carry proof-valued fields; each has an inventory row.
+`Config` requires positive slots per epoch, slot duration, and balance
+increment, a Byzantine threshold of at most 25, and an increment that 100
+divides. `FFGPreset` requires a positive root ring and inclusion delay.
+`FixedFFGScope` requires ordered scope epochs and fixed validator activity
+(E-scope). `StateCommitment.open_sound` requires that a root opens only to a
+state with that root (I). The pinned mainnet and minimal values satisfy the
+configuration and preset conditions.
+
 Not a Lean premise: the Python registry scope. A Python run is in scope only if
 no epoch step in the horizon changes a retained validator field (activation,
 exit, effective balance, or slashed flag). On mainnet this can limit the horizon
@@ -178,7 +187,7 @@ Each law states its timing directly: a source observation at or before the
 attestation deadline offset A of its slot, and a receiver fact from the next
 slot boundary on. The paper's positive delay Δ with `A + Δ < S` (S is the slot
 duration) motivates these times; no premise field states Δ. The finite runs
-deliver each honest vote at the first second of the next slot. The delivery laws also require receipt and handler service. `DeadlineBlockRelay` requires a client to gossip each cutoff block, receive it at every honest node, accept it with known parents, and keep it by the next boundary unless the pre-boundary finalized guard rejects it permanently. The boundary prefix law requires block service before a boundary vote. The envelope prefix and the slashing relay require receipt, handler service, and the stated validation behavior. `scripts/PremiseFieldUse.lean` checks that the proof reads every premise field; the check has no exception.
+deliver each honest vote at the first second of the next slot. The delivery laws also require receipt and handler service. `DeadlineBlockRelay` requires a client to gossip each cutoff block, receive it at every honest node, accept it with known parents, and keep it by the next boundary unless the pre-boundary finalized guard rejects it permanently. The boundary prefix law requires block service before a boundary vote. The envelope prefix and the slashing relay require receipt, handler service, and the stated validation behavior. `scripts/PremiseFieldUse.lean` checks that the proof reads every premise field and every proof-valued input field. It finds these records from the binder types of the claim, so it also checks a new nested record. The one allowed exception is `FixedFFGScope.epoch_order`, which the proof does not read. The check finds references; it does not prove that a field is necessary.
 
 ## Trust and source
 
@@ -192,10 +201,10 @@ transitions, and PJF. Cryptography, the other block-validity checks, payload
 envelopes, data availability, and execution validation are opaque, with stated
 contracts. Committees are one fixed assignment (class I). The Lean kernel checks the proofs. The trust audit
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The former paper library is recorded in its [history note](docs/history/paper-side-removed.md).
-A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 78 finite fields: 10 public premise fields, 66 laws of the derived internal records, and two checks of the concrete transition (the retained fields and the registry of each block, and a negative control for an epoch-step registry change). Each run reads the real committees of each epoch. `ByzantineWeightPremises.estimate_sound` fails on 208 of 1176 spans: 104 of 216 within-epoch spans (first at slots 0 to 1: 846e9 Gwei against an estimate of 837.5e9 Gwei) and 104 of 960 cross-boundary spans. A second genesis with 128 validators of 32 ETH checks only `estimate_sound`, in two more fields (80 in total): 0 of 216 within-epoch spans fail, so a real pyspec registry meets part (i), and 106 of 960 cross-boundary spans fail (first at slots 1 to 14: 4096e9 Gwei against 4052.16e9 Gwei), because the real reshuffle is one sample. These failures are the expected result of the committee-sampling idealization. Paper Assumption 3.2 (explicit) remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
+A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 78 finite fields: 10 public premise fields, 64 laws of the derived internal records, a check that the finite horizon fits uint64, the sampled consequence of A3.2, and two checks of the concrete transition (the retained fields and the registry of each block, and a negative control for an epoch-step registry change). Each run reads the real committees of each epoch. `ByzantineWeightPremises.estimate_sound` fails on 208 of 1176 spans: 104 of 216 within-epoch spans (first at slots 0 to 1: 846e9 Gwei against an estimate of 837.5e9 Gwei) and 104 of 960 cross-boundary spans. A second genesis with 128 validators of 32 ETH checks only `estimate_sound`, in two more fields (80 in total): 0 of 216 within-epoch spans fail, so a real pyspec registry meets part (i), and 106 of 960 cross-boundary spans fail (first at slots 1 to 14: 4096e9 Gwei against 4052.16e9 Gwei), because the real reshuffle is one sample. These failures are the expected result of the committee-sampling idealization. Paper Assumption 3.2 (explicit) remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
 
 The [contract conformance checks](docs/conformance.md#contract-conformance) cover
-59 claim-reachable fields. Seventeen are definitions, not assumptions: the seven fields of the A3.2 view, which the bridge fixes (its modeling choices are the fixed committee schedule, AU from the four carried selectors, and the genesis-epoch read as the anchor), and the ten parts of the A3.2 antecedent. Seven are records whose own fields are listed. The other 35 fields are the assumed leaves: tested state laws (T) 4, execution scope (E-scope) 7, network and behavior (E-network/behavior) 13, and idealizations (I) 14; three leaves have two labels, and no leaf is E-interpretation. Paper Assumption 3.2 (explicit) (`EventualCheckpointInclusion.included`) is E-network/behavior: the bridge fixes its view, so it states only that proposers include the supporting votes and that the network delivers a carrier block. Its consequent accepts a later carried checkpoint that extends C(b, e), because one justification pass can justify C(b, e) and the next epoch together. Run `python3
+75 fields: the 59 direct fields of the claim-reachable premise structures and the 16 proof-valued fields of the Model input records (`Config`, `FFGPreset`, `FixedFFGScope`, `StateCommitment`, `ConcreteBridge.Admissible`, and `FFGSetup.Admissible`). Seventeen are definitions, not assumptions: the seven fields of the A3.2 view, which the bridge fixes (its modeling choices are the fixed committee schedule, AU from the four carried selectors, and the genesis-epoch read as the anchor), and the ten parts of the A3.2 antecedent. Nine are records whose own fields are listed. The other 49 fields are the assumed leaves: tested state laws (T) 4, execution scope (E-scope) 20, network and behavior (E-network/behavior) 13, and idealizations (I) 15; three leaves have two labels, and no leaf is E-interpretation. Full validation derives the fields from Lean and fails when a field has no row. Paper Assumption 3.2 (explicit) (`EventualCheckpointInclusion.included`) is E-network/behavior: the bridge fixes its view, so it states only that proposers include the supporting votes and that the network delivers a carrier block. Its consequent accepts a later carried checkpoint that extends C(b, e), because one justification pass can justify C(b, e) and the next epoch together. Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/fradamt-consensus-specs --output /tmp/contract-results.json` with the
 pinned checkout's interpreter. Five labelled expected failures show why the balance
@@ -226,7 +235,7 @@ A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can t
 pinning, document names, boundaries, and hygiene. With the pinned interpreter, fast mode also
 runs the contract suite, the whole-bundle sample, the realized-gap regression, the concrete
 differential, and the trace smoke checks. Full validation also builds the libraries,
-replays all 307 project modules through the kernel, and audits 40 public executable theorems.
+replays all 307 project modules through the kernel, resolves every loaded module to the project, the toolchain, or a pinned package, and audits 40 public executable theorems.
 Full validation requires the pinned
 Python interpreter. The source check pins 44 source files. It rejects a changed
 pinned file and a stale generated pyspec module of any of the eight forks.
