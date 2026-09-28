@@ -441,7 +441,7 @@ theorem witnessPaperA32Support_child_one :
       (witnessExecution.store witnessConfig witnessExternals w m) childRoot 1 =
         anchorCheckpoint := by
     unfold CheckpointInclusionView.voting_source_at
-    rw [hlate.child_epoch, if_pos rfl, gj_child]
+    rw [hlate.child_epoch, ite_eq_left rfl, gj_child]
   rw [hsource, checkpointAt_child_one]
   exact ⟨witnessAnchorChildLinkSupportAt w m tip hHm hepoch⟩
 

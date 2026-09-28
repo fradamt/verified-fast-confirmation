@@ -58,7 +58,7 @@ theorem process_attestation_guards [DecidableEq Root] {cfg : Config} {preset : F
     simp only [except_bind_eq_ok] at hr
     obtain ⟨_, hg, _, -, _, -, _, -, _, -, _, -, hr⟩ := hr
     exact ⟨by simpa only [decide_eq_true_eq] using guard_eq_ok.mp hg, _,
-      (except_pure_eq_ok.mp hr).symm⟩
+      rfl⟩
 
 end FastConfirmation.Spec.ConcreteFFG
 

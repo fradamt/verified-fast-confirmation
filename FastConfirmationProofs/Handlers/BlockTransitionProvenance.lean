@@ -51,7 +51,7 @@ private theorem on_block_inserted_sameBlocks_for_lastWriter
     simp [on_block, hknown] at hh
     exact ⟨hknown, hh.symm⟩
   · left
-    simp only [on_block, if_neg hknown] at hh
+    simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
@@ -97,7 +97,7 @@ private theorem on_block_inserted_sameBlocks_for_lastWriter
                   post.current_justified_checkpoint post.finalized_checkpoint).trans
                   (compute_pulled_up_tip_sameBlocks cfg ext realized sb.root))))
         refine ⟨post, by simpa only [hst], ?_⟩
-        simpa only [if_neg hknown] using htail
+        simpa only [SameBlocks, added, realized, boosted, timed, ite_eq_right hknown] using htail
 
 /-- A successful block write leaves every other block message unchanged. -/
 theorem on_block_other_root_blocks
@@ -157,8 +157,8 @@ theorem on_block_other_root_known
     change r ∈ (if sb.root ∈ store.block_roots then store.block_roots
       else store.block_roots ++ [sb.root]) at hr
     by_cases hroot : sb.root ∈ store.block_roots
-    · simpa only [if_pos hroot] using hr
-    · simp only [if_neg hroot, List.mem_append, List.mem_singleton] at hr
+    · simpa only [ite_eq_left hroot] using hr
+    · simp only [ite_eq_right hroot, List.mem_append, List.mem_singleton] at hr
       exact hr.resolve_right hne
   · exact hr
 
@@ -352,7 +352,7 @@ theorem acceptedBlockTransition
       obtain ⟨old⟩ := h t.signedBlock.root hknown hnonGenesis
       have hpost : t.postStore = t.atPrefix.store cfg ext := by
         exact (Option.some.inj (by
-          simpa only [on_block, if_pos hknown] using t.accepted)).symm
+          simpa only [on_block, ite_eq_left hknown] using t.accepted)).symm
       have hsame : SameBlocks (t.atPrefix.store cfg ext)
           (t.successorPrefix.store cfg ext) := by
         rw [t.successorPrefix_store, hpost]

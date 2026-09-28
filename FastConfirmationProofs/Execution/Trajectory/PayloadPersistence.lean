@@ -105,7 +105,6 @@ private theorem payloadLE_foldl {α : Type*} {f : Store Root → α → Store Ro
     (update_latest_messages store indices attestation).payloads = store.payloads := by
   simp only [update_latest_messages]
   refine foldl_payloads (fun s i => ?_) _ store
-  dsimp only
   rcases hmi : s.latest_messages i with _ | message <;> split_ifs <;> rfl
 
 variable [LinearOrder Root] [Inhabited Root]
@@ -201,10 +200,10 @@ theorem on_block_payloads {store store' : Store Root}
     (h : on_block cfg ext store signed_block = some store') :
     store'.payloads = store.payloads := by
   by_cases hknown : signed_block.root ∈ store.block_roots
-  · simp only [on_block, if_pos hknown] at h
+  · simp only [on_block, ite_eq_left hknown] at h
     cases h
     rfl
-  · simp only [on_block, if_neg hknown] at h
+  · simp only [on_block, ite_eq_right hknown] at h
     split_ifs at h <;> try contradiction
     cases hst : ext.state_transition
         (store.block_states signed_block.message.parent_root) signed_block with

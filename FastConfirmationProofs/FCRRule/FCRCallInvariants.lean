@@ -193,10 +193,10 @@ private theorem justified_epoch_le_on_block
     store.justified_checkpoint.epoch ≤
       store'.justified_checkpoint.epoch := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_left hknown] at hh
     cases hh
     exact Nat.le_refl _
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with

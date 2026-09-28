@@ -60,7 +60,7 @@ theorem decode_eq_some {st : BeaconState Root} {cs : FFGBeaconState Root} :
   · rintro ⟨rfl, hadm, hopen⟩
     unfold decode
     simp only [project, hopen]
-    rw [if_pos ⟨rfl, hadm⟩]
+    simp only [hadm, and_true, ite_true]
 
 /-- The forward direction of `decode_eq_some`. -/
 theorem decode_some {st : BeaconState Root} {cs : FFGBeaconState Root}
@@ -138,7 +138,7 @@ theorem slots_decoded (hB : B.Admissible) {st : BeaconState Root} {cs : FFGBeaco
   unfold slots
   rw [hd]
   dsimp only
-  rw [if_pos hin, hnext]
+  rw [ite_eq_left hin, hnext]
 
 theorem slots_out {st : BeaconState Root} {cs : FFGBeaconState Root}
     (hd : B.decode st = some cs) {target : Slot}
@@ -147,7 +147,7 @@ theorem slots_out {st : BeaconState Root} {cs : FFGBeaconState Root}
   unfold slots
   rw [hd]
   dsimp only
-  rw [if_neg hout]
+  rw [ite_eq_right hout]
 
 theorem slots_none {st : BeaconState Root} (hd : B.decode st = none) (target : Slot) :
     B.slots st target = B.fallbackSlots st target := by
@@ -200,9 +200,9 @@ theorem transition_of_stateRootsCommit [LinearOrder Root] [Inhabited Root]
   unfold transition
   rw [hd, ho]
   dsimp only
-  rw [if_pos ⟨hw, hm⟩, hst]
+  rw [ite_eq_left ⟨hw, hm⟩, hst]
   dsimp only
-  rw [if_pos ⟨hopen, hin⟩]
+  rw [ite_eq_left ⟨hopen, hin⟩]
 
 /-- The slots result that a successful bridge transition runs. -/
 theorem transition_slots {st post : BeaconState Root} {sb : SignedBeaconBlock Root}
@@ -221,7 +221,7 @@ theorem transition_slots {st post : BeaconState Root} {sb : SignedBeaconBlock Ro
   unfold slots
   rw [hd]
   dsimp only
-  rw [if_pos (by rw [← hpslot]; exact hin), hslots]
+  rw [ite_eq_left (by rw [← hpslot]; exact hin), hslots]
 
 /-! ### The Phase0 laws -/
 
@@ -280,7 +280,7 @@ theorem phase0BoundarySourceCoherence (hB : B.Admissible) :
     cases hd : B.decode st with
     | none =>
       rw [B.slots_none hd]
-      simp only [fallbackSlots, if_pos hlt, B.pjf_none hd, fallbackPJF]
+      simp only [fallbackSlots, ite_eq_left hlt, B.pjf_none hd, fallbackPJF]
       split_ifs with hle
       · exact Or.inl rfl
       · exact Or.inr (by simp [GENESIS_EPOCH])
@@ -294,7 +294,7 @@ theorem phase0BoundarySourceCoherence (hB : B.Admissible) :
         exact cjRun_epoch_le hB.setup hinv.target_epoch_le _ _
       · rw [B.slots_out hd hin]
         obtain ⟨Y, -, hp, hY⟩ := B.pjf_decoded hB hd hreach
-        simp only [fallbackSlots, project_slot, if_pos hlt, hp, project_current_justified,
+        simp only [fallbackSlots, project_slot, ite_eq_left hlt, hp, project_current_justified,
           project_current_justified, hY]
         exact cjRun_epoch_le hB.setup hinv.target_epoch_le 1 _
   process_slots_two_boundaries := by

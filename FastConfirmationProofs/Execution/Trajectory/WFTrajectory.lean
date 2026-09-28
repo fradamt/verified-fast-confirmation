@@ -148,7 +148,7 @@ theorem on_block_parentInRootsOr (P : Root) {store store' : Store Root}
   · simp [on_block, hknown] at hh
     cases hh
     exact hQ
-  · simp only [on_block, if_neg hknown] at hh
+  · simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh with hp hpayload hslot hfin hfc
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with

@@ -242,7 +242,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
   refine ⟨htargetCertificate, Or.inr ⟨htargetNotAnchor, Q, ?_⟩⟩
   change CheckpointReadsAs Q.source
     (phase0HonestSourceAt cfg ext store target.root target.epoch)
-  simp only [phase0HonestSourceAt, htargetEpoch, if_pos]
+  simp only [phase0HonestSourceAt, htargetEpoch, ite_eq_left]
   exact hQSource.trans
     ((Execution.ScheduledFFGInterpretation.causalStoreProjection B
       hstore).block_state_gj target.root htargetKnown).symm

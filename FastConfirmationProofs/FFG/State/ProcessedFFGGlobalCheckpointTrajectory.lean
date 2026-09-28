@@ -358,9 +358,11 @@ theorem on_tick_per_slot (store : Store Root) (time : ℕ)
     | · apply AcceptedFFGGlobalCheckpointOrigins.update_checkpoints
         · exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
         · exact ⟨_, CheckpointReadsAs.refl _, unrealizedJustified_to_justified
-            (by simpa using h.unrealized_justified)⟩
+            (by simpa only [AcceptedGlobalUnrealizedJustifiedOrigin, Execution.AcceptedCarrierIn]
+              using h.unrealized_justified)⟩
         · exact ⟨_, CheckpointReadsAs.refl _, unrealizedFinalized_to_finalized
-            (by simpa using h.unrealized_finalized)⟩
+            (by simpa only [AcceptedGlobalUnrealizedFinalizedOrigin, Execution.AcceptedCarrierIn]
+              using h.unrealized_finalized)⟩
 
 theorem on_tick_aux (tick_slot fuel : ℕ) :
     ∀ store : Store Root, AcceptedFFGGlobalCheckpointOrigins S store →
@@ -402,10 +404,10 @@ private theorem on_block_of_selectors
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedFFGGlobalCheckpointOrigins S store' := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_left hknown] at hh
     cases hh
     exact h
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
     let added : Store Root :=

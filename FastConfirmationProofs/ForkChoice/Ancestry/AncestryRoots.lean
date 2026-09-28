@@ -149,7 +149,7 @@ is empty (the walk's first test fails, worker returns `none`). -/
 theorem get_ancestor_roots_stop {store : Store Root} {block_root terminal_root : Root}
     (hle : (store.blocks block_root).slot ≤ (store.blocks terminal_root).slot) :
     get_ancestor_roots store block_root terminal_root = [] := by
-  rw [get_ancestor_roots, get_ancestor_roots_aux_succ, if_neg (by simpa using hle)]
+  rw [get_ancestor_roots, get_ancestor_roots_aux_succ, ite_eq_right (by simpa using hle)]
   rfl
 
 
@@ -177,7 +177,7 @@ theorem get_ancestor_roots_aux_chain {store : Store Root}
     cases fuel with
     | zero => exact absurd hfuel (Nat.not_lt_zero _)
     | succ f =>
-      rw [get_ancestor_roots_aux_succ, if_neg (by simpa using hle)] at hl
+      rw [get_ancestor_roots_aux_succ, ite_eq_right (by simpa using hle)] at hl
       simp at hl
   | @step r hr hgt hp ih =>
     intro fuel hfuel l hl
@@ -185,14 +185,14 @@ theorem get_ancestor_roots_aux_chain {store : Store Root}
     | zero => exact absurd hfuel (Nat.not_lt_zero _)
     | succ f =>
       have hCpos : (store.blocks r).slot > (store.blocks terminal_root).slot := hgt
-      rw [get_ancestor_roots_aux_succ, if_pos hCpos] at hl
+      rw [get_ancestor_roots_aux_succ, ite_eq_left hCpos] at hl
       by_cases hD : (store.blocks r).parent_root = terminal_root
-      · rw [if_pos hD, Option.some_inj] at hl
+      · rw [ite_eq_left hD, Option.some_inj] at hl
         subst hl
         refine ⟨by simp, ?_, List.isChain_singleton _, by simp, ?_⟩
         · simp only [List.mem_singleton]; rintro x rfl; exact hr
         · simp only [List.head?_cons, Option.mem_some_iff]; rintro x rfl; exact hD
-      · rw [if_neg hD] at hl
+      · rw [ite_eq_right hD] at hl
         obtain ⟨l', hl', rfl⟩ := Option.map_eq_some_iff.mp hl
         have hbound : (store.blocks (store.blocks r).parent_root).slot < f :=
           Nat.lt_of_lt_of_le (hwf _ hr hp.root_mem) (Nat.lt_succ_iff.mp hfuel)

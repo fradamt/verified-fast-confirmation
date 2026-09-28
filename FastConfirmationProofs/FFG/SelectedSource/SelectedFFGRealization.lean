@@ -120,7 +120,7 @@ theorem A32IncludedAtTip.baseEpoch_le_votingSource
       get_current_store_epoch cfg store :=
     h.seed_before_boundary.trans_le hboundary
   simp only [get_voting_source]
-  rw [if_pos]
+  rw [ite_eq_left]
   · exact h.target_in_unrealized
   · simpa only [get_block_epoch] using hOld
 

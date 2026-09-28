@@ -287,7 +287,7 @@ theorem interface_eq_lookupInterface
         by_cases hc : wire.root = sb.root ∧ lookupMatches B sb.message wire
         · have hc' : wire.root = sb.root ∧ B.MessageMatches sb.message wire :=
             ⟨hc.1, (hmatch _ _).mpr hc.2⟩
-          rw [if_pos hc, if_pos hc']
+          rw [ite_eq_left hc, ite_eq_left hc']
           cases state_transition_pointwise B.setup.cfg B.setup.preset B.setup.schedule
               B.setup.oracle state wire with
           | error => rfl
@@ -295,12 +295,12 @@ theorem interface_eq_lookupInterface
             dsimp only
             by_cases hp : B.states.open_ stateRoot = some post ∧
                 compute_epoch_at_slot B.setup.cfg post.slot ≤ B.setup.scope.last_epoch
-            · rw [if_pos hp, if_pos hp]
-            · rw [if_neg hp, if_neg hp]
+            · rw [ite_eq_left hp, ite_eq_left hp]
+            · rw [ite_eq_right hp, ite_eq_right hp]
         · have hc' : ¬ (wire.root = sb.root ∧ B.MessageMatches sb.message wire) := by
             rintro ⟨h1, h2⟩
             exact hc ⟨h1, (hmatch _ _).mp h2⟩
-          rw [if_neg hc, if_neg hc']
+          rw [ite_eq_right hc, ite_eq_right hc']
   unfold ConcreteBridge.interface lookupInterface
   rw [hpjf, hslots, htransition]
 

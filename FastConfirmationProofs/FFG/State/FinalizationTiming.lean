@@ -91,7 +91,7 @@ theorem SuccessfulScheduledBlockImport.blockKnown_signedMessage
       hT.wellFormed hpreAt hsignedAt
     have hpost : t.postStore = t.atPrefix.store cfg ext := by
       exact (Option.some.inj (by
-        simpa only [on_block, if_pos hknown] using t.accepted)).symm
+        simpa only [on_block, ite_eq_left hknown] using t.accepted)).symm
     rw [hpost]
     exact hmessage
 
@@ -361,7 +361,7 @@ private theorem SuccessfulScheduledBlockImport.blockEpoch_le_current
     compute_epoch_at_slot cfg t.signedBlock.message.slot ≤
       get_current_store_epoch cfg (t.atPrefix.store cfg ext) := by
   have hh := t.accepted
-  simp only [FastConfirmation.Spec.on_block, if_neg hfresh] at hh
+  simp only [FastConfirmation.Spec.on_block, ite_eq_right hfresh] at hh
   split_ifs at hh <;> try cases hh
   apply ce_mono cfg
   simp_all
@@ -389,10 +389,10 @@ private theorem AcceptedFinalizationLagAt.on_block_of_delays
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedFinalizationLagAt cfg anchor store' := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_left hknown] at hh
     cases hh
     exact h
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
     let inserted : Store Root :=
@@ -515,7 +515,7 @@ theorem AcceptedFinalizationLagAt.acceptedBlockTransition
       Classical.byContradiction hfresh
     have hsame : t.postStore = t.atPrefix.store cfg ext := by
       exact (Option.some.inj (by
-        simpa only [on_block, if_pos hknown] using t.accepted)).symm
+        simpa only [on_block, ite_eq_left hknown] using t.accepted)).symm
     rw [hsame]
     exact h
 
@@ -1256,10 +1256,10 @@ private theorem AcceptedFinalizationCertificateAt.on_block_of_certificates
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     E.AcceptedFinalizationCertificateAt cfg ext B store' := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_left hknown] at hh
     cases hh
     exact h
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
     let inserted : Store Root :=
@@ -1411,7 +1411,7 @@ theorem AcceptedFinalizationCertificateAt.acceptedBlockTransition
       Classical.byContradiction hfresh
     have hsame : t.postStore = t.atPrefix.store cfg ext := by
       exact (Option.some.inj (by
-        simpa only [on_block, if_pos hknown] using t.accepted)).symm
+        simpa only [on_block, ite_eq_left hknown] using t.accepted)).symm
     rw [hsame]
     exact h
 

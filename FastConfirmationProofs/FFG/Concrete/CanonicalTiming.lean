@@ -74,19 +74,19 @@ theorem cjFormula_mono {S : FFGSetup Root} {blocks blocks' : List (FFGWireBlock 
     (cjFormula S blocks votes E c).epoch ≤ (cjFormula S blocks' votes' E c').epoch := by
   unfold cjFormula
   by_cases h1 : E ≤ 1
-  · rw [if_pos h1, if_pos h1]; exact hcc
-  rw [if_neg h1, if_neg h1]
+  · rw [ite_eq_left h1, ite_eq_left h1]; exact hcc
+  rw [ite_eq_right h1, ite_eq_right h1]
   by_cases hE : EpochTest S votes E
-  · rw [if_pos hE, if_pos (epochTest_mono hsub hE)]
+  · rw [ite_eq_left hE, ite_eq_left (epochTest_mono hsub hE)]
     exact le_rfl
-  rw [if_neg hE]
+  rw [ite_eq_right hE]
   by_cases hP : EpochTest S votes (E - 1)
-  · rw [if_pos hP]
+  · rw [ite_eq_left hP]
     split_ifs
     · change E - 1 ≤ E; beacon_omega
     · exact le_rfl
     · exact absurd (epochTest_mono hsub hP) ‹_›
-  · rw [if_neg hP]
+  · rw [ite_eq_right hP]
     split_ifs
     · change c.epoch ≤ E; beacon_omega
     · change c.epoch ≤ E - 1; beacon_omega
@@ -178,7 +178,7 @@ theorem cjRun_early {S : FFGSetup Root} {blocks : List (FFGWireBlock Root)}
   | n + 1, E, c, h => by
     rw [cjRun, cjRun_early n (E + 1) _ (by beacon_omega)]
     unfold cjFormula
-    rw [if_pos (show E ≤ 1 by beacon_omega)]
+    rw [ite_eq_left (show E ≤ 1 by beacon_omega)]
 
 /-! ### One block transition -/
 
@@ -707,7 +707,7 @@ theorem realized_justified_realized (hB : B.Admissible) {E : Execution Root}
   · left
     rw [B.realizedJustified_of r hcr]
     unfold readAsAnchor
-    rw [if_pos (by simpa [GENESIS_EPOCH] using h0)]
+    rw [ite_eq_left (by simpa [GENESIS_EPOCH] using h0)]
   right
   have h3 : 2 < compute_epoch_at_slot B.setup.cfg cr.slot := by
     by_contra hle

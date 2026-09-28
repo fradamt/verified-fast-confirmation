@@ -62,7 +62,7 @@ theorem get_weight_ge_of_not_payload_decision (store : Store Root)
     get_attestation_score cfg store node
         (store.checkpoint_states store.justified_checkpoint)
       ≤ get_weight cfg store node := by
-  simp only [get_weight, h, Bool.false_eq_true, if_false]
+  simp only [get_weight, h, Bool.false_eq_true, ite_false]
   split_ifs
   · exact Nat.le_refl _
   · exact Nat.le_add_right _ _

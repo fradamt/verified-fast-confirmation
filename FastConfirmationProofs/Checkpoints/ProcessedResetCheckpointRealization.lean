@@ -320,8 +320,8 @@ theorem resetCheckpointHistoryAt_of_acceptedGlobalTrajectory
         · rw [E.fcr_previous_greatest_succ_of_advance cfg ext v n hadv]
           split_ifs <;> assumption
       · constructor
-        · simpa only [Execution.fcr, if_neg hadv] using hobserved
-        · simpa only [Execution.fcr, if_neg hadv] using hprevious
+        · simpa only [Execution.fcr, ite_eq_right hadv] using hobserved
+        · simpa only [Execution.fcr, ite_eq_right hadv] using hprevious
 
 /-- The observed checkpoint read by the actual speculative query is realized
 in that query's store, independently of whether the speculative query becomes

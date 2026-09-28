@@ -460,7 +460,7 @@ private theorem fcr_previousGreatest_succ_exact
   have hadv : get_current_slot cfg (E.store cfg ext v (n + 1)) >
       get_current_slot cfg (E.store cfg ext v n) := hcall
   simp only [Execution.fcr]
-  rw [if_pos hadv]
+  rw [ite_eq_left hadv]
   change FastConfirmationStore.previous_epoch_greatest_unrealized_checkpoint
     (update_fast_confirmation_variables cfg
       { E.fcr cfg ext v n with store := E.store cfg ext v (n + 1) }) = _
@@ -503,7 +503,7 @@ theorem previousGreatest_acceptedInstallation
       · rw [E.fcr_previousGreatest_succ_exact cfg ext v n hcall]
         by_cases hrotate : is_start_slot_at_epoch cfg
             (get_current_slot cfg (E.store cfg ext v (n + 1)) + 1) = true
-        · rw [if_pos hrotate]
+        · rw [ite_eq_left hrotate]
           exact ⟨{
             originSecond := n + 1
             origin_le := Nat.le_refl _
@@ -515,7 +515,7 @@ theorem previousGreatest_acceptedInstallation
                 (E.store_causal cfg ext v (n + 1))).storeGlobal
                   |>.unrealized_justified
           }⟩
-        · rw [if_neg hrotate]
+        · rw [ite_eq_right hrotate]
           exact ⟨{
             originSecond := ih.originSecond
             origin_le := ih.origin_le.trans (Nat.le_succ n)
@@ -532,7 +532,7 @@ theorem previousGreatest_acceptedInstallation
           have hadv : ¬ get_current_slot cfg
               (E.store cfg ext v (n + 1)) >
               get_current_slot cfg (E.store cfg ext v n) := hcall
-          simp only [Execution.fcr, if_neg hadv]
+          simp only [Execution.fcr, ite_eq_right hadv]
         exact ⟨{
           originSecond := ih.originSecond
           origin_le := ih.origin_le.trans (Nat.le_succ n)
@@ -581,7 +581,7 @@ private theorem fcrStep_observed_eq_previousGreatest_of_start
   have hnext := next_not_epochStart_of_epochStart cfg hspe hstart
   rw [Execution.fcrStoreAtCall]
   simp only [update_fast_confirmation_variables]
-  rw [if_neg hnext, if_pos hstart]
+  rw [ite_eq_right hnext, ite_eq_left hstart]
 
 /-- Installation provenance attached to the observed-reset arm of an exact
 actual query.  In particular, the source second is `k ≤ n`, the cached

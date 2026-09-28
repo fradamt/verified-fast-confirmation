@@ -29,10 +29,10 @@ theorem parentLinked_filter_le {y : Slot} :
     simp only [ParentLinked] at hp
     rw [List.filter_cons]
     by_cases ha : a.slot ≤ y
-    · rw [if_pos (decide_eq_true ha)]
+    · rw [ite_eq_left (decide_eq_true ha)]
       simp only [ParentLinked]
       exact ⟨hp.1, parentLinked_filter_le a.root rest ho.2 hp.2⟩
-    · rw [if_neg (by simpa using ha), List.filter_eq_nil_iff.mpr]
+    · rw [ite_eq_right (by simpa using ha), List.filter_eq_nil_iff.mpr]
       · trivial
       · intro b hb
         have := ho.1 b hb

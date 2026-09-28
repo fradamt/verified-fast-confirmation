@@ -133,11 +133,17 @@ theorem child_pending_descends_required_parent_status {store : Store Root}
   have hslot := hwf b hb hp
   have hpWalk : WalkKnown store (store.blocks (store.blocks b).parent_root).slot
       (store.blocks b).parent_root := WalkKnown.stop hp (le_refl _)
-  simp only [get_node_for_root, is_ancestor, Bool.and_eq_true,
-    decide_eq_true_eq]
-  rw [get_ancestor_step_status hwf hb hslot hpWalk,
-    get_ancestor_stop_status (le_refl _)]
-  exact ⟨rfl, Or.inl rfl⟩
+  have hancestor : get_ancestor store (get_node_for_root b)
+      (store.blocks (store.blocks b).parent_root).slot =
+        ForkChoiceNode.mk (store.blocks b).parent_root
+          (get_parent_payload_status store (store.blocks b)) := by
+    rw [get_ancestor_step_status hwf hb hslot hpWalk]
+    exact get_ancestor_stop_status (le_refl _)
+  unfold is_ancestor
+  rw [Bool.and_eq_true]
+  constructor <;> apply decide_eq_true
+  · exact congrArg ForkChoiceNode.root hancestor
+  · exact Or.inl (congrArg ForkChoiceNode.payload_status hancestor)
 
 /-- A child supporter cannot be counted by the opposite resolved payload
 branch of its parent.  The latest-message walk and parent slot order are the

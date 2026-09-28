@@ -34,7 +34,7 @@ theorem participationUpdate_eq_map (flags : List ℕ) :
           if i ∈ indices then flags.foldl add_flag (participation.getD i 0)
           else participation.getD i 0
   | [], _, participation => by
-    simp only [participationUpdate, List.foldl_nil, List.not_mem_nil, if_false]
+    simp only [participationUpdate, List.foldl_nil, List.not_mem_nil, ite_false]
     exact (map_range_getD participation).symm
   | j :: indices, hnodup, participation => by
     have hj : j ∉ indices := (List.nodup_cons.mp hnodup).1
@@ -46,7 +46,7 @@ theorem participationUpdate_eq_map (flags : List ℕ) :
     have hi' : i < participation.length := List.mem_range.mp hi
     by_cases hij : i = j
     · subst hij
-      simp only [hj, if_false, List.mem_cons, true_or, if_true, List.getD_eq_getElem?_getD,
+      simp only [hj, ite_false, List.mem_cons, true_or, ite_true, List.getD_eq_getElem?_getD,
         List.getElem?_set_self hi', Option.getD_some]
     · simp only [List.getD_eq_getElem?_getD, List.getElem?_set_ne (Ne.symm hij), List.mem_cons,
         hij, false_or]

@@ -539,10 +539,10 @@ private theorem on_block_of_selectors
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedRealizedJustifiedOrigins cfg ext S store' := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_left hknown] at hh
     cases hh
     exact h
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
     let added : Store Root :=
@@ -680,7 +680,7 @@ theorem acceptedBlockTransition
       Classical.byContradiction hfresh
     have hsame : t.postStore = t.atPrefix.store cfg ext := by
       exact (Option.some.inj (by
-        simpa only [on_block, if_pos hknown] using t.accepted)).symm
+        simpa only [on_block, ite_eq_left hknown] using t.accepted)).symm
     rw [hsame]
     exact h
 
@@ -788,7 +788,7 @@ private theorem realizedJustifiedOrigins_after_execution_tick
         AcceptedOldGURealized.current_slot_at_next_boundary
           (cfg := cfg) hT.whole_seconds store
     have hnonfuture : BlocksSlotLe (get_current_slot cfg store) store := by
-      simpa only [store] using
+      simpa only [store, BlocksSlotLe] using
         E.store_blocks_slot_le_current cfg ext hT.whole_seconds
           ⟨ast, ablk, hgen, hgenSlot⟩ w n
     have hstepped : AcceptedRealizedJustifiedOrigins cfg ext S stepped :=

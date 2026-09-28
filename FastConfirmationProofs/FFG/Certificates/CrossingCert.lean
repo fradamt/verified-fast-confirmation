@@ -489,7 +489,7 @@ theorem crossing_fullSpan_adversarial_guard (hbb : ByzantineWeightPremises cfg E
     exact E.weight_span_le_estimate cfg hbb htab _ _ hsaH hesH
   · have hguard := qV_le_get_adversarial_add_eqV (cfg := cfg) (ext := ext)
       (store := store) (bs := bs) (b := b)
-    simpa only [if_pos hcross] using hguard
+    simpa only [ite_eq_left hcross] using hguard
 
 /-! ## 4. Assemble the full-span endpoint certificate -/
 

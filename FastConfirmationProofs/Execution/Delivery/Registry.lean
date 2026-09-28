@@ -148,8 +148,7 @@ theorem update_latest_messages_registryConstant {reg : List Validator}
   simp only [update_latest_messages]
   refine registryConstant_foldl (fun s i hs => ?_) _ store h
   refine hs.of_eq ?_ ?_ ?_ ?_ <;>
-    · dsimp only
-      rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> rfl
+    · rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> rfl
 
 /-! ## `RegistryConstant` preservation by `store_target_checkpoint_state`
 
@@ -256,7 +255,7 @@ theorem on_block_registryConstant {reg : List Validator}
   · have hpar : signed_block.message.parent_root ∈ store.block_roots := by
       by_contra habsent
       simp [on_block, hknown, habsent] at hh
-    simp only [on_block, if_neg hknown] at hh
+    simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition
@@ -508,8 +507,7 @@ theorem update_latest_messages_stateSlotsLE {SL : Slot} (store : Store Root)
   simp only [update_latest_messages]
   refine stateSlotsLE_foldl (fun s i hs => ?_) _ store h
   refine hs.of_eq ?_ ?_ ?_ ?_ <;>
-    · dsimp only
-      rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> rfl
+    · rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> rfl
 
 omit [Inhabited Root] in
 /-- Caching a known checkpoint target preserves the state-slot bound when the
@@ -608,7 +606,7 @@ theorem on_block_stateSlotsLE {SL : Slot}
   · have hslot : signed_block.message.slot ≤ get_current_slot cfg store := by
       by_contra hfuture
       simp [on_block, hknown, hfuture] at hh
-    simp only [on_block, if_neg hknown] at hh
+    simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition
@@ -864,7 +862,7 @@ theorem Execution.checkpoint_states_total_active_balance (E : Execution Root)
     rfl
   · intro i
     rw [hrc]
-    simpa only [get_current_epoch] using
+    simpa only [get_current_epoch, Execution.registry] using
       hsv.activity_constant_of_slot_le (cfg := cfg) hslot hanchorN hn.2.2 hn.2.2
 
 /-! ## Derived: post-floor estimate domination -/

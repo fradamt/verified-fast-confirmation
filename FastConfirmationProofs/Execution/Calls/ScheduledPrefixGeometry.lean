@@ -330,11 +330,13 @@ theorem ScheduledEventPrefix.currentTargetKnown_and_blockEpoch_le
   have hspec := get_ancestor_spec
     (p.parentSlotLt cfg ext E hT) hwalk
   have htargetKnown : target.root ∈ store.block_roots := by
-    simpa only [target, head, get_current_target, get_checkpoint_for_block]
+    simpa only [target, head, store, get_current_target, get_checkpoint_for_block,
+        get_checkpoint_block]
       using hspec.1
   have htargetSlotLe : (store.blocks target.root).slot ≤
       compute_start_slot_at_epoch cfg target.epoch := by
-    simpa only [target, head, get_current_target, get_checkpoint_for_block]
+    simpa only [target, head, store, get_current_target, get_checkpoint_for_block,
+        get_checkpoint_block]
       using hspec.2
   refine ⟨htargetKnown, ?_⟩
   have hepoch := ce_mono cfg htargetSlotLe
@@ -459,7 +461,8 @@ theorem ScheduledEventPrefix.currentTarget_anchor_epoch_lt_of_ne
       (p.parentSlotLt cfg ext E hT) hwalk
     have htargetSlotLe : (store.blocks target.root).slot ≤
         compute_start_slot_at_epoch cfg target.epoch := by
-      simpa only [target, head, get_current_target, get_checkpoint_for_block]
+      simpa only [target, head, store, get_current_target, get_checkpoint_for_block,
+        get_checkpoint_block]
         using hspec.2
     have hanchorLeTarget : ablk.message.slot ≤
         (store.blocks target.root).slot :=

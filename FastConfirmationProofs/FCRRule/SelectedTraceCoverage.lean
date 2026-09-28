@@ -94,16 +94,16 @@ theorem prevEpochLoopTrace_parentTrace
       intro acc hmem hchain hhead hacc
       simp only [prevEpochLoopTrace]
       by_cases hEpoch : get_block_epoch cfg fcrStore.store b = currentEpoch
-      · rw [if_pos hEpoch]
+      · rw [ite_eq_left hEpoch]
         exact .nil hacc
-      · rw [if_neg hEpoch]
+      · rw [ite_eq_right hEpoch]
         by_cases hAncestor : is_ancestor fcrStore.store
             (get_node_for_root fcrStore.previous_slot_head)
             (get_node_for_root b) = true
-        · rw [if_neg (not_not_intro hAncestor)]
+        · rw [ite_eq_right (not_not_intro hAncestor)]
           by_cases hConfirmed : is_one_confirmed cfg ext fcrStore.store
               (get_current_balance_source fcrStore) b = true
-          · rw [if_neg (not_not_intro hConfirmed)]
+          · rw [ite_eq_right (not_not_intro hConfirmed)]
             apply SelectedParentTrace.cons hacc
               (hmem b List.mem_cons_self) (hhead b rfl)
             exact ih b
@@ -112,9 +112,9 @@ theorem prevEpochLoopTrace_parentTrace
               (fun x hx => (List.isChain_cons.mp hchain).1 x
                 (Option.mem_def.mpr hx))
               (hmem b List.mem_cons_self)
-          · rw [if_pos hConfirmed]
+          · rw [ite_eq_left hConfirmed]
             exact .nil hacc
-        · rw [if_pos hAncestor]
+        · rw [ite_eq_left hAncestor]
           exact .nil hacc
 
 theorem tentativeLoopTrace_parentTrace
@@ -140,12 +140,12 @@ theorem tentativeLoopTrace_parentTrace
       by_cases hGate : get_block_epoch cfg fcrStore.store b >
           get_block_epoch cfg fcrStore.store acc ∧
           ¬ will_current_target_be_justified cfg ext fcrStore.store
-      · rw [if_pos hGate]
+      · rw [ite_eq_left hGate]
         exact .nil hacc
-      · rw [if_neg hGate]
+      · rw [ite_eq_right hGate]
         by_cases hConfirmed : is_one_confirmed cfg ext fcrStore.store
             (get_current_balance_source fcrStore) b = true
-        · rw [if_neg (not_not_intro hConfirmed)]
+        · rw [ite_eq_right (not_not_intro hConfirmed)]
           apply SelectedParentTrace.cons hacc
             (hmem b List.mem_cons_self) (hhead b rfl)
           exact ih b
@@ -154,7 +154,7 @@ theorem tentativeLoopTrace_parentTrace
             (fun x hx => (List.isChain_cons.mp hchain).1 x
               (Option.mem_def.mpr hx))
             (hmem b List.mem_cons_self)
-        · rw [if_pos hConfirmed]
+        · rw [ite_eq_left hConfirmed]
           exact .nil hacc
 
 theorem prevEpochCanonicalTrace_parentTrace
@@ -247,8 +247,8 @@ theorem findLatestSelectedTrace_parentTrace
   have hp : SelectedParentTrace store latestConfirmedRoot
       previousRoot previousEdges := by
     by_cases hpg : pGuard
-    · simpa only [previousRoot, previousEdges, if_pos hpg] using hpExec
-    · simpa only [previousRoot, previousEdges, if_neg hpg] using
+    · simpa only [previousRoot, previousEdges, ite_eq_left hpg] using hpExec
+    · simpa only [previousRoot, previousEdges, ite_eq_right hpg] using
         (SelectedParentTrace.nil hlcr)
   let tRoots := get_ancestor_roots store head previousRoot
   let tExec := find_latest_confirmed_descendant_tentative_loop cfg ext

@@ -384,14 +384,14 @@ theorem witness_vote_some_iff {v : ValidatorIndex} {s : Slot} {n : ℕ}
       s < 16 ∧ v = s % 4 ∧ n = 12 * s + 3 ∧ a = vote s := by
   change (if s < 16 ∧ v = s % 4 then some (12 * s + 3, vote s) else none) = some (n, a) ↔ _
   by_cases h : s < 16 ∧ v = s % 4
-  · rw [if_pos h]
+  · rw [ite_eq_left h]
     constructor
     · intro heq
       have hp : (12 * s + 3, vote s) = (n, a) := Option.some.inj heq
       exact ⟨h.1, h.2, (congrArg Prod.fst hp).symm, (congrArg Prod.snd hp).symm⟩
     · rintro ⟨_, _, rfl, rfl⟩
       rfl
-  · rw [if_neg h]
+  · rw [ite_eq_right h]
     constructor
     · intro himpossible
       contradiction

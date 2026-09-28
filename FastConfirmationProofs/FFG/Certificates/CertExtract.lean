@@ -188,22 +188,22 @@ theorem prev_epoch_loop_between (fcr_store : FastConfirmationStore Root) (ce : E
     intro acc hmem hchain hhead hacc
     rw [prev_loop_cons]
     by_cases hg1 : get_block_epoch cfg fcr_store.store b = ce
-    · rw [if_pos hg1]; exact hacc
-    · rw [if_neg hg1]
+    · rw [ite_eq_left hg1]; exact hacc
+    · rw [ite_eq_right hg1]
       by_cases hg2 : is_ancestor fcr_store.store (get_node_for_root fcr_store.previous_slot_head)
           (get_node_for_root b) = true
-      · rw [if_neg (not_not_intro hg2)]
+      · rw [ite_eq_right (not_not_intro hg2)]
         by_cases hg3 : is_one_confirmed cfg ext fcr_store.store
             (get_current_balance_source fcr_store) b = true
-        · rw [if_neg (not_not_intro hg3)]
+        · rw [ite_eq_right (not_not_intro hg3)]
           have hb_mem : b ∈ fcr_store.store.block_roots := hmem b List.mem_cons_self
           have hb_par : (fcr_store.store.blocks b).parent_root = acc := hhead b rfl
           exact ih b (fun x hx => hmem x (List.mem_cons_of_mem _ hx))
             (List.isChain_cons.mp hchain).2
             (fun x hx => (List.isChain_cons.mp hchain).1 x (Option.mem_def.mpr hx))
             (pstr_advance cfg ext fcr_store hwf hwalk lcr hlcr hb_mem hb_par hg3 hacc)
-        · rw [if_pos hg3]; exact hacc
-      · rw [if_pos hg2]; exact hacc
+        · rw [ite_eq_left hg3]; exact hacc
+      · rw [ite_eq_left hg2]; exact hacc
 
 /-- **Tentative loop preserves `Pstr`** (task 1, second loop). Identical structure to
 `prev_epoch_loop_between`; the extra `will_current_target_be_justified` gate only *blocks* an
@@ -232,18 +232,18 @@ theorem tentative_loop_between (fcr_store : FastConfirmationStore Root)
     rw [tent_loop_cons]
     by_cases hg1 : get_block_epoch cfg fcr_store.store b > get_block_epoch cfg fcr_store.store acc ∧
         ¬ will_current_target_be_justified cfg ext fcr_store.store
-    · rw [if_pos hg1]; exact hacc
-    · rw [if_neg hg1]
+    · rw [ite_eq_left hg1]; exact hacc
+    · rw [ite_eq_right hg1]
       by_cases hg3 : is_one_confirmed cfg ext fcr_store.store
           (get_current_balance_source fcr_store) b = true
-      · rw [if_neg (not_not_intro hg3)]
+      · rw [ite_eq_right (not_not_intro hg3)]
         have hb_mem : b ∈ fcr_store.store.block_roots := hmem b List.mem_cons_self
         have hb_par : (fcr_store.store.blocks b).parent_root = acc := hhead b rfl
         exact ih b (fun x hx => hmem x (List.mem_cons_of_mem _ hx))
           (List.isChain_cons.mp hchain).2
           (fun x hx => (List.isChain_cons.mp hchain).1 x (Option.mem_def.mpr hx))
           (pstr_advance cfg ext fcr_store hwf hwalk lcr hlcr hb_mem hb_par hg3 hacc)
-      · rw [if_pos hg3]; exact hacc
+      · rw [ite_eq_left hg3]; exact hacc
 
 /-! ## Section 2 — composition + the fcrStoreAtCall reconciliation (tasks 2+3) -/
 

@@ -95,7 +95,7 @@ theorem update_latest_messages_sameCkpt (store : Store Root)
     SameCkpt store (update_latest_messages store attesting_indices attestation) := by
   simp only [update_latest_messages]
   refine SameCkpt.foldl (fun s i => ?_) _ store
-  dsimp only; split_ifs <;> exact ⟨rfl, rfl⟩
+  split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-- `update_checkpoints` keeps both tracked epochs `≤ CE(SL)` when the adopted
 justified checkpoint is itself within the bound: the justified epoch becomes the
@@ -306,7 +306,7 @@ theorem on_block_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root)
     have hparent : sb.message.parent_root ∈ store.block_roots := by
       by_contra hp
       simp [on_block, hknown, hp] at hh
-    simp only [on_block, if_neg hknown] at hh
+    simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
@@ -356,7 +356,7 @@ theorem on_block_keyedStatesSane (cfg : Config) (ext : BeaconFunctionInterface R
   · have hparent : sb.message.parent_root ∈ store.block_roots := by
       by_contra hp
       simp [on_block, hknown, hp] at hh
-    simp only [on_block, if_neg hknown] at hh
+    simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
@@ -538,7 +538,8 @@ theorem Execution.store_CkptEpochLe_keyedStatesSane (E : Execution Root) (cfg : 
     · intro r hr
       simp only [get_forkchoice_store, List.mem_singleton] at hr
       subst r
-      simpa only [get_forkchoice_store, Function.update_self] using hanchor
+      simpa only [get_forkchoice_store, Function.update_self,
+        CheckpointEpochsSane, get_current_epoch] using hanchor
   | succ n ih =>
     change CkptEpochLe cfg (E.slot_at cfg (n + 1))
         ((E.schedule v (n + 1)).foldl

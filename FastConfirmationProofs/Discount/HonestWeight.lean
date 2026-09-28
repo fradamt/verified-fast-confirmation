@@ -130,10 +130,10 @@ theorem on_block_equiv {store store' : Store Root} {sb : SignedBeaconBlock Root}
     (h : on_block cfg ext store sb = some store') :
     store'.equivocating_indices = store.equivocating_indices := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [on_block, if_pos hknown] at h
+  · simp only [on_block, ite_eq_left hknown] at h
     cases h
     rfl
-  · simp only [on_block, if_neg hknown] at h
+  · simp only [on_block, ite_eq_right hknown] at h
     split_ifs at h <;> try cases h
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at h; cases h

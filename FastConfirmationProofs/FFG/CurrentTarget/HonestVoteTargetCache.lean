@@ -168,10 +168,10 @@ theorem on_block_checkpointKeysLE {store store' : Store Root}
     (h : on_block cfg ext store block = some store') :
     CheckpointKeysLE store store' := by
   by_cases hknown : block.root ∈ store.block_roots
-  · simp only [on_block, if_pos hknown] at h
+  · simp only [on_block, ite_eq_left hknown] at h
     cases h
     exact CheckpointKeysLE.refl _
-  · simp only [on_block, if_neg hknown] at h
+  · simp only [on_block, ite_eq_right hknown] at h
     split_ifs at h <;> try cases h
     cases htransition :
         ext.state_transition (store.block_states block.message.parent_root) block with
@@ -446,7 +446,9 @@ theorem honestVoteTarget_received_at_delivery
       hv hw hHn hdeadline (by simpa only [hn] using hHdeliver)
       (by simpa only [hn] using hnBeforeDelivery)
       (by simpa only [hn, hdeliveryEq] using hscheduleEq)
-    simpa only [hn, hdeliveryEq, ticked] using h
+    have hroot : a.data.beacon_block_root =
+        (get_head cfg (E.store cfg ext v n)).root := rfl
+    simpa only [hn, hdeliveryEq, ticked, Nat.add_sub_cancel, hroot] using h
   have htickedProvenance : BlockProvenance E ticked := by
     rw [hticked]
     exact on_tick_blockProvenance cfg
@@ -551,8 +553,8 @@ theorem honestVoteTarget_received_at_delivery
         (fun store event => (apply_event cfg ext store event).getD store)
         ticked) a false = some applied := by
     simp only [on_attestation]
-    rw [if_neg (not_not_intro hvalidates),
-      if_neg (not_not_intro hindexedValid)]
+    rw [ite_eq_right (not_not_intro hvalidates),
+      ite_eq_right (not_not_intro hindexedValid)]
   have htargetApplied : a.data.target ∈ applied.checkpoint_state_keys :=
     on_attestation_target_cached cfg ext happlied
   have htargetEnd : a.data.target ∈

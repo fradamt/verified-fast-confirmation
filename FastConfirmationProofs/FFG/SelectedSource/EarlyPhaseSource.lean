@@ -91,12 +91,12 @@ theorem fcr_currentSlotHead_known
           get_current_slot cfg (E.store cfg ext v n)
       · have hhead := E.head_root_known_of_selectedMarginDomain cfg ext
           hdom hv (n + 1) hH
-        simp only [Execution.fcr, hcall, if_true, on_fast_confirmation,
+        simp only [Execution.fcr, hcall, ite_true, on_fast_confirmation,
           update_fast_confirmation_variables]
         split_ifs <;> exact hhead
       · have hcarry :=
           (E.store_storeLE cfg ext v (Nat.le_succ n)).1 hknownN
-        simpa only [Execution.fcr, hcall, if_false] using hcarry
+        simpa only [Execution.fcr, hcall, ite_false] using hcarry
 
 /-- The current-slot head cache was read from an honest store in its current
 slot by the attestation deadline. A call refreshes it at the new slot's first
@@ -135,7 +135,7 @@ theorem fcr_currentSlotHead_deadline_origin
         refine ⟨n + 1, Nat.le_refl _, rfl, ?_, ?_⟩
         · rw [hstart]
           omega
-        · simp only [Execution.fcr, hcall, if_true,
+        · simp only [Execution.fcr, hcall, ite_true,
             on_fast_confirmation, update_fast_confirmation_variables]
           split_ifs <;> exact hhead
       · obtain ⟨origin, horigin, hslot, hdeadline, hroot⟩ := ih hnH
@@ -146,7 +146,7 @@ theorem fcr_currentSlotHead_deadline_origin
           exact Nat.le_antisymm hnot (E.slot_at_mono cfg (Nat.le_succ n))
         refine ⟨origin, horigin.trans (Nat.le_succ n),
           hslot.trans hslotEq.symm, hdeadline, ?_⟩
-        simpa only [Execution.fcr, hcall, if_false] using hroot
+        simpa only [Execution.fcr, hcall, ite_false] using hroot
 
 /-- Immediately before an executable `fcrStoreAtCall`, its previous-slot-head cache
 is the preceding recurrence's known current-slot head, hence is known in the
@@ -397,7 +397,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hn1H
   have hqueryParent : ParentSlotLt (E.fcrStoreAtCall cfg ext v n).store := by
-    simpa only [E.fcrStep_store] using hparentN1
+    simpa only [E.fcrStep_store, ParentSlotLt] using hparentN1
   have hqueryProvenance : BlockProvenance E
       (E.fcrStoreAtCall cfg ext v n).store := by
     simpa only [E.fcrStep_store] using E.blockProvenance cfg ext v (n + 1)
@@ -637,7 +637,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hn1H
   have hqueryParent : ParentSlotLt (E.fcrStoreAtCall cfg ext v n).store := by
-    simpa only [E.fcrStep_store] using hparentN1
+    simpa only [E.fcrStep_store, ParentSlotLt] using hparentN1
   have hqueryWalk : ∀ t ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
       ∀ r ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
         WalkKnown (E.fcrStoreAtCall cfg ext v n).store
@@ -701,7 +701,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
   have hqueryNonfuture : BlocksSlotLe
       (get_current_slot cfg (E.fcrStoreAtCall cfg ext v n).store)
       (E.fcrStoreAtCall cfg ext v n).store := by
-    simpa only [E.fcrStep_store] using
+    simpa only [E.fcrStep_store, BlocksSlotLe] using
       E.store_blocks_slot_le_current cfg ext hT.whole_seconds
         ⟨ast, ablk, hgen, hgenSlot⟩ v (n + 1)
   exact E.recentSourceSeedAt_endpointNext_of_lemma13 cfg ext B
@@ -732,7 +732,7 @@ theorem StrictSelectedResultMechanicalFacts.not_epochStart_of_current_of_selecte
   apply h.not_epochStart_of_current cfg ext
     (q := q)
     (by rw [hquery, E.store_current_slot cfg ext v q])
-    (by simpa only [hquery] using hparentQ)
+    (by simpa only [hquery, ParentSlotLt] using hparentQ)
     (by simpa only [hquery] using hwalkQ)
     (h.confirmedPastDescendantSlotWitness cfg ext hA hv hqH hquery)
     hcurrent

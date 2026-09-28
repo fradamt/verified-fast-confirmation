@@ -34,11 +34,11 @@ private theorem covered_roots_isSome_of_ancestor {store : Store Root}
       cases fuel with
       | zero => exact absurd hfuel (Nat.not_lt_zero _)
       | succ f =>
-          rw [get_ancestor_roots_aux_succ, if_pos hgt]
+          rw [get_ancestor_roots_aux_succ, ite_eq_left hgt]
           by_cases hD : (store.blocks r).parent_root = t
-          · rw [if_pos hD]
+          · rw [ite_eq_left hD]
             exact Or.inl rfl
-          · rw [if_neg hD]
+          · rw [ite_eq_right hD]
             have hbound : (store.blocks (store.blocks r).parent_root).slot < f :=
               Nat.lt_of_lt_of_le (hwf r hr hp.root_mem)
                 (Nat.lt_succ_iff.mp hfuel)

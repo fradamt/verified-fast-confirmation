@@ -125,7 +125,7 @@ theorem get_ancestor_eq_of_root_eq_of_lt {store : Store Root}
       change ar = br at hab
       subst br
       simp only [get_ancestor, get_ancestor_aux]
-      rw [if_pos hlt, if_pos hlt]
+      rw [ite_eq_left hlt, ite_eq_left hlt]
 
 /-- Fuel independence for arbitrary starting status on the known walk domain. -/
 theorem get_ancestor_aux_fuel_eq_status {store : Store Root}
@@ -147,7 +147,7 @@ theorem get_ancestor_aux_fuel_eq_status {store : Store Root}
       | zero => exact absurd hf' (Nat.not_lt_zero _)
       | succ f' =>
         simp only [get_ancestor_aux]
-        rw [if_neg (Nat.not_lt.mpr hle), if_neg (Nat.not_lt.mpr hle)]
+        rw [ite_eq_right (Nat.not_lt.mpr hle), ite_eq_right (Nat.not_lt.mpr hle)]
   | step hr hgt hp ih =>
     intro status fuel fuel' hf hf'
     cases fuel with
@@ -157,7 +157,7 @@ theorem get_ancestor_aux_fuel_eq_status {store : Store Root}
       | zero => exact absurd hf' (Nat.not_lt_zero _)
       | succ f' =>
         simp only [get_ancestor_aux]
-        rw [if_pos hgt, if_pos hgt]
+        rw [ite_eq_left hgt, ite_eq_left hgt]
         have hparent_lt := hwf _ hr hp.root_mem
         exact ih _ f f'
           (Nat.lt_of_lt_of_le hparent_lt (Nat.lt_succ_iff.mp hf))
@@ -168,7 +168,7 @@ theorem get_ancestor_aux_fuel_eq_status {store : Store Root}
 theorem get_ancestor_stop_status {store : Store Root} {slot : Slot}
     {node : ForkChoiceNode Root} (hle : (store.blocks node.root).slot ≤ slot) :
     get_ancestor store node slot = node := by
-  rw [get_ancestor, get_ancestor_aux, if_neg (Nat.not_lt.mpr hle)]
+  rw [get_ancestor, get_ancestor_aux, ite_eq_right (Nat.not_lt.mpr hle)]
 
 /-- Pending-node stop equation. -/
 theorem get_ancestor_stop {store : Store Root} {slot : Slot} {r : Root}
@@ -189,7 +189,7 @@ theorem get_ancestor_step_status {store : Store Root}
       get_ancestor store
         (ForkChoiceNode.mk (store.blocks node.root).parent_root
           (get_parent_payload_status store (store.blocks node.root))) slot := by
-  rw [get_ancestor, get_ancestor_aux, if_pos hgt]
+  rw [get_ancestor, get_ancestor_aux, ite_eq_left hgt]
   rw [get_ancestor]
   exact get_ancestor_aux_fuel_eq_status hwf hp _ _ _ (hwf _ hr hp.root_mem)
     (Nat.lt_succ_self _)

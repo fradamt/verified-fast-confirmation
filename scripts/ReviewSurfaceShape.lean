@@ -323,10 +323,12 @@ run_cmd do
   | some (.defnInfo info) =>
       fingerprint := hash (fingerprint, info.value)
   | _ => throwError "missing claim definition"
-  unless fingerprint == (13571509296887298206 : UInt64) do
+  -- Lean/Mathlib v4.34.1 changes do elaboration, Nat power instances, and
+  -- generated Finset subset binders. The authored statements are unchanged.
+  unless fingerprint == (12851116979866898367 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
   let witnessHash ← ofExcept <| witnessFingerprint env publicWitnesses
-  unless witnessHash == (6428288024400322397 : UInt64) do
+  unless witnessHash == (702427541233167940 : UInt64) do
     throwError "public witness statement or definition closure changed: {witnessHash}"
   IO.println s!"public witness statements and definition closure passed ({witnessHash})"
   IO.println s!"review surface types passed ({fingerprint})"

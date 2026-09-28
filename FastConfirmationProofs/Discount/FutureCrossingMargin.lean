@@ -217,7 +217,7 @@ theorem intraEpoch_adversarial_guard (hbb : ByzantineWeightPremises cfg E)
     exact E.weight_span_le_estimate cfg hbb htab _ _ hmidH hesH
   · have hguard := qV_le_get_adversarial_add_eqV (cfg := cfg) (ext := ext)
       (store := store) (bs := bs) (b := b)
-    simpa only [if_neg hnot] using hguard
+    simpa only [ite_eq_right hnot] using hguard
 
 /-- A concrete intra-edge/future-crossing endpoint inequality.
 

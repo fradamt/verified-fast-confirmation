@@ -106,10 +106,18 @@ theorem ScheduledPrefixStore.getVotingSource_reads_acceptedSelector
       else B.state.realized_justified r) := by
   have hprojection :=
     Execution.ScheduledFFGInterpretation.causalStoreProjection B hstore
-  simp only [get_voting_source, get_block_epoch]
-  split_ifs
-  · exact hprojection.unrealized_justification r hr
-  · exact hprojection.block_state_gj r hr
+  change CheckpointReadsAs
+    (if get_current_store_epoch cfg store > compute_epoch_at_slot cfg (store.blocks r).slot
+      then store.unrealized_justifications r
+      else (store.block_states r).current_justified_checkpoint)
+    (if get_current_store_epoch cfg store > compute_epoch_at_slot cfg (store.blocks r).slot
+      then B.state.unrealized_justified r else B.state.realized_justified r)
+  by_cases hphase : get_current_store_epoch cfg store >
+      compute_epoch_at_slot cfg (store.blocks r).slot
+  · simpa only [ite_eq_left hphase] using
+      hprojection.unrealized_justification r hr
+  · simpa only [ite_eq_right hphase] using
+      hprojection.block_state_gj r hr
 
 /-- Epoch form of `getVotingSource_reads_acceptedSelector`. -/
 theorem ScheduledPrefixStore.getVotingSource_epoch_eq_acceptedSelector
@@ -205,12 +213,12 @@ theorem acceptedVotingSource_epoch_le_of_currentEpoch_le
         get_block_epoch cfg endpoint r := by
       rw [← hblockEpoch]
       exact hqOld.trans_le hclock
-    rw [if_pos hqOld, if_pos hmOld]
+    rw [ite_eq_left hqOld, ite_eq_left hmOld]
   · by_cases hmOld : get_current_store_epoch cfg endpoint >
         get_block_epoch cfg endpoint r
-    · rw [if_neg hqOld, if_pos hmOld]
+    · rw [ite_eq_right hqOld, ite_eq_left hmOld]
       exact B.state.gj_epoch_le_gu cfg ext haccepted
-    · rw [if_neg hqOld, if_neg hmOld]
+    · rw [ite_eq_right hqOld, ite_eq_right hmOld]
 
 /-- Complete accepted voting-source epoch persistence in one causal store.
 All required path/domain facts are explicit operational geometry; there is no
@@ -249,13 +257,13 @@ theorem acceptedVotingSourceEpochChainPersistence
     hstore.getVotingSource_epoch_eq_acceptedSelector cfg ext B htip]
   by_cases hseedOld : get_current_store_epoch cfg store >
       get_block_epoch cfg store seed
-  · rw [if_pos hseedOld]
+  · rw [ite_eq_left hseedOld]
     by_cases htipOld : get_current_store_epoch cfg store >
         get_block_epoch cfg store tip
-    · rw [if_pos htipOld]
+    · rw [ite_eq_left htipOld]
       exact B.state.gu_epoch_le_of_descends cfg ext hseedAt.acceptedRoot
         htipAt.acceptedRoot hsemantic
-    · rw [if_neg htipOld]
+    · rw [ite_eq_right htipOld]
       have htipCurrent : get_block_epoch cfg store tip =
           get_current_store_epoch cfg store :=
         Nat.le_antisymm htipEpochCurrent (Nat.le_of_not_gt htipOld)
@@ -265,15 +273,15 @@ theorem acceptedVotingSourceEpochChainPersistence
         exact hseedOld
       exact B.state.gu_epoch_le_gj_of_descends cfg ext
         hseedAt htipAt hsemantic hseedBeforeTip
-  · rw [if_neg hseedOld]
+  · rw [ite_eq_right hseedOld]
     by_cases htipOld : get_current_store_epoch cfg store >
         get_block_epoch cfg store tip
-    · rw [if_pos htipOld]
+    · rw [ite_eq_left htipOld]
       have hcurrentSeed : get_current_store_epoch cfg store ≤
           get_block_epoch cfg store seed := Nat.le_of_not_gt hseedOld
       exact False.elim ((Nat.not_lt_of_ge
         (hcurrentSeed.trans hepochLe)) htipOld)
-    · rw [if_neg htipOld]
+    · rw [ite_eq_right htipOld]
       exact B.state.gj_epoch_le_of_descends cfg ext hseedAt htipAt
         hsemantic hepochLe
 

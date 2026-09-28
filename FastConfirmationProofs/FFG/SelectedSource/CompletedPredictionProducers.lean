@@ -788,7 +788,7 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
   have hparent : ParentSlotLt query.store := by
     let hdomain := E.storeDomainK_of_acceptedGlobalTrajectory cfg ext B hT
       hanchor hboundary
-    simpa only [hqueryStore] using (hdomain v hv (n + 1) hHn1).1
+    simpa only [hqueryStore, ParentSlotLt] using (hdomain v hv (n + 1) hHn1).1
   have hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by

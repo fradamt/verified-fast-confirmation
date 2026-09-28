@@ -659,7 +659,7 @@ theorem historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     hdomain v hv (n + 1) hHn1
   have hparent : ParentSlotLt (E.fcrStoreAtCall cfg ext v n).store := by
-    simpa only [E.fcrStep_store] using hparentN1
+    simpa only [E.fcrStep_store, ParentSlotLt] using hparentN1
   have hwalk : ∀ t ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
       ∀ r ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
         WalkKnown (E.fcrStoreAtCall cfg ext v n).store
@@ -861,7 +861,7 @@ noncomputable def
         (compute_start_slot_at_epoch cfg target.epoch)).root = target.root := by
     have hroot := congrArg Checkpoint.root htargetCheckpoint
     simpa only [target, get_checkpoint_for_block, get_checkpoint_block,
-      hresultCurrent] using hroot.symm
+      hresultCurrent, get_current_target] using hroot.symm
   have hcarrierEpoch : get_block_epoch cfg query.store trace.result =
       target.epoch := by
     exact hresultCurrent

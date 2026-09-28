@@ -244,7 +244,7 @@ theorem confirmed_honestPastHeadBelow
   have hsemantic : E.RootDescends
       (get_head cfg (E.store cfg ext i nu)).root candidate :=
     E.rootDescends_of_store_ancestor (E.blockProvenance cfg ext v q)
-      (by simpa only [hquery] using hparentQ)
+      (by simpa only [hquery, ParentSlotLt] using hparentQ)
       (by
         have hw := hwalkQ candidate
           (by simpa only [hquery] using hcandidate)
@@ -617,7 +617,7 @@ theorem AcceptedCurrentCandidateSourceOriginAt.toLemma22AtNextBoundary
         (B.state.unrealized_justified h.seed).epoch := by
     rw [(E.store_causal cfg ext v (n + 1)
       ).getVotingSource_epoch_eq_acceptedSelector cfg ext B hseedBoundary,
-      if_pos hseedOld]
+      ite_eq_left hseedOld]
   have hstrictlyBefore : h.originSecond <
       E.slot_start cfg (compute_start_slot_at_epoch cfg e) := by
     rw [hboundarySecond]
@@ -901,7 +901,7 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
           (B.state.unrealized_justified c.root).epoch := by
       rw [(E.store_causal cfg ext v (n + 1)
         ).getVotingSource_epoch_eq_acceptedSelector cfg ext B
-          hrealBoundary.root_known, if_pos hcRootOld]
+          hrealBoundary.root_known, ite_eq_left hcRootOld]
     exact ⟨{
       validator := v
       second := hi.originSecond
@@ -1008,7 +1008,7 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
         (E.store cfg ext v (n + 1)) tip).epoch = c.epoch := by
       rw [(E.store_causal cfg ext v (n + 1)
         ).getVotingSource_epoch_eq_acceptedSelector cfg ext B htipBoundary,
-        if_pos htipOld, hcGU]
+        ite_eq_left htipOld, hcGU]
     exact ⟨{
       validator := v
       second := hi.originSecond
@@ -1643,7 +1643,7 @@ theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hHn1
   have hparent : ParentSlotLt query.store := by
-    simpa only [query, E.fcrStep_store] using hparentN1
+    simpa only [query, E.fcrStep_store, ParentSlotLt] using hparentN1
   have hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by
@@ -2028,7 +2028,7 @@ theorem AcceptedConfirmedSourceHistoryAt.confirmedKnown_succ_of_call
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hHn1
   have hparent : ParentSlotLt query.store := by
-    simpa only [query, E.fcrStep_store] using hparentN1
+    simpa only [query, E.fcrStep_store, ParentSlotLt] using hparentN1
   have hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by

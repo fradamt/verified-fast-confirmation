@@ -70,7 +70,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hHn1
   have hparentQ : ParentSlotLt query.store := by
-    simpa only [query, E.fcrStep_store] using hparent
+    simpa only [query, E.fcrStep_store, ParentSlotLt] using hparent
   have hwalkQ : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by
@@ -192,7 +192,7 @@ noncomputable def
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hHn1
   have hparent : ParentSlotLt query.store := by
-    simpa only [query, E.fcrStep_store] using hparentN1
+    simpa only [query, E.fcrStep_store, ParentSlotLt] using hparentN1
   have hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by
@@ -438,7 +438,7 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hHn1
   have hparent : ParentSlotLt query.store := by
-    simpa only [query, E.fcrStep_store] using hparentN1
+    simpa only [query, E.fcrStep_store, ParentSlotLt] using hparentN1
   have hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by

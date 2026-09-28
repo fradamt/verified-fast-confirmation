@@ -57,11 +57,11 @@ theorem old_window_latest_messages_agree
   have hleSD : get_latest_message_epoch cfg src ≤
       get_latest_message_epoch cfg dst := by
     have h := hmaxDst dst hdst aS.data.slot kS aS' hsSlot hvS
-    simpa only [hsrcEq] using h
+    simpa only [hsrcEq, get_latest_message_epoch] using h
   have hleDS : get_latest_message_epoch cfg dst ≤
       get_latest_message_epoch cfg src := by
     have h := hmaxSrc src hsrc aD.data.slot kD aD' hdSlot hvD
-    simpa only [hdstEq] using h
+    simpa only [hdstEq, get_latest_message_epoch] using h
   exact E.latest_message_eq_of_same_epoch cfg ext hhb hec hgen hi hsrc hdst
     (Nat.le_antisymm hleSD hleDS)
 

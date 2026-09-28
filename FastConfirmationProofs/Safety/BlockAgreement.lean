@@ -105,11 +105,9 @@ theorem update_latest_messages_blockProvenance {E : Execution Root} (store : Sto
   refine h.of_eq ?_ ?_
   · simp only [update_latest_messages]
     refine foldl_block_roots (fun s i => ?_) _ _
-    dsimp only
     rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> rfl
   · simp only [update_latest_messages]
     refine foldl_blocks (fun s i => ?_) _ _
-    dsimp only
     rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> rfl
 
 variable [LinearOrder Root] [Inhabited Root]
@@ -222,7 +220,7 @@ theorem on_block_blockProvenance {E : Execution Root} {store store' : Store Root
   · simp [on_block, hknown] at hh
     cases hh
     exact h
-  · simp only [on_block, if_neg hknown] at hh
+  · simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
@@ -392,16 +390,16 @@ theorem get_ancestor_aux_congr_status {s t : Store Root}
     | zero => rfl
     | succ f =>
       simp only [get_ancestor_aux]
-      rw [if_neg (by simpa using hle),
-        if_neg (by rw [← hagree r hr]; simpa using hle)]
+      rw [ite_eq_right (by simpa using hle),
+        ite_eq_right (by rw [← hagree r hr]; simpa using hle)]
   | @step r hr hgt hp ih =>
     intro status fuel
     cases fuel with
     | zero => rfl
     | succ f =>
       simp only [get_ancestor_aux]
-      rw [if_pos (by simpa using hgt),
-        if_pos (by rw [← hagree r hr]; simpa using hgt), ← hagree r hr]
+      rw [ite_eq_left (by simpa using hgt),
+        ite_eq_left (by rw [← hagree r hr]; simpa using hgt), ← hagree r hr]
       have hstatus : get_parent_payload_status s (s.blocks r) =
           get_parent_payload_status t (s.blocks r) := by
         simp only [get_parent_payload_status, ← hagree _ hp.root_mem]
@@ -478,14 +476,14 @@ theorem WalkCoveredBy.ancestor_root_mem {s t : Store Root}
       cases fuel with
       | zero => simpa only [get_ancestor_aux] using hrt
       | succ fuel =>
-          simp only [get_ancestor_aux, if_neg (Nat.not_lt.mpr hle)]
+          simp only [get_ancestor_aux, ite_eq_right (Nat.not_lt.mpr hle)]
           exact hrt
   | @step r _ hrt hgt hp ih =>
       intro fuel status
       cases fuel with
       | zero => simpa only [get_ancestor_aux] using hrt
       | succ fuel =>
-          simp only [get_ancestor_aux, if_pos hgt]
+          simp only [get_ancestor_aux, ite_eq_left hgt]
           exact ih fuel _
 
 omit [Inhabited Root] in
@@ -519,7 +517,7 @@ theorem get_ancestor_aux_congr_common_walk {s t : Store Root}
     | zero => rfl
     | succ f =>
       simp only [get_ancestor_aux]
-      rw [if_neg (by simpa using hle), if_neg (by rw [← hblock]; simpa using hle)]
+      rw [ite_eq_right (by simpa using hle), ite_eq_right (by rw [← hblock]; simpa using hle)]
   | @step r hr hgt hp ih =>
     intro status fuel
     have hblock := hagree r hr ht.root_mem
@@ -532,8 +530,8 @@ theorem get_ancestor_aux_congr_common_walk {s t : Store Root}
       | zero => rfl
       | succ f =>
         simp only [get_ancestor_aux]
-        rw [if_pos (by simpa using hgt),
-          if_pos (by rw [← hblock]; simpa using hgt), ← hblock]
+        rw [ite_eq_left (by simpa using hgt),
+          ite_eq_left (by rw [← hblock]; simpa using hgt), ← hblock]
         have hparentBlock :
             s.blocks (s.blocks r).parent_root =
               t.blocks (s.blocks r).parent_root := by

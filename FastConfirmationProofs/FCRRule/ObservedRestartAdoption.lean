@@ -269,7 +269,7 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
       simp only [get_block_epoch, get_current_store_epoch,
         E.store_current_slot, compute_epoch_at_slot]
       apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
-      simpa only [compute_start_slot_at_epoch] using htipSlotLtStart
+      simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using htipSlotLtStart
     have hendpoint : E.ScheduledPrefixStore cfg ext
         (E.store cfg ext w (n + 1)) :=
       E.store_causal cfg ext w (n + 1)

@@ -132,7 +132,7 @@ theorem on_block_exact {store store' : Store Root} {b : SignedBeaconBlock Root}
   · simp [on_block, hknown] at hh
     cases hh
     exact h
-  · simp only [on_block, if_neg hknown] at hh
+  · simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states b.message.parent_root) b with

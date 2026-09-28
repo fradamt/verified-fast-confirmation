@@ -84,17 +84,17 @@ theorem update_checkpoints (store : Store Root)
   constructor
   · rw [hfField, hjField]
     by_cases hj : justified.epoch > store.justified_checkpoint.epoch
-    · rw [if_pos hj]
+    · rw [ite_eq_left hj]
       by_cases hf : finalized.epoch > store.finalized_checkpoint.epoch
-      · rw [if_pos hf]
+      · rw [ite_eq_left hf]
         exact hpair
-      · rw [if_neg hf]
+      · rw [ite_eq_right hf]
         exact hold.trans (Nat.le_of_lt hj)
-    · rw [if_neg hj]
+    · rw [ite_eq_right hj]
       by_cases hf : finalized.epoch > store.finalized_checkpoint.epoch
-      · rw [if_pos hf]
+      · rw [ite_eq_left hf]
         exact hpair.trans (Nat.le_of_not_gt hj)
-      · rw [if_neg hf]
+      · rw [ite_eq_right hf]
         exact hold
   · simp only [FastConfirmation.Spec.update_checkpoints]
     split_ifs
@@ -131,19 +131,19 @@ theorem update_unrealized_checkpoints (store : Store Root)
   · rw [hfField, hjField]
     by_cases hj : justified.epoch >
         store.unrealized_justified_checkpoint.epoch
-    · rw [if_pos hj]
+    · rw [ite_eq_left hj]
       by_cases hf : finalized.epoch >
           store.unrealized_finalized_checkpoint.epoch
-      · rw [if_pos hf]
+      · rw [ite_eq_left hf]
         exact hpair
-      · rw [if_neg hf]
+      · rw [ite_eq_right hf]
         exact hold.trans (Nat.le_of_lt hj)
-    · rw [if_neg hj]
+    · rw [ite_eq_right hj]
       by_cases hf : finalized.epoch >
           store.unrealized_finalized_checkpoint.epoch
-      · rw [if_pos hf]
+      · rw [ite_eq_left hf]
         exact hpair.trans (Nat.le_of_not_gt hj)
-      · rw [if_neg hf]
+      · rw [ite_eq_right hf]
         exact hold
 
 omit [Inhabited Root] in
@@ -313,7 +313,7 @@ private theorem on_block_of_ordered_transition
   · simp [FastConfirmation.Spec.on_block, hknown] at hh
     cases hh
     exact h
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh
     all_goals try contradiction
     rw [hst] at hh
@@ -414,7 +414,7 @@ theorem on_block
   · simp [FastConfirmation.Spec.on_block, hknown] at hh
     cases hh
     exact h
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition

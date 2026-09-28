@@ -52,7 +52,7 @@ the returned root is the input accumulator `r₀`, or a block that **passed
 These results follow by recursion on `canonical_roots`. -/
 
 /-- Cons-case unfold of the prev-epoch loop (`rfl`; `let`s zeta-reduce). An
-explicit equation lemma so the inversion uses `by_cases` + `if_pos`/`if_neg`
+explicit equation lemma so the inversion uses `by_cases` + `ite_eq_left`/`ite_eq_right`
 rather than `split_ifs`, which would split both sides of the disjunctive goal. -/
 private theorem prev_epoch_loop_cons_eq (fcr_store : FastConfirmationStore Root)
     (ce : Epoch) (b : Root) (rest : List Root) (acc : Root) :
@@ -85,19 +85,19 @@ theorem prev_epoch_loop_spec (fcr_store : FastConfirmationStore Root)
     intro acc
     rw [prev_epoch_loop_cons_eq]
     by_cases h1 : get_block_epoch cfg fcr_store.store b = ce
-    · rw [if_pos h1]; exact Or.inl rfl
-    · rw [if_neg h1]
+    · rw [ite_eq_left h1]; exact Or.inl rfl
+    · rw [ite_eq_right h1]
       by_cases h2 : is_ancestor fcr_store.store (get_node_for_root fcr_store.previous_slot_head)
           (get_node_for_root b) = true
-      · rw [if_neg (not_not_intro h2)]
+      · rw [ite_eq_right (not_not_intro h2)]
         by_cases h3 : is_one_confirmed cfg ext fcr_store.store
             (get_current_balance_source fcr_store) b = true
-        · rw [if_neg (not_not_intro h3)]
+        · rw [ite_eq_right (not_not_intro h3)]
           rcases ih b with hacc | ⟨r, hr, heq, hrc⟩
           · exact Or.inr ⟨b, List.mem_cons_self, hacc, h3⟩
           · exact Or.inr ⟨r, List.mem_cons_of_mem _ hr, heq, hrc⟩
-        · rw [if_pos h3]; exact Or.inl rfl
-      · rw [if_pos h2]; exact Or.inl rfl
+        · rw [ite_eq_left h3]; exact Or.inl rfl
+      · rw [ite_eq_left h2]; exact Or.inl rfl
 
 /-- Cons-case unfold of the tentative loop (`rfl`; `let`s zeta-reduce). -/
 private theorem tentative_loop_cons_eq (fcr_store : FastConfirmationStore Root)
@@ -132,15 +132,15 @@ theorem tentative_loop_spec (fcr_store : FastConfirmationStore Root) :
     by_cases h1 : get_block_epoch cfg fcr_store.store b >
           get_block_epoch cfg fcr_store.store acc ∧
         ¬ will_current_target_be_justified cfg ext fcr_store.store
-    · rw [if_pos h1]; exact Or.inl rfl
-    · rw [if_neg h1]
+    · rw [ite_eq_left h1]; exact Or.inl rfl
+    · rw [ite_eq_right h1]
       by_cases h2 : is_one_confirmed cfg ext fcr_store.store
           (get_current_balance_source fcr_store) b = true
-      · rw [if_neg (not_not_intro h2)]
+      · rw [ite_eq_right (not_not_intro h2)]
         rcases ih b with hacc | ⟨r, hr, heq, hrc⟩
         · exact Or.inr ⟨b, List.mem_cons_self, hacc, h2⟩
         · exact Or.inr ⟨r, List.mem_cons_of_mem _ hr, heq, hrc⟩
-      · rw [if_pos h2]; exact Or.inl rfl
+      · rw [ite_eq_left h2]; exact Or.inl rfl
 
 
 
@@ -169,7 +169,7 @@ theorem confirmed_succ_of_no_advance (v : ValidatorIndex) (n : ℕ)
       get_current_slot cfg (E.store cfg ext v n)) :
     E.confirmed cfg ext v (n + 1) = E.confirmed cfg ext v n := by
   simp only [Execution.confirmed, Execution.fcr]
-  rw [if_neg h]
+  rw [ite_eq_right h]
 
 /-- At a slot update the confirmed root is `get_latest_confirmed` of `fcrStoreAtCall`. -/
 theorem confirmed_succ_of_advance (v : ValidatorIndex) (n : ℕ)
@@ -177,7 +177,7 @@ theorem confirmed_succ_of_advance (v : ValidatorIndex) (n : ℕ)
       get_current_slot cfg (E.store cfg ext v n)) :
     E.confirmed cfg ext v (n + 1) = get_latest_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n) := by
   simp only [Execution.confirmed, Execution.fcr]
-  rw [if_pos h]
+  rw [ite_eq_left h]
   rfl
 
 

@@ -240,7 +240,7 @@ theorem will_current_target_be_justified_honest_quorum_of_prefix
       E.current_target_score_eq_honest_add_nonhonest_weight cfg ext hstate hval
   have hbyz : E.weight observedNonhonest ≤ adversarial := by
     simpa only [observedNonhonest, adversarial, start, finish,
-      Execution.currentTargetObservedNonhonestSupporters] using
+      currentTargetEpochStart, Execution.currentTargetObservedNonhonestSupporters] using
       E.currentTarget_nonhonest_weight_le_adversarial_of_prefix cfg ext hbb
         hevidence hqH hval htab
   have hobserved : score - adversarial ≤
@@ -257,9 +257,9 @@ theorem will_current_target_be_justified_honest_quorum_of_prefix
       E.currentTarget_observed_future_disjoint cfg ext
         hec hevidence.operational.latest_message_provenance
   have hgateArithmetic := hgate
-  simp only [will_current_target_be_justified,
-    compute_honest_ffg_support_for_current_target, decide_eq_true_eq]
-      at hgateArithmetic
+  simp only [will_current_target_be_justified] at hgateArithmetic
+  have hgateArithmetic := of_decide_eq_true hgateArithmetic
+  simp only [compute_honest_ffg_support_for_current_target] at hgateArithmetic
   rw [← hstate, htab] at hgateArithmetic
   change 2 * E.total_active cfg ≤
     3 * (score - adversarial + remaining) at hgateArithmetic

@@ -65,12 +65,12 @@ def fixedSource_of_acceptedSameEpochSegment
     have hraw : CheckpointReadsAs (phase0HonestSourceAt cfg ext store
         (get_current_target cfg store).root (get_current_target cfg store).epoch)
         (B.state.realized_justified (get_current_target cfg store).root) := by
-      simp only [phase0HonestSourceAt, htargetEpoch, if_pos]
+      simp only [phase0HonestSourceAt, htargetEpoch, ite_eq_left]
       exact (Execution.ScheduledFFGInterpretation.causalStoreProjection B
         hstore).block_state_gj _ htargetKnown
     have hvs : B.state.voting_source_at cfg ext store b
         (get_current_target cfg store).epoch = B.state.realized_justified b := by
-      simp only [AcceptedBlockFFGState.voting_source_at, hbEpoch, if_pos]
+      simp only [AcceptedBlockFFGState.voting_source_at, hbEpoch, ite_eq_left]
     change CheckpointReadsAs Q.source (B.state.voting_source_at cfg ext store b
       (get_current_target cfg store).epoch)
     rw [hvs, hgj]

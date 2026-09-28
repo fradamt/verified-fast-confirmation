@@ -81,21 +81,21 @@ theorem filter_block_tree_aux_mono {store : Store Root} :
           List.mem_map.mpr ⟨c, hcC, rfl⟩, (ih c).1 hc1⟩
       by_cases hf :
           (C.map (fun c => filter_block_tree_aux cfg store f c)).any Prod.fst = true
-      · rw [if_pos hf, if_pos (hany hf)]
+      · rw [ite_eq_left hf, ite_eq_left (hany hf)]
         refine ⟨fun _ => rfl, fun x hx => ?_⟩
         rw [List.mem_append] at hx ⊢
         rcases hx with hx | hx
         · exact Or.inl (hflat x hx)
         · exact Or.inr hx
-      · rw [if_neg hf]
+      · rw [ite_eq_right hf]
         refine ⟨fun h => absurd h (by simp), fun x hx => ?_⟩
         have hxg := hflat x (by simpa using hx)
         by_cases hg :
             (C.map (fun c => filter_block_tree_aux cfg store (f + 1) c)).any
               Prod.fst = true
-        · rw [if_pos hg]
+        · rw [ite_eq_left hg]
           exact List.mem_append.mpr (Or.inl hxg)
-        · rw [if_neg hg]
+        · rw [ite_eq_right hg]
           exact hxg
 
 omit [Inhabited Root] in

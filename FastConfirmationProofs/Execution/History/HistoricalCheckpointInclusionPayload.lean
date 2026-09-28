@@ -193,7 +193,8 @@ def of_fixedSourceCurrentTarget
     · right
       have hsource' : CheckpointReadsAs Q.source (B.state.realized_justified origin) := by
         simpa only [AcceptedBlockFFGState.voting_source_at, CheckpointInclusionView.voting_source_at,
-          htargetEpoch, horiginEpoch, if_pos] using hsource
+          htargetEpoch, horiginEpoch, ite_eq_left,
+          AcceptedBlockFFGState.checkpoint_inclusion_view] using hsource
       exact ⟨{
         deadline := compute_start_slot_at_epoch cfg ((get_current_target cfg store).epoch + 1)
         target := get_current_target cfg store

@@ -99,7 +99,7 @@ theorem one_third_honest_intersects_two_thirds
     ∃ i ∈ S, i ∈ T ∧ i ∈ E.honest := by
   classical
   by_contra hnone
-  push_neg at hnone
+  push Not at hnone
   have hdisjoint : Disjoint S T := by
     rw [Finset.disjoint_left]
     intro i hiS hiT

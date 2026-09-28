@@ -81,8 +81,9 @@ private theorem estimate_epoch_prefix (tab e k : ℕ)
       Nat.div_eq_of_lt hj, Nat.add_zero]
   have hcovered : is_full_validator_set_covered cfg
       (e * cfg.slots_per_epoch) (e * cfg.slots_per_epoch + k) = false := by
-    simp only [is_full_validator_set_covered, compute_epoch_at_slot,
-      decide_eq_false_iff_not]
+    simp only [is_full_validator_set_covered]
+    apply decide_eq_false_iff_not.mpr
+    simp only [compute_epoch_at_slot]
     rw [hdiv _ (by omega), Nat.add_assoc, hdiv _ hk]
     exact Nat.lt_irrefl e
   simp only [estimate_committee_weight_between_slots, Nat.not_lt_of_ge
@@ -92,7 +93,7 @@ private theorem estimate_epoch_prefix (tab e k : ℕ)
       compute_epoch_at_slot cfg (e * cfg.slots_per_epoch + k) := by
     simp only [compute_epoch_at_slot, hdiv k (by omega)]
     simp [hS]
-  rw [if_pos hepoch]
+  rw [ite_eq_left hepoch]
   simp
 
 private theorem estimate_epoch_last (tab e : ℕ)
