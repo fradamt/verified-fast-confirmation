@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Temporary outputs of this run; removed on exit.
+scratch="$(mktemp -d "${TMPDIR:-/tmp}/fcr-validate.XXXXXX")"
+trap 'rm -rf -- "$scratch"' EXIT
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mode="full"
 if [[ -n "${CONSENSUS_SPECS_REPO:-}" ]]; then
@@ -97,7 +101,7 @@ if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
   # The real-bundle and differential runners import the concrete transition module.
   lake build FastConfirmationModel.Spec.BeaconChain.ConcreteTransition
   "$consensus_repo/.venv/bin/python" scripts/conformance/contracts/check_real_bundle.py \
-    --repo "$consensus_repo" --output "${TMPDIR:-/tmp}/fcr-real-bundle-$$.json"
+    --repo "$consensus_repo" --output "$scratch/real-bundle.json"
 elif [[ "$mode" == "full" || "${REQUIRE_PYSPEC:-0}" == "1" ]]; then
   echo "pyspec interpreter is required at $consensus_repo/.venv/bin/python" >&2
   exit 1
@@ -125,13 +129,12 @@ if [[ "$mode" == "full" ]]; then
   python3 scripts/check_witness_lists.py
   scripts/check_kernel.sh
   scripts/test_kernel_negative.sh
-  reachability_output="$(mktemp)"
+  reachability_output="$scratch/reachable.txt"
   lake env lean scripts/StatementReachability.lean > "$reachability_output"
   cat "$reachability_output"
   python3 scripts/test_reachability_metadata.py
   python3 scripts/conformance/contracts/check_inventory.py --inventory-only --reachable-file "$reachability_output"
   python3 scripts/test_input_discovery.py --reachable-file "$reachability_output"
-  rm "$reachability_output"
   lake env lean scripts/ReviewSurfaceShape.lean
   python3 scripts/test_witness_fingerprint.py
   lake env lean scripts/PremiseFieldUse.lean
