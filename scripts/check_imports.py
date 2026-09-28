@@ -134,42 +134,122 @@ class Resolver:
                            f"packages: {entry}")
 
 
-def without_comments(source: str) -> str:
-    """Blank nested Lean comments, but retain line positions for the scan."""
+def lean_code(source: str, *, literals: bool) -> str:
+    """Scan comments and literals together; keep offsets and line positions.
+
+    Interpolation expressions use the code scanner again. Thus a nested string
+    or comment cannot close the outer string or hide the following command.
+    """
     result = list(source)
-    pos = 0
-    depth = 0
-    while pos < len(source):
-        if source.startswith("/-", pos):
-            depth += 1
-            result[pos:pos + 2] = "  "
-            pos += 2
-        elif depth and source.startswith("-/", pos):
-            depth -= 1
-            result[pos:pos + 2] = "  "
-            pos += 2
-        elif depth or source.startswith("--", pos):
-            if not depth:
-                end = source.find("\n", pos)
-                end = len(source) if end < 0 else end
-                result[pos:end] = " " * (end - pos)
-                pos = end
-            else:
-                if source[pos] != "\n":
-                    result[pos] = " "
+    size = len(source)
+
+    def blank(start: int, end: int) -> None:
+        for i in range(start, end):
+            if source[i] != "\n":
+                result[i] = " "
+
+    def string(pos: int, interpolated: bool) -> int:
+        start = pos
+        pos += 1
+        while pos < size:
+            if source[pos] == "\\":
+                pos += 2
+            elif source[pos] == '"':
                 pos += 1
-        else:
-            pos += 1
-    if depth:
-        raise RuntimeError("unclosed Lean comment")
+                if literals:
+                    blank(start, pos)
+                return pos
+            elif interpolated and source[pos] == "{":
+                if literals:
+                    blank(start, pos + 1)
+                pos = code(pos + 1, braces=1)
+                start = pos - 1
+            else:
+                pos += 1
+        raise RuntimeError("unclosed Lean string")
+
+    def code(pos: int, braces: int = 0) -> int:
+        last = ""
+        while pos < size:
+            start = pos
+            if source.startswith("--", pos):
+                end = source.find("\n", pos)
+                pos = size if end < 0 else end
+                blank(start, pos)
+            elif source.startswith("/-", pos):
+                depth = 1
+                pos += 2
+                while pos < size and depth:
+                    if source.startswith("/-", pos):
+                        depth += 1
+                        pos += 2
+                    elif source.startswith("-/", pos):
+                        depth -= 1
+                        pos += 2
+                    else:
+                        pos += 1
+                if depth:
+                    raise RuntimeError("unclosed Lean comment")
+                blank(start, pos)
+            elif source[pos] == "«":
+                end = source.find("»", pos + 1)
+                if end < 0:
+                    raise RuntimeError("unclosed Lean quoted identifier")
+                pos = end + 1
+                last = "»"
+                if literals:
+                    blank(start, pos)
+            elif (source[pos] == "r" and
+                  (pos == 0 or not (source[pos - 1].isalnum() or source[pos - 1] in "_'.?!")) and
+                  (raw := re.compile(r'r(#+)?"').match(source, pos))):
+                endmark = '"' + (raw.group(1) or "")
+                end = source.find(endmark, pos + len(raw.group()))
+                if end < 0:
+                    raise RuntimeError("unclosed Lean raw string")
+                pos = end + len(endmark)
+                last = '"'
+                if literals:
+                    blank(start, pos)
+            elif source[pos] == '"':
+                pos = string(pos, last == "!")
+                last = '"'
+            elif source[pos] == "'" and (char := re.compile(
+                    r"'(?:[^'\\\n]|\\(?:x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|.))'"
+                    ).match(source, pos)):
+                pos += len(char.group())
+                last = "'"
+                if literals:
+                    blank(start, pos)
+            elif braces and source[pos] == "{":
+                braces += 1
+                last = "{"
+                pos += 1
+            elif braces and source[pos] == "}":
+                braces -= 1
+                last = "}"
+                pos += 1
+                if not braces:
+                    return pos
+            else:
+                if not source[pos].isspace():
+                    last = source[pos]
+                pos += 1
+        if braces:
+            raise RuntimeError("unclosed Lean interpolation")
+        return pos
+
+    code(0)
     return "".join(result)
 
 
+def without_comments(source: str) -> str:
+    """Blank comments without treating literal contents as comments."""
+    return lean_code(source, literals=False)
+
+
 def code_tokens(source: str) -> str:
-    """Blank comments, string literals and quoted identifiers `«...»`."""
-    text = without_comments(source)
-    return re.sub(r'"(?:[^"\\\n]|\\.)*"|«[^»]*»',
-                  lambda match: re.sub(r"[^\n]", " ", match.group()), text)
+    """Blank comments and literals in one lexical pass."""
+    return lean_code(source, literals=True)
 
 
 def local_lean_files() -> list[str]:
