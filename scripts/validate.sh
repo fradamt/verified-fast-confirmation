@@ -86,8 +86,6 @@ fi
 
 python3 scripts/check_synchrony_corners.py --self-test
 python3 scripts/check_doc_names.py
-python3 scripts/check_imports.py
-python3 scripts/test_keyword_scan.py
 if [[ "$mode" == "full" ]]; then
   python3 scripts/check_review_boundary.py --require-resolution
 else
@@ -120,6 +118,9 @@ fi
 if [[ "$mode" == "full" ]]; then
   CONSENSUS_SPECS_REPO="$consensus_repo" python3 scripts/test_source_negative.py
   scripts/check_build.sh
+  # Both need the pinned packages in .lake/packages.
+  python3 scripts/check_imports.py
+  python3 scripts/test_keyword_scan.py
   python3 scripts/test_trust_negative.py
   python3 scripts/check_witness_lists.py
   scripts/check_kernel.sh
