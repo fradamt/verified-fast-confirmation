@@ -55,8 +55,7 @@ The executable specification is the reference for the retained Lean claim
 library had no refinement theorem that connected its abstract objects or
 claims to the executable specification.
 
-The audit report at `/home/fradamt/lean/orch/reports/au-w-opus.md` found
-these defects at `e549055`:
+An independent audit found these defects at `e549055`:
 
 - **B1:** Three audited HFC theorems were vacuous. The finalized-realization
   premise required the finalized epoch to be less than the current epoch at
@@ -76,4 +75,4 @@ these defects at `e549055`:
   reliable guide to v4.
 
 The source remains available in Git history at `e549055`. The current trust
-audit covers 39 public executable theorems in five libraries.
+audit covers 40 public executable theorems in five libraries.
