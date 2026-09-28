@@ -20,11 +20,21 @@ The check computes two closures.
   primitive projection (`Expr.proj`) that occurs, and each `casesOn`, `rec`,
   or `recOn` of a listed structure.
 
+The input structures are the project structures that are binder types of
+the claim, closed under the result types of their fields. They are found, not
+listed: a new nested premise record is an input structure. Their Prop fields
+are the proof-valued inputs: the fields of the premise records (kind
+`premise`) and the conditions of the configuration, preset, scope, and
+commitment data (kind `input`).
+
 A Prop field is read when its projection function or its primitive
 projection occurs in the proof closure. A structure whose eliminator occurs
 is marked, because a destructuring pattern can read a field without a
-projection. The check fails when a Prop field of a premise record is not
-read and is not in `allowedUnread`.
+projection. The check fails when an input field is not read and is not in
+`allowedUnread`, and when a project Prop structure of the statement closure
+is neither an input structure nor in `nonInputRecords`. The check is a
+syntactic reference check. It does not prove that a read field is logically
+necessary.
 -/
 
 open Lean Elab Command Meta
@@ -37,23 +47,67 @@ private def isProjectModule (env : Environment) (decl : Name) : Bool :=
       | none => false
   | none => false
 
-/-- Premise records: the proof receives a value of each record. Fields of
-other structures in the statement closure (the A3.2 view and antecedent,
-configuration and bridge data) are listed but are not checked. -/
-private def premiseRecords : List Name := [
-  `FastConfirmation.Spec.ConcreteFFG.ConcreteBridge.SafetyPremises,
-  `FastConfirmation.Spec.ConcreteFFG.ConcreteBridge.Admissible,
-  `FastConfirmation.Spec.ConcreteFFG.FFGSetup.Admissible,
-  `FastConfirmation.Spec.ConcreteFFG.ConcreteBridge.ConcreteExternalsPremises,
-  `FastConfirmation.Spec.WellFormedExecution,
-  `FastConfirmation.Spec.HonestBehavior,
-  `FastConfirmation.Spec.NextSlotSynchronyPremises,
-  `FastConfirmation.Spec.HorizonVoteDeliveryLookahead,
-  `FastConfirmation.Spec.ByzantineWeightPremises,
-  `FastConfirmation.Spec.EventualCheckpointInclusion]
+/-- Unread proof-valued inputs that the documents keep on purpose, each with
+its reason. -/
+private def allowedUnread : List (Name × String) := [
+  (`FastConfirmation.Spec.FixedFFGScope.epoch_order,
+   "a well-formedness condition of the scope data; the proof reads the scope epochs directly")]
 
-/-- Unread premise fields that the documents keep on purpose. None remain. -/
-private def allowedUnread : List Name := []
+/-- Proposition-valued structures of the statement closure that are not inputs,
+each with its reason. Any other such structure fails the check. -/
+private def nonInputRecords : List (Name × String) := [
+  (`FastConfirmation.Spec.ReviewClaims, "the public claim record, not an input"),
+  (`FastConfirmation.Spec.ConcreteFFG.FinalizationLink,
+   "a component of the Model finalization definition, not an input")]
+
+-- BEGIN input structures (the same block as scripts/StatementReachability.lean)
+private def isProjectDeclaration (env : Environment) (decl : Name) : Bool :=
+  match env.getModuleIdxFor? decl with
+  | none => false
+  | some idx => (env.header.moduleNames[idx.toNat]!).toString.startsWith "FastConfirmation"
+
+/-- The head constant of a field type after all of its binders. An antecedent
+of an implication is a binder, so the closure below does not enter it. -/
+private def resultHead? (type : Expr) : Meta.MetaM (Option Name) :=
+  Meta.forallTelescope type fun _ body => return body.getAppFn.constName?
+
+/-- A proof-valued field: its type, after its binders, is a proposition. -/
+private def isPropValued (type : Expr) : Meta.MetaM Bool :=
+  Meta.forallTelescope type fun _ body => Meta.isProp body
+
+/-- A structure whose values are proofs: its type ends in `Prop`. -/
+private def isPropStructure (type : Expr) : Meta.MetaM Bool :=
+  Meta.forallTelescope type fun _ body => return body.isProp
+
+/-- Input structures of the claim: the project structures that are binder
+types of `ConfirmedRootSafeFromNextSlot`, closed under the result types of
+their fields. Their proposition-valued fields are the proof-valued inputs of
+the claim, recursively: the premise records and the conditions that the
+configuration, preset, scope, and commitment data carry. -/
+private def inputStructures (env : Environment) : Meta.MetaM (Array Name) := do
+  let some (.defnInfo claim) := env.find? ``FastConfirmation.Spec.ConfirmedRootSafeFromNextSlot
+    | throwError "missing claim definition"
+  let mut todo : Array Name ← Meta.lambdaTelescope claim.value fun _ body =>
+    Meta.forallTelescope body fun binders _ => do
+      let mut heads := #[]
+      for binder in binders do
+        if let some head ← resultHead? (← Meta.inferType binder) then
+          heads := heads.push head
+      return heads
+  let mut seen : NameSet := {}
+  let mut order := #[]
+  while !todo.isEmpty do
+    let s := todo.back!
+    todo := todo.pop
+    unless isStructure env s && isProjectDeclaration env s && !seen.contains s do continue
+    seen := seen.insert s
+    order := order.push s
+    for field in getStructureFields env s do
+      let some info := env.find? (s ++ field) | continue
+      if let some head ← resultHead? info.type then
+        todo := todo.push head
+  return order
+-- END input structures
 
 private def exprConsts (e : Expr) : Array Name :=
   e.foldConsts #[] fun c acc => acc.push c
@@ -110,32 +164,47 @@ elab "check_premise_field_use" : command => do
   let consts ← consts.get
   let projs ← projs.get
   let stmt := statementClosure env
-  let structs := (stmt.toList.filter fun n => isStructure env n).mergeSort
-    (fun a b => (Name.quickCmp a b).isLE)
+  let inputs ← liftTermElabM <| inputStructures env
+  let structs := ((stmt.toList.filter fun n => isStructure env n) ++
+    (inputs.toList.filter (!stmt.contains ·))).mergeSort (·.toString ≤ ·.toString)
+  let allowed := allowedUnread.map (·.1)
   let mut failures : Array Name := #[]
+  let mut unclassified : Array Name := #[]
   let mut report : Array String := #[]
+  let mut checked := 0
   for s in structs do
+    let some sinfo := env.find? s | continue
+    let propRecord ← liftTermElabM <| isPropStructure sinfo.type
+    let isInput := inputs.contains s
+    if propRecord && isProjectDeclaration env s && !isInput &&
+        !(nonInputRecords.map (·.1)).contains s then
+      unclassified := unclassified.push s
     let fields := getStructureFields env s
     let elim := [s ++ `casesOn, s ++ `rec, s ++ `recOn].any consts.contains
-    let isPremise := premiseRecords.contains s
     for h : i in [0:fields.size] do
       let field := fields[i]
       let proj := s ++ field
       let some pinfo := env.find? proj | continue
-      let isPropField ← liftTermElabM do
-        forallTelescope pinfo.type fun _ body => isProp body
-      unless isPropField do continue
+      unless ← liftTermElabM <| isPropValued pinfo.type do continue
       let read := consts.contains proj || projs.contains (s, i)
       let status := if read then "READ" else if elim then "ELIM" else "UNREAD"
-      let kind := if isPremise then "premise" else "other"
+      let kind := if !isInput then "other" else if propRecord then "premise" else "input"
       report := report.push s!"{status}\t{kind}\t{proj}"
-      if isPremise && !read && !allowedUnread.contains proj then
-        failures := failures.push proj
+      if isInput then
+        checked := checked + 1
+        if !read && !allowed.contains proj then
+          failures := failures.push proj
   for line in report do
     IO.println line
   IO.println s!"PROOF_CLOSURE {(← seen.get).size} project declarations"
+  IO.println s!"INPUT_FIELDS {checked} in {inputs.size} input structures"
+  unless unclassified.isEmpty do
+    throwError "proposition-valued records outside the claim inputs: {unclassified.toList}"
   unless failures.isEmpty do
-    throwError "premise fields that no proof reads: {failures.toList}"
+    throwError "premise or input fields that no proof reads: {failures.toList}"
+  for name in allowed do
+    unless report.any (·.endsWith s!"\t{name}") do
+      throwError "allowed unread field is no longer an input field: {name}"
   IO.println "premise field use passed"
 
 check_premise_field_use

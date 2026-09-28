@@ -14,16 +14,28 @@ run_cmd liftCoreM <| addDecl (Declaration.thmDecl
     type := mkConst ``False, value := mkConst ``True.intro })
 LEAN
 lake env bash -c '
+  set -euo pipefail
   export LEAN_PATH="$1:${LEAN_PATH:-}"
-  lean -o "$1/TrustForgery.olean" "$1/TrustForgery.lean" > "$1/build.out" 2>&1
+  # Lean infers the module name from the working folder, so compile there.
+  if ! (cd "$1" && lean -o TrustForgery.olean TrustForgery.lean) > "$1/build.out" 2>&1; then
+    cat "$1/build.out" >&2
+    echo "the forged module did not compile; the test cannot run" >&2
+    exit 1
+  fi
+  if [[ ! -s "$1/TrustForgery.olean" ]]; then
+    echo "the forged object file is absent; the test cannot run" >&2
+    exit 1
+  fi
   if lean --run scripts/KernelReplay.lean TrustForgery > "$1/replay.out" 2>&1; then
     echo "kernel replay accepted skipKernelTC forgery" >&2
     exit 1
   fi
-  grep -Eiq "kernel|type mismatch|TrustForgery.bogus|proof" "$1/replay.out" || {
+  # The kernel must reject the forged declaration itself, not fail for
+  # another reason such as a missing object file.
+  if ! grep -q "declaration type mismatch, .TrustForgery.bogus." "$1/replay.out"; then
     cat "$1/replay.out" >&2
     echo "checker failed for an unrelated reason" >&2
     exit 1
-  }
+  fi
 ' bash "$scratch"
 echo "negative kernel replay passed: skipKernelTC forgery rejected"

@@ -262,7 +262,7 @@ validators. Each slot committee has one validator, except in the Byzantine run,
 where validator 4 joins the committees of validator 3. Included slashing does
 not mark a validator slashed in state.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public theorem set has 46 entries. Four regression checks are:
+pre-tick relay. The audited public theorem set has 40 entries. Four regression checks are:
 `CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child`,
 `CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`,
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression`, and

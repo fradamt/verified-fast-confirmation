@@ -119,7 +119,9 @@ and handler service at the stated slot boundaries.
 
 `scripts/ReviewSurfaceShape.lean` pins the field names of 13 records, the field
 types of 17 records, the claim-type dependency closure, the definition of the
-safety claim, and the types of the 40 public witnesses.
+safety claim, and the 40 public witnesses: their types and the project
+definitions, structures, and field names that the types reach. A changed field
+or fixture definition changes this fingerprint.
 
 ## Audit path
 
@@ -261,6 +263,12 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The `weak-synchrony` branch contains work in progress on weaker timing premises and is outside this review.
 
 `scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries, replays all 307 modules through the kernel, and checks imports, reachability, surface shape, premise-field use, and the 40 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+
+- **Import provenance:** `scripts/Audit.lean` and `scripts/check_imports.py` resolve each module with the rule that Lean uses: the first search path entry that holds its root name. A module must resolve to the project build folder, the toolchain, or a package pinned in `lake-manifest.json` with a tracked source file. A second entry with the same root name, or a local Lean file outside the libraries, fails. The audit decides the owner of each declaration by the resolved file.
+- **No proofs in Model or Statements:** `scripts/Audit.lean` rejects each authored theorem, and each definition or instance whose type is a proposition, from environment metadata. The one exception is `SuccessfulScheduledBlockImport.processedCount_lt`. A keyword scan also rejects an example declaration, which leaves no constant.
+- **Inventory:** `scripts/StatementReachability.lean` derives the inventory fields from the claim inputs. The 75 rows of `scripts/conformance/contracts/inventory.toml` must equal the Lean fields, and the record class must equal the Lean record fields.
+- **Premise-field use:** `scripts/PremiseFieldUse.lean` finds the input records from the claim binders and requires that the proof reads all 58 proof-valued input fields. The one exception is `FixedFFGScope.epoch_order`: a well-formedness condition of the scope data; the proof reads the scope epochs directly.
+- **Trace runner:** `scripts/conformance/run.sh` runs `scripts/check_consensus_source.py` before it exports a trace, and it requires the audited generated pyspec module.
 
 ## Known limits
 

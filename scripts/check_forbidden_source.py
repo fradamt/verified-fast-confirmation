@@ -11,8 +11,9 @@ LIBS = ("FastConfirmationModel", "FastConfirmationStatements",
         "FastConfirmationWitnesses")
 PATTERN = re.compile(
     r"\b(?:sorry|admit|native_decide|bv_decide|implemented_by|extern|unsafe|"
-    r"run_cmd|run_meta|run_elab|elab|initialize|macro|syntax|addDecl|"
-    r"addDeclCore|modifyEnv|setEnv|ofReduceBool|trustCompiler)\b|"
+    r"run_cmd|run_meta|run_elab|elab|elab_rules|initialize|macro|macro_rules|syntax|"
+    r"addDecl|addDeclCore|addDeclWithoutChecking|modifyEnv|setEnv|ofReduceBool|"
+    r"trustCompiler)\b|#eval\b|"
     r"debug\.skipKernelTC|Environment\.addDeclCore|\bmeta\s+import\b|"
     r"\b(?:native\s*:=|\+\s*native)"
 )

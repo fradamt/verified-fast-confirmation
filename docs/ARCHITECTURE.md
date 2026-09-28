@@ -64,18 +64,25 @@ membership and executable ancestry.
 │Check                       │What it enforces                                                                             │
 ├────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
 │check_consensus_source.py   │The Python tag and the 44 pinned source files match the recorded hashes; the generated pyspec│
-│                            │modules of eight forks are fresh.                                                            │
+│                            │modules of eight forks are fresh. The trace runner runs it before each export.               │
 │check_review_boundary.py    │Lean parser import closure of Statements contains only Model and Statements modules; every   │
-│                            │Statements source is included.                                                               │
-│StatementReachability.lean  │30 source declarations are claim-reachable from the claim type; no exception remains. No     │
-│                            │other unreachable source declaration is allowed.                                             │
+│                            │Statements source is included. Each external edge resolves to the toolchain or a pinned      │
+│                            │package.                                                                                     │
+│StatementReachability.lean  │30 source declarations are claim-reachable from the claim type; no exception remains. It     │
+│                            │derives the inventory rows: the premise structure fields and the proof-valued input fields.  │
 │ReviewSurfaceShape.lean     │Field names of 13 records, field types of 17 records, the claim-type dependency closure, and │
-│                            │the types of the 40 public witnesses remain exact.                                           │
-│PremiseFieldUse.lean        │The proof of the claim reads each Prop field of each premise record; no exception remains.   │
-│check_imports.py            │The five-library import direction holds.                                                     │
+│                            │the 40 public witnesses remain exact: their types and the project definitions, structures,   │
+│                            │and field names that the types reach.                                                        │
+│PremiseFieldUse.lean        │The proof of the claim reads each proof-valued field of each input record, found from the    │
+│                            │claim binders; one unread scope field is allowed with a reason.                              │
+│check_imports.py            │The five-library import direction holds. Each import resolves on the Lake search path to the │
+│                            │project, the toolchain, or a pinned package with a tracked source; no local file or object   │
+│                            │file shadows it.                                                                             │
 │check_doc_names.py          │Backticked Lean names in current documents resolve to declarations or files.                 │
-│Audit.lean                  │The 40 audited public theorems have only standard axiom dependencies. No forbidden           │
-│                            │declaration is allowed.                                                                      │
+│Audit.lean                  │Each loaded module resolves to the project build, the toolchain, or a pinned package with a  │
+│                            │tracked source. The 40 audited public theorems have only standard axiom dependencies. No     │
+│                            │forbidden declaration and no authored proof in Model or Statements, except one definition    │
+│                            │obligation, is allowed.                                                                      │
 │check_kernel.sh             │The kernel replays all 307 project modules.                                                  │
 │validate.sh                 │Fast checks above; full mode also builds every library and runs Lean checks.                 │
 └────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -97,7 +104,7 @@ the concrete transition against pinned Python. The projection harness checks
 each interpretation law on real pyspec runs. Full-bundle witnesses show
 consistency, while the contract and differential checks test Python behavior.
 
-The active inventory has 59 authored claim-reachable fields: 17 definitions (the A3.2 view and antecedent), 7 record fields whose own fields are listed, and 35 assumed leaves. The bridge proves the other internal external contracts and the static validator set (`ExternalsLaws.lean`), so they are not premise fields. The Lean reachability audit also checks two outside Prop boundaries. The leaf labels separate tested state laws, execution scope, network and behavior, and idealizations. `boundary_envelope_prefix` and `HorizonVoteDeliveryLookahead.attestation_delivery` have both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
+The active inventory has 75 fields: the 59 direct fields of the claim-reachable premise structures and the 16 proof-valued fields of the Model input records. They are 17 definitions (the A3.2 view and antecedent), 9 record fields whose own fields are listed, and 49 assumed leaves. The bridge proves the other internal external contracts and the static validator set (`ExternalsLaws.lean`), so they are not premise fields. The Lean reachability audit also checks two outside Prop boundaries. The leaf labels separate tested state laws, execution scope, network and behavior, and idealizations. `boundary_envelope_prefix` and `HorizonVoteDeliveryLookahead.attestation_delivery` have both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
 The field list is checked against the claim-type reachability audit. CI runs the
 Python contract, projection, realized-gap, and concrete differential checks in
 a separate pinned-pyspec job.

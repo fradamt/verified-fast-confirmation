@@ -12,8 +12,8 @@ abstract: >-
   assignment; it takes the committee-weight estimate as exact and assumes paper
   Assumption 3.2 (eventual checkpoint inclusion).
 type: software
-version: 0.1.0
-date-released: "2026-09-27"
+version: 0.2.0
+date-released: "2026-09-28"
 authors:
   - family-names: "D'Amato"
     given-names: Francesco
