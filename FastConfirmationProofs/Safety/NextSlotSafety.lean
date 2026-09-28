@@ -64,7 +64,7 @@ private theorem on_block_unknownBlocksDefault {s t : Store Root}
   · simp [on_block, hknown] at hs
     cases hs
     exact h
-  · simp only [on_block, if_neg hknown] at hs
+  · simp only [on_block, ite_eq_right hknown] at hs
     split_ifs at hs with hp hpayload hslot hfin hfc
     cases hst : ext.state_transition (s.block_states b.message.parent_root) b with
     | none => rw [hst] at hs; cases hs
@@ -193,14 +193,14 @@ theorem ancestor_root_known_or_anchor_parent
     | succ fuel ih =>
       intro node hn
       by_cases hstep : slot < (s.blocks node.root).slot
-      · simp only [get_ancestor_aux, if_pos hstep]
+      · simp only [get_ancestor_aux, ite_eq_left hstep]
         by_cases ha : node.root = anchor
         · have hp : (s.blocks node.root).parent_root = parent := by
             rw [ha, hanchor]
           rw [hp, get_ancestor_aux_default_root s parent hdefault slot fuel]
           exact Or.inr rfl
         · exact ih _ ((hparents node.root hn).resolve_left ha)
-      · simp only [get_ancestor_aux, if_neg hstep]
+      · simp only [get_ancestor_aux, ite_eq_right hstep]
         exact Or.inl hn
   exact aux _ node hnode
 

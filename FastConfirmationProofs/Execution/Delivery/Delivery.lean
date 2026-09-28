@@ -194,7 +194,7 @@ theorem on_block_blocksSlotLe {sl : Slot} {store store' : Store Root}
   · simp [on_block, hknown] at hh
     cases hh
     exact h
-  · simp only [on_block, if_neg hknown] at hh
+  · simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh with hp hpayload hslot hfin hfc
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
@@ -368,8 +368,8 @@ theorem honest_attestation_data_target_epoch (store : Store Root) (s : Slot)
       compute_epoch_at_slot cfg s := by
   simp only [honest_attestation_data, get_current_epoch]
   by_cases hlt : (store.block_states (get_head cfg store).root).slot < s
-  · rw [if_pos hlt, hps _ _ hlt]
-  · rw [if_neg hlt, Nat.le_antisymm hhead (not_lt.mp hlt)]
+  · rw [ite_eq_left hlt, hps _ _ hlt]
+  · rw [ite_eq_right hlt, Nat.le_antisymm hhead (not_lt.mp hlt)]
 
 /-- Gloas honest attestations use only the two payload-presence indices. -/
 theorem honest_attestation_data_index_shape (store : Store Root) (s : Slot)
@@ -392,7 +392,7 @@ private theorem get_node_children_full_verified (store : Store Root) (blocks : L
     (hfull : child.payload_status = .full) :
     is_payload_verified store child.root = true := by
   by_cases hpending : node.payload_status = .pending
-  · simp only [get_node_children, if_pos hpending] at hmem
+  · simp only [get_node_children, ite_eq_left hpending] at hmem
     split_ifs at hmem with hv
     · simp only [List.mem_append, List.mem_singleton] at hmem
       rcases hmem with rfl | rfl
@@ -401,7 +401,7 @@ private theorem get_node_children_full_verified (store : Store Root) (blocks : L
     · simp only [List.mem_singleton] at hmem
       subst child
       cases hfull
-  · simp only [get_node_children, if_neg hpending, List.mem_map] at hmem
+  · simp only [get_node_children, ite_eq_right hpending, List.mem_map] at hmem
     obtain ⟨root, _, rfl⟩ := hmem
     cases hfull
 
@@ -622,7 +622,7 @@ theorem on_attestation_singleton_ge (P : Store Root) (a : Attestation Root)
         P.equivocating_indices := by
     simp only [store_target_checkpoint_state]; split_ifs <;> rfl
   simp only [on_attestation]
-  rw [if_neg (not_not_intro hval), if_neg (not_not_intro hvalid), hsingle]
+  rw [ite_eq_right (not_not_intro hval), ite_eq_right (not_not_intro hvalid), hsingle]
   obtain ⟨msg, hmsg, hle⟩ :=
     update_latest_messages_singleton_ge cfg
       (store_target_checkpoint_state cfg ext P a.data.target) v a
@@ -769,12 +769,12 @@ theorem honest_attestation_valid_prepared {E : Execution Root}
       ((store_target_checkpoint_state cfg ext store a.data.target).checkpoint_states
         a.data.target) a = true := by
   by_cases hkey : a.data.target ∈ store.checkpoint_state_keys
-  · simpa only [store_target_checkpoint_state, if_neg (not_not_intro hkey)] using
+  · simpa only [store_target_checkpoint_state, ite_eq_right (not_not_intro hkey)] using
       hec.honest_attestation_valid _ a
         (hstore.checkpointState cfg ext hkey) v hv hsingle hcommittee hvote
   · have hbase := hec.honest_attestation_valid _ a
       (hstore.blockState cfg ext hroot) v hv hsingle hcommittee hvote
-    simp only [store_target_checkpoint_state, if_pos hkey, Function.update_self]
+    simp only [store_target_checkpoint_state, ite_eq_left hkey, Function.update_self]
     split_ifs with hslot
     · have hbaseReach := hstore.blockState cfg ext hroot
       have hpost := hec.registry_static_in_horizon _
@@ -921,7 +921,9 @@ theorem Execution.vote_lands {E : Execution Root}
       hv hw hHn hdeadline (by simpa only [hn] using hHdeliver)
       (by simpa only [hn] using hnBeforeDelivery)
       (by simpa only [hn, hNeq] using hl)
-    simpa only [hn, hNeq, tb] using h
+    have hroot : a.data.beacon_block_root =
+        (get_head cfg (E.store cfg ext v n)).root := rfl
+    simpa only [hn, hNeq, tb, Nat.add_sub_cancel, hroot] using h
   have hprov_tb : BlockProvenance E tb := by
     rw [htb]
     exact on_tick_blockProvenance cfg (E.store cfg ext w Nm1) (E.time_at (Nm1 + 1))

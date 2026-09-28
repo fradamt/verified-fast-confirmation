@@ -99,7 +99,7 @@ theorem ObservedResetCandidateInputAt.observed_checkpoint_previous_epoch
           cfg.slots_per_epoch ≤ c.epoch * cfg.slots_per_epoch :=
       (start_slot_at_block_epoch_le cfg
         (E.store cfg ext v (n + 1)) c.root).trans (by
-          simpa only [c] using hreal.root_slot_le_boundary)
+          simpa only [c, compute_start_slot_at_epoch] using hreal.root_slot_le_boundary)
     exact Nat.le_of_mul_le_mul_right hscaled cfg.slots_per_epoch_pos
   have hcEpochLt : c.epoch < e := by
     rcases hi.accepted_origin with hanchorField | ⟨tip, htip, hguField⟩
@@ -495,7 +495,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
         have hcSlotLeC :
             ((E.store cfg ext v (n + 1)).blocks c.root).slot ≤
               compute_start_slot_at_epoch cfg c.epoch := by
-          simpa only [c] using hreal.root_slot_le_boundary
+          simpa only [c, compute_start_slot_at_epoch] using hreal.root_slot_le_boundary
         exact hcSlotLeC.trans
           (Nat.mul_le_mul_right cfg.slots_per_epoch hcJ)
       have htargetRoot : get_checkpoint_block cfg

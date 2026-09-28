@@ -147,7 +147,7 @@ theorem epoch_one_fixture_satisfies_boundary_laws :
     simp only [fixtureExternals] at h
     exact absurd h (by simp)
   · intro st target hcross _
-    simp only [fixtureExternals, processSlots, if_pos hcross]
+    simp only [fixtureExternals, processSlots, ite_eq_left hcross]
     split_ifs with h2
     · right
       rw [h2.1]

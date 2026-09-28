@@ -90,7 +90,6 @@ theorem update_latest_messages_sameBlocks (store : Store Root)
     SameBlocks store (update_latest_messages store attesting_indices attestation) := by
   simp only [update_latest_messages]
   refine sameBlocks_foldl (fun s i => ?_) _ store
-  dsimp only
   rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> exact ⟨rfl, rfl, rfl⟩
 
 variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
@@ -268,7 +267,7 @@ theorem on_block_wellFormedStoreCore
   · simp [on_block, hknown] at hh
     cases hh
     exact h
-  · simp only [on_block, if_neg hknown] at hh
+  · simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition
@@ -433,15 +432,15 @@ theorem parentSlotLt_insert (store : Store Root) (block_root : Root)
   simp only [List.mem_append, List.mem_singleton, Function.update_apply] at hr hpr ⊢
   rcases hr with hr | heq
   · have hrne : ¬ r = block_root := fun h => hfresh (h ▸ hr)
-    rw [if_neg hrne] at hpr ⊢
+    rw [ite_eq_right hrne] at hpr ⊢
     rcases hpr with hpr | hpr
-    · rw [if_neg (hno_child r hr)]
+    · rw [ite_eq_right (hno_child r hr)]
       exact hpar r hr hpr
     · exact absurd hpr (hno_child r hr)
   · subst r
-    rw [if_pos rfl]
+    rw [ite_eq_left rfl]
     have hpne : ¬ block.parent_root = block_root := fun h => hfresh (h ▸ hpar_in)
-    rw [if_neg hpne, ← hbss block.parent_root hpar_in]
+    rw [ite_eq_right hpne, ← hbss block.parent_root hpar_in]
     exact hpre
 
 /-- `on_block` preserves the parent-slot order, given the input store's order
@@ -464,7 +463,7 @@ theorem on_block_parentSlotLt
   have hpar_in : signed_block.message.parent_root ∈ store.block_roots := by
     by_contra habsent
     simp [on_block, hfresh, habsent] at hh
-  simp only [on_block, if_neg hfresh] at hh
+  simp only [on_block, ite_eq_right hfresh] at hh
   split_ifs at hh
   all_goals try contradiction
   cases hst : ext.state_transition

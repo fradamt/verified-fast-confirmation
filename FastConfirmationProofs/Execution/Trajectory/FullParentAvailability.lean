@@ -80,7 +80,7 @@ private theorem on_block_fresh_shape {store store' : Store Root}
     rw [hnone] at hh
     cases hh
   refine ⟨hparent, ?_⟩
-  simp only [on_block, if_neg hknown] at hh
+  simp only [on_block, ite_eq_right hknown] at hh
   split_ifs at hh <;> try cases hh
   cases hst : ext.state_transition
       (store.block_states sb.message.parent_root) sb with

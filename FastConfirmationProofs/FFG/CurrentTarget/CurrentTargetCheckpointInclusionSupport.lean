@@ -270,7 +270,7 @@ theorem currentTargetFutureHonestSeat_vote
   have hloCurrent : e * cfg.slots_per_epoch ≤ get_current_slot cfg store := by
     have h := Nat.div_mul_le_self (get_current_slot cfg store)
       cfg.slots_per_epoch
-    simpa only [e, get_current_store_epoch, Nat.mul_comm] using h
+    simpa only [e, get_current_store_epoch, compute_epoch_at_slot, Nat.mul_comm] using h
   have hsEpoch : compute_epoch_at_slot cfg s = e := by
     apply epoch_eq_of_epoch_bounds cfg
     · exact hloCurrent.trans hs.1

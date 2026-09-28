@@ -116,7 +116,7 @@ theorem noConflict_arithmeticBranch_oneThird
   rw [← E.store_current_slot cfg ext v n] at hprov
   have hbyz : E.weight observedNonhonest ≤ adversarial := by
     simpa only [observedNonhonest, adversarial, start, finish, store,
-      Execution.currentTargetObservedNonhonestSupporters] using
+      currentTargetEpochStart, Execution.currentTargetObservedNonhonestSupporters] using
       E.currentTarget_nonhonest_weight_le_adversarial cfg ext
         hhb hec hbb hgen0 hv hnH hval htab hprov
   have hobserved : score - adversarial ≤
@@ -132,14 +132,15 @@ theorem noConflict_arithmeticBranch_oneThird
     simpa only [observedHonest, futureHonest, store] using
       E.currentTarget_observed_future_disjoint cfg ext hec hprov
   have hgateArithmetic := hgate
-  simp only [will_no_conflicting_checkpoint_be_justified, hne, if_false,
-    compute_honest_ffg_support_for_current_target,
-    decide_eq_true_eq] at hgateArithmetic
+  simp only [will_no_conflicting_checkpoint_be_justified, hne, ite_false]
+    at hgateArithmetic
+  have hgateArithmetic := of_decide_eq_true hgateArithmetic
+  simp only [compute_honest_ffg_support_for_current_target] at hgateArithmetic
   rw [← hstate, htab] at hgateArithmetic
   have hgateArithmetic' : E.total_active cfg <
       3 * (score - adversarial + remaining) := by
     simpa only [score, adversarial, remaining, estimate, start, finish,
-      store, one_mul] using hgateArithmetic
+      store, currentTargetEpochStart, get_current_store_epoch, one_mul] using hgateArithmetic
   have hpredict : score - adversarial + remaining ≤
       E.weight observedHonest + E.weight futureHonest :=
     Nat.add_le_add hobserved hfuture

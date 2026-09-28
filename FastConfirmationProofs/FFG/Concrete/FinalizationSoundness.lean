@@ -52,14 +52,13 @@ theorem weigh_justification_and_finalization_bits {cfg : Config} {preset : FFGPr
     | [b0, b1, b2, b3], _ => exact ⟨b0, b1, b2, b3, rfl⟩
   refine ⟨b0, b1, b2, b3, hb, ?_⟩
   dsimp only at h
-  simp only [pure_bind] at h
   rw [hb] at h
   by_cases c1 : previous * 3 ≥ total * 2
-  · rw [if_pos c1] at h
+  · rw [ite_eq_left c1] at h
     rw [except_bind_eq_ok] at h
     obtain ⟨root1, hr1, h⟩ := h
     by_cases c2 : current * 3 ≥ total * 2
-    · rw [if_pos c2] at h
+    · rw [ite_eq_left c2] at h
       rw [except_bind_eq_ok] at h
       obtain ⟨root2, hr2, h⟩ := h
       repeat' split at h
@@ -68,16 +67,16 @@ theorem weigh_justification_and_finalization_bits {cfg : Config} {preset : FFGPr
         subst h
         refine ⟨by simp [c1, c2], ?_⟩
         simp only [finalizedOf, *, ↓reduceIte, Bool.false_eq_true]
-    · rw [if_neg c2] at h
+    · rw [ite_eq_right c2] at h
       repeat' split at h
       all_goals
         simp only [except_pure_eq_ok] at h
         subst h
         refine ⟨by simp [c1, c2], ?_⟩
         simp only [finalizedOf, *, ↓reduceIte, Bool.false_eq_true]
-  · rw [if_neg c1] at h
+  · rw [ite_eq_right c1] at h
     by_cases c2 : current * 3 ≥ total * 2
-    · rw [if_pos c2] at h
+    · rw [ite_eq_left c2] at h
       rw [except_bind_eq_ok] at h
       obtain ⟨root2, hr2, h⟩ := h
       repeat' split at h
@@ -86,7 +85,7 @@ theorem weigh_justification_and_finalization_bits {cfg : Config} {preset : FFGPr
         subst h
         refine ⟨by simp [c1, c2], ?_⟩
         simp only [finalizedOf, *, ↓reduceIte, Bool.false_eq_true]
-    · rw [if_neg c2] at h
+    · rw [ite_eq_right c2] at h
       repeat' split at h
       all_goals
         simp only [except_pure_eq_ok] at h
@@ -186,29 +185,29 @@ theorem supermajorityLink_of_participation_test {S : FFGSetup Root} (hS : S.Admi
     have h2 := hinv.previous_epoch_le
     change _ < epoch
     by_cases h : epoch = E
-    · rw [if_pos h]
+    · rw [ite_eq_left h]
       beacon_omega
-    · rw [if_neg h]
+    · rw [ite_eq_right h]
       rcases hepoch with h' | h'
       · exact absurd h' h
       · beacon_omega
   · intro i hi
     have hflag := (hmem i hi).2.2.1
     by_cases h : epoch = E
-    · rw [if_pos h] at hflag
+    · rw [ite_eq_left h] at hflag
       obtain ⟨r, hr, hri, hre⟩ := (hinv.current_flags i).mp hflag
       have hre' : r.vote.data.target.epoch = epoch := by rw [hre]; exact h.symm
       refine ⟨r, hr, hri, ?_, checkpoint_eq_of hre' ?_⟩
-      · rw [if_pos h]; exact hinv.current_sources r hr hre
+      · rw [ite_eq_left h]; exact hinv.current_sources r hr hre
       · exact (hinv.target_on_chain r hr).2.trans (by rw [hre']; rfl)
-    · rw [if_neg h] at hflag
+    · rw [ite_eq_right h] at hflag
       obtain ⟨r, hr, hri, hre⟩ := (hinv.previous_flags i).mp hflag
       have hre' : r.vote.data.target.epoch = epoch := by
         rcases hepoch with h' | h'
         · exact absurd h' h
         · beacon_omega
       refine ⟨r, hr, hri, ?_, checkpoint_eq_of hre' ?_⟩
-      · rw [if_neg h]; exact hinv.previous_sources r hr hre
+      · rw [ite_eq_right h]; exact hinv.previous_sources r hr hre
       · exact (hinv.target_on_chain r hr).2.trans (by rw [hre']; rfl)
   · rw [total_active_balance_eq hS hscope (by rw [hslot]; exact hH),
       total_balance_eq hscope set] at hth
@@ -233,7 +232,7 @@ theorem current_link_of_test {S : FFGSetup Root} (hS : S.Admissible)
       (chainCheckpoint S blocks (compute_epoch_at_slot S.cfg state.slot))) := by
   have := supermajorityLink_of_participation_test hS hinv hH hE2 hslot hval hcur hprev
     (Or.inl rfl) hset hth
-  rwa [if_pos rfl] at this
+  rwa [ite_eq_left rfl] at this
 
 /-- A passing previous-epoch test links the previous justified checkpoint to
 the chain checkpoint of the previous epoch. -/
@@ -254,7 +253,7 @@ theorem previous_link_of_test {S : FFGSetup Root} (hS : S.Admissible)
       (chainCheckpoint S blocks (compute_epoch_at_slot S.cfg state.slot - 1))) := by
   have := supermajorityLink_of_participation_test hS hinv hH hE2 hslot hval hcur hprev
     (Or.inr (by beacon_omega)) hset hth
-  rwa [if_neg (by beacon_omega)] at this
+  rwa [ite_eq_right (by beacon_omega)] at this
 
 /-! ### The four finalization rules -/
 

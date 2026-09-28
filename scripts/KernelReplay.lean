@@ -26,8 +26,8 @@ unsafe def replayExact (module : Name) : IO Unit := do
   let mut newConstants := {}
   for name in parts[parts.size-1].1.constNames, ci in parts[parts.size-1].1.constants do
     newConstants := newConstants.insert name ci
-  let env' ← env.replay newConstants
-  env'.freeRegions
+  let env' ← env.toKernelEnv.replay newConstants
+  (Environment.ofKernelEnv env').freeRegions
 
 unsafe def main (args : List String) : IO UInt32 := do
   initSearchPath (← findSysroot)

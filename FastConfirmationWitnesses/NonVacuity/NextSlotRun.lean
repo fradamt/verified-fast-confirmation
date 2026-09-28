@@ -369,14 +369,14 @@ theorem witness_vote_some_iff {v : ValidatorIndex} {s : Slot} {n : ℕ}
     witnessExecution.vote v s = some (n, a) ↔ s < 16 ∧ v = s % 4 ∧ n = s ∧ a = vote s := by
   change (if s < 16 ∧ v = s % 4 then some (s, vote s) else none) = some (n, a) ↔ _
   by_cases h : s < 16 ∧ v = s % 4
-  · rw [if_pos h]
+  · rw [ite_eq_left h]
     constructor
     · intro heq
       have hp : (s, vote s) = (n, a) := Option.some.inj heq
       exact ⟨h.1, h.2, (congrArg Prod.fst hp).symm, (congrArg Prod.snd hp).symm⟩
     · rintro ⟨_, _, rfl, rfl⟩
       rfl
-  · rw [if_neg h]
+  · rw [ite_eq_right h]
     constructor
     · intro himpossible
       contradiction
@@ -920,7 +920,8 @@ private theorem witness_payloads_empty (v n : ℕ) :
   induction n with
   | zero => rfl
   | succ n ih =>
-      simpa only [Execution.store] using
+      simpa only [Execution.store,
+        show witnessExecution.schedule = witnessSchedule from rfl] using
         (witness_fold_no_envelope (witnessSchedule v (n + 1))
           (on_tick witnessConfig
             (witnessExecution.store witnessConfig witnessExternals v n)

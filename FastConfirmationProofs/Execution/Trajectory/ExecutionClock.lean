@@ -49,7 +49,6 @@ private theorem foldl_time {α : Type*} {f : Store Root → α → Store Root}
       store.time := by
   simp only [update_latest_messages]
   refine foldl_time (fun s i => ?_) _ _
-  dsimp only
   rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> rfl
 
 
@@ -67,7 +66,7 @@ theorem on_block_time {store store' : Store Root} {b : SignedBeaconBlock Root}
   · simp [on_block, hknown] at h
     cases h
     rfl
-  · simp only [on_block, if_neg hknown] at h
+  · simp only [on_block, ite_eq_right hknown] at h
     split_ifs at h
     all_goals try contradiction
     cases hst : ext.state_transition
@@ -80,7 +79,8 @@ theorem on_block_time {store store' : Store Root} {b : SignedBeaconBlock Root}
       · cases h
       · rename_i after_ptc hptc
         cases h
-        simpa using (notify_ptc_messages_frame cfg ext hptc).time
+        simpa [record_block_timeliness] using
+          (notify_ptc_messages_frame cfg ext hptc).time
 
 omit [Inhabited Root] in
 theorem on_attestation_time {store store' : Store Root} {a : Attestation Root}

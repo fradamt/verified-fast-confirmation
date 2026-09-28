@@ -311,7 +311,7 @@ theorem preQueryTarget_epoch_lt_query_of_epochStart
       compute_epoch_at_slot cfg (E.slot_at cfg q) := by
     simp only [compute_epoch_at_slot]
     apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
-    simpa only [compute_start_slot_at_epoch] using
+    simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using
       (hsq.trans_le (Nat.le_of_eq hboundary))
   simpa only [hquery, get_current_store_epoch,
     E.store_current_slot cfg ext v q] using hepoch
@@ -871,7 +871,7 @@ theorem currentTarget_descends_previousEpochBlock
   simp only [is_ancestor_get_node_for_root, decide_eq_true_eq] at hheadB ⊢
   simp only [get_node_for_root] at hheadB
   rw [heta, hheadB] at hcomp
-  exact ⟨by simpa only [T] using hT, by simpa only [T] using hcomp⟩
+  exact ⟨by simpa only [T] using hT, by simpa only [T, get_node_for_root] using hcomp⟩
 
 /-- The current-epoch boundary walk is derivable whenever the query knows one
 block from a strictly earlier epoch.  Such a block proves that the current
@@ -1019,7 +1019,7 @@ theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
       hA.domain hv q hqH
     simpa only [hquery] using hhead
   have hwfQuery : ParentSlotLt query.store := by
-    simpa only [hquery] using hwfQ
+    simpa only [hquery, ParentSlotLt] using hwfQ
   have hwalkQuery : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by
@@ -1105,7 +1105,7 @@ theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
         exact False.elim (Nat.lt_irrefl _ hbad)
       · simpa only [store, T] using hpin.1 hresultCurrent
     have hsameEpoch : J.epoch = T.epoch := by
-      simpa only [T, get_current_target] using hJEpoch
+      simpa only [T, get_current_target, get_checkpoint_for_block] using hJEpoch
     have hroot : J.root = T.root := by
       simpa only [store, J, T] using hpin (by
         simpa only [store, J, T] using hsameEpoch)

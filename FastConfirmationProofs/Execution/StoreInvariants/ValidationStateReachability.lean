@@ -69,7 +69,7 @@ theorem update_latest_messages_unknownBlockStatesDefault (store : Store Root)
   simp only [update_latest_messages]
   refine unknownBlockStatesDefault_foldl (fun current index hcurrent => ?_) _ store h
   refine hcurrent.of_eq ?_ ?_ <;>
-    (dsimp only; cases hmessage : current.latest_messages index <;> split_ifs <;> rfl)
+    (cases hmessage : current.latest_messages index <;> split_ifs <;> rfl)
 
 theorem store_target_checkpoint_state_unknownBlockStatesDefault (store : Store Root)
     (target : Checkpoint Root) (h : UnknownBlockStatesDefault store) :
@@ -105,7 +105,7 @@ theorem on_block_unknownBlockStatesDefault {store store' : Store Root}
   · simp [on_block, hknown] at hsuccess
     cases hsuccess
     exact h
-  · simp only [on_block, if_neg hknown] at hsuccess
+  · simp only [on_block, ite_eq_right hknown] at hsuccess
     split_ifs at hsuccess with hparent hslot hfinalized hcheckpoint
     all_goals try contradiction
     cases htransition : ext.state_transition

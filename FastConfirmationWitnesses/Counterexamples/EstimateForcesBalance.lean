@@ -16,8 +16,9 @@ variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 private theorem one_slot_estimate (hspe : 1 < cfg.slots_per_epoch) (tab : Gwei) (s : Slot) :
     estimate_committee_weight_between_slots cfg tab s s = tab / cfg.slots_per_epoch := by
   have hcov : is_full_validator_set_covered cfg s s = false := by
-    simp only [is_full_validator_set_covered, compute_epoch_at_slot,
-      decide_eq_false_iff_not, not_lt]
+    simp only [is_full_validator_set_covered]
+    apply decide_eq_false_iff_not.mpr
+    simp only [compute_epoch_at_slot, not_lt]
     exact Nat.div_le_div_right (by omega)
   simp [estimate_committee_weight_between_slots, hcov]
 

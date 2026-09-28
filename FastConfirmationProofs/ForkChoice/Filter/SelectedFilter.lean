@@ -88,24 +88,24 @@ theorem mem_prevEpochLoopTrace (fcrStore : FastConfirmationStore Root)
       intro acc a b hab
       simp only [prevEpochLoopTrace] at hab
       by_cases hEpoch : get_block_epoch cfg fcrStore.store x = currentEpoch
-      · rw [if_pos hEpoch] at hab
+      · rw [ite_eq_left hEpoch] at hab
         simp at hab
-      · rw [if_neg hEpoch] at hab
+      · rw [ite_eq_right hEpoch] at hab
         by_cases hAncestor : is_ancestor fcrStore.store
             (get_node_for_root fcrStore.previous_slot_head) (get_node_for_root x) = true
-        · rw [if_neg (not_not_intro hAncestor)] at hab
+        · rw [ite_eq_right (not_not_intro hAncestor)] at hab
           by_cases hConfirmed : is_one_confirmed cfg ext fcrStore.store
               (get_current_balance_source fcrStore) x = true
-          · rw [if_neg (not_not_intro hConfirmed)] at hab
+          · rw [ite_eq_right (not_not_intro hConfirmed)] at hab
             rw [List.mem_cons] at hab
             rcases hab with hab | hab
             · simp only [Prod.mk.injEq] at hab
               rcases hab with ⟨rfl, rfl⟩
               exact ⟨hEpoch, hAncestor, hConfirmed⟩
             · exact ih x a b hab
-          · rw [if_pos hConfirmed] at hab
+          · rw [ite_eq_left hConfirmed] at hab
             simp at hab
-        · rw [if_pos hAncestor] at hab
+        · rw [ite_eq_left hAncestor] at hab
           simp at hab
 
 /-- Every recorded tentative transition passed confirmation.  If it raised
@@ -127,12 +127,12 @@ theorem mem_tentativeLoopTrace (fcrStore : FastConfirmationStore Root) :
       by_cases hGate : get_block_epoch cfg fcrStore.store x >
           get_block_epoch cfg fcrStore.store acc ∧
           ¬ will_current_target_be_justified cfg ext fcrStore.store
-      · rw [if_pos hGate] at hab
+      · rw [ite_eq_left hGate] at hab
         simp at hab
-      · rw [if_neg hGate] at hab
+      · rw [ite_eq_right hGate] at hab
         by_cases hConfirmed : is_one_confirmed cfg ext fcrStore.store
             (get_current_balance_source fcrStore) x = true
-        · rw [if_neg (not_not_intro hConfirmed)] at hab
+        · rw [ite_eq_right (not_not_intro hConfirmed)] at hab
           rw [List.mem_cons] at hab
           rcases hab with hab | hab
           · simp only [Prod.mk.injEq] at hab
@@ -142,7 +142,7 @@ theorem mem_tentativeLoopTrace (fcrStore : FastConfirmationStore Root) :
             by_contra hWill
             exact hGate ⟨hEpoch, hWill⟩
           · exact ih x a b hab
-        · rw [if_pos hConfirmed] at hab
+        · rw [ite_eq_left hConfirmed] at hab
           simp at hab
 
 /-- A strict result which is not in the current epoch necessarily retained

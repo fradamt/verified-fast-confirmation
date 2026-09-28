@@ -163,21 +163,21 @@ def getLatestConfirmedTrace
     by_cases hguard : getLatestFinalizedRevertGuard cfg ext query
     · have hnamed := hguard
       simp only [getLatestFinalizedRevertGuard] at hguard
-      rw [if_pos hguard]
+      rw [ite_eq_left hguard]
       exact .reverted hnamed
     · have hnamed := hguard
       simp only [getLatestFinalizedRevertGuard] at hguard
-      rw [if_neg hguard]
+      rw [ite_eq_right hguard]
       exact .carried hnamed
   · dsimp only [afterObserved, getLatestAfterObserved]
     by_cases hguard : getLatestObservedRestartGuard cfg query
         (getLatestAfterFinalized cfg ext query) = true
-    · rw [if_pos hguard]
+    · rw [ite_eq_left hguard]
       exact .restarted hguard
     · have hfalse : getLatestObservedRestartGuard cfg query
           (getLatestAfterFinalized cfg ext query) = false :=
         Bool.eq_false_of_not_eq_true hguard
-      rw [if_neg hguard]
+      rw [ite_eq_right hguard]
       exact .unchanged hfalse
   · change GetLatestSelectorPhase cfg ext query
       (getLatestAfterObserved cfg ext query)
@@ -190,11 +190,11 @@ def getLatestConfirmedTrace
         (getLatestAfterObserved cfg ext query)
     · have hnamed := hguard
       simp only [getLatestSelectorGuard] at hguard
-      rw [if_pos hguard]
+      rw [ite_eq_left hguard]
       exact .selected hnamed
     · have hnamed := hguard
       simp only [getLatestSelectorGuard] at hguard
-      rw [if_neg hguard]
+      rw [ite_eq_right hguard]
       exact .unchanged hnamed
   · rfl
 

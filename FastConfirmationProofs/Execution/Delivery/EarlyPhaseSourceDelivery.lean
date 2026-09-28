@@ -182,7 +182,7 @@ theorem recentSourceSeedAt_endpointNext_of_lemma13
   have hsourceEq : (get_voting_source cfg (E.store cfg ext w m) seed).epoch =
       (B.state.unrealized_justified seed).epoch := by
     rw [hendpoint.getVotingSource_epoch_eq_acceptedSelector cfg ext B hseedEndpoint,
-      if_pos hseedOld]
+      ite_eq_left hseedOld]
   refine ⟨seed, hseedEndpoint, hseedSelectedM, ?_⟩
   rw [hsourceEq, hnextEpoch]
   simpa only [Nat.add_assoc, Nat.reduceAdd] using

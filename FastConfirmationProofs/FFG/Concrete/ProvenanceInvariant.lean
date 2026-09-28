@@ -205,13 +205,13 @@ theorem provenanceInvariant_attestation {S : FFGSetup Root}
     · exact hinv.current_sources r' h4 h2
     · change vote.data.target.epoch = compute_epoch_at_slot S.cfg state.slot at h2
       change vote.data.source = state.current_justified_checkpoint
-      rw [hsrc, if_pos h2]
+      rw [hsrc, ite_eq_left h2]
   · intro r' h1 h2
     rcases (hTI r').mp h1 with h4 | ⟨rfl, -⟩
     · exact hinv.previous_sources r' h4 h2
     · change vote.data.target.epoch + 1 = compute_epoch_at_slot S.cfg state.slot at h2
       change vote.data.source = state.previous_justified_checkpoint
-      rw [hsrc, if_neg (by beacon_omega)]
+      rw [hsrc, ite_eq_right (by beacon_omega)]
   · intro r' h1
     rcases (hTI r').mp h1 with h4 | ⟨rfl, h5⟩
     · exact hinv.target_on_chain r' h4
@@ -421,13 +421,13 @@ theorem epoch_succ_of_not_boundary {cfg : Config} {x : Slot}
     (h : ¬ (x + 1) % cfg.slots_per_epoch = 0) :
     compute_epoch_at_slot cfg (x + 1) = compute_epoch_at_slot cfg x := by
   unfold compute_epoch_at_slot
-  rw [Nat.succ_div, if_neg (by rw [Nat.dvd_iff_mod_eq_zero]; exact h), Nat.add_zero]
+  rw [Nat.succ_div, ite_eq_right (by rw [Nat.dvd_iff_mod_eq_zero]; exact h), Nat.add_zero]
 
 theorem epoch_succ_of_boundary {cfg : Config} {x : Slot}
     (h : (x + 1) % cfg.slots_per_epoch = 0) :
     compute_epoch_at_slot cfg (x + 1) = compute_epoch_at_slot cfg x + 1 := by
   unfold compute_epoch_at_slot
-  rw [Nat.succ_div, if_pos (by rw [Nat.dvd_iff_mod_eq_zero]; exact h)]
+  rw [Nat.succ_div, ite_eq_left (by rw [Nat.dvd_iff_mod_eq_zero]; exact h)]
 
 theorem boundary_slot_eq {cfg : Config} {x : Slot} (h : (x + 1) % cfg.slots_per_epoch = 0) :
     x + 1 = (compute_epoch_at_slot cfg x + 1) * cfg.slots_per_epoch := by
@@ -519,8 +519,8 @@ theorem justified_of_participation_test {S : FFGSetup Root} (hS : S.Admissible)
     else state.previous_justified_checkpoint
   have hsource : Justified S votes source := by
     by_cases h : epoch = E
-    · simp only [source, if_pos h]; exact hinv.current_justified
-    · simp only [source, if_neg h]; exact hinv.previous_justified
+    · simp only [source, ite_eq_left h]; exact hinv.current_justified
+    · simp only [source, ite_eq_right h]; exact hinv.previous_justified
   refine .link hsource
     { signers := set
       source_before_target := ?_
@@ -531,10 +531,10 @@ theorem justified_of_participation_test {S : FFGSetup Root} (hS : S.Admissible)
   · have h1 := hinv.current_epoch_le
     have h2 := hinv.previous_epoch_le
     by_cases h : epoch = E
-    · simp only [source, if_pos h]
+    · simp only [source, ite_eq_left h]
       change state.current_justified_checkpoint.epoch < epoch
       beacon_omega
-    · simp only [source, if_neg h]
+    · simp only [source, ite_eq_right h]
       change state.previous_justified_checkpoint.epoch < epoch
       rcases hepoch with h' | h'
       · exact absurd h' h
@@ -542,20 +542,20 @@ theorem justified_of_participation_test {S : FFGSetup Root} (hS : S.Admissible)
   · intro i hi
     have hflag := (hmem i hi).2.2.1
     by_cases h : epoch = E
-    · rw [if_pos h] at hflag
+    · rw [ite_eq_left h] at hflag
       obtain ⟨r, hr, hri, hre⟩ := (hinv.current_flags i).mp hflag
       have hre' : r.vote.data.target.epoch = epoch := by rw [hre]; exact h.symm
       refine ⟨r, hr, hri, ?_, checkpoint_eq_of hre' ?_⟩
-      · simp only [source, if_pos h]; exact hinv.current_sources r hr hre
+      · simp only [source, ite_eq_left h]; exact hinv.current_sources r hr hre
       · exact ((hinv.target_on_chain r hr).2.trans (by rw [hre'])).trans hchain.symm
-    · rw [if_neg h] at hflag
+    · rw [ite_eq_right h] at hflag
       obtain ⟨r, hr, hri, hre⟩ := (hinv.previous_flags i).mp hflag
       have hre' : r.vote.data.target.epoch = epoch := by
         rcases hepoch with h' | h'
         · exact absurd h' h
         · beacon_omega
       refine ⟨r, hr, hri, ?_, checkpoint_eq_of hre' ?_⟩
-      · simp only [source, if_neg h]; exact hinv.previous_sources r hr hre
+      · simp only [source, ite_eq_right h]; exact hinv.previous_sources r hr hre
       · exact ((hinv.target_on_chain r hr).2.trans (by rw [hre'])).trans hchain.symm
   · rw [total_active_balance_eq hS hscope (by rw [hslot]; exact hH),
       total_balance_eq hscope set] at hth

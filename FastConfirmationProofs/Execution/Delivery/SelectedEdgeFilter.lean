@@ -441,7 +441,7 @@ theorem StrictSelectedResultMechanicalFacts.canonicalThroughoutNextEpoch_of_prev
     rw [hqBoundary]
     have hboundaryLe : compute_start_slot_at_epoch cfg (e + 1) ≤
         E.slot_at cfg m' := by
-      simpa only [compute_start_slot_at_epoch, ← hm'Epoch] using
+      simpa only [compute_start_slot_at_epoch, ← hm'Epoch, compute_epoch_at_slot] using
         Nat.div_mul_le_self (E.slot_at cfg m') cfg.slots_per_epoch
     exact hboundaryLe
   have hqLeM' : n + 1 ≤ m' := by
@@ -529,7 +529,7 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hn1H
   have hparentQ : ParentSlotLt query.store := by
-    simpa only [query, E.fcrStep_store] using hparent
+    simpa only [query, E.fcrStep_store, ParentSlotLt] using hparent
   have hwalkQ : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by
@@ -781,7 +781,7 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
     have hsourceQuery : CheckpointReadsAs Q.source
         (B.state.voting_source_at cfg ext (E.store cfg ext v q) selected e) := by
       simpa only [AcceptedBlockFFGState.voting_source_at, hselectedEpoch,
-        if_pos] using hsource
+        ite_eq_left] using hsource
     have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
       E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
         cfg ext B hT hanchor hboundary
@@ -963,7 +963,7 @@ noncomputable def
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain w hw m hmH
   have hendpointParent' : ParentSlotLt endpoint := by
-    simpa only [endpoint] using hendpointParent
+    simpa only [endpoint, ParentSlotLt] using hendpointParent
   have hendpointWalk' : ∀ t ∈ endpoint.block_roots,
       ∀ r ∈ endpoint.block_roots,
         WalkKnown endpoint (endpoint.blocks t).slot r := by
@@ -1002,7 +1002,7 @@ noncomputable def
       ((B.globalFinalizedEpoch_le_justified cfg ext hgenShort hanchor
         hendpointCausal).trans (hjustifiedEpoch.trans hguLower))
   have hqueryParent' : ParentSlotLt query := by
-    simpa only [query] using hqueryParent
+    simpa only [query, ParentSlotLt] using hqueryParent
   have hsemantic : E.RootDescends seed selected :=
     E.rootDescends_of_store_ancestor (E.blockProvenance cfg ext v q)
       hqueryParent'
@@ -1046,7 +1046,7 @@ noncomputable def
       (B.state.unrealized_justified seed).epoch := by
     have hselector := hendpointCausal.getVotingSource_epoch_eq_acceptedSelector
       cfg ext B (by simpa only [endpoint] using hseedM)
-    simpa only [if_pos hseedOld] using hselector
+    simpa only [ite_eq_left hseedOld] using hselector
   have hseedVisible : SourceVisibleAtTip cfg endpoint seed := by
     refine ⟨?_⟩
     calc
@@ -1056,7 +1056,7 @@ noncomputable def
       _ = (get_voting_source cfg endpoint seed).epoch := by rw [hsourceGU]
   have hnonfuture : BlocksSlotLe
       (get_current_slot cfg endpoint) endpoint := by
-    simpa only [endpoint] using
+    simpa only [endpoint, BlocksSlotLe] using
       E.store_blocks_slot_le_current cfg ext hT.whole_seconds
         hgenShort w m
   have hpersistence : VotingSourceEpochChainPersistence cfg endpoint :=
@@ -1238,7 +1238,7 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLin
         ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ w m
   have hnonfuture : BlocksSlotLe
       (get_current_slot cfg endpoint) endpoint := by
-    simpa only [endpoint] using
+    simpa only [endpoint, BlocksSlotLe] using
       E.store_blocks_slot_le_current cfg ext hT.whole_seconds
         hgenShort w m
   obtain ⟨seed, hseedKnown, hseedSelected, hseedVisible⟩ :=
@@ -1866,7 +1866,7 @@ noncomputable def
               get_current_store_epoch cfg (E.store cfg ext w m) :=
             Nat.lt_of_le_of_ne hqNextLe hqNextNe
           rw [hcurrent]
-          simpa only [Nat.add_assoc, Nat.reduceAdd] using hqNextLt
+          simpa only [Nat.add_assoc, Nat.reduceAdd] using (Nat.succ_le_of_lt hqNextLt)
         have hstrict : find_latest_confirmed_descendant cfg ext
             (E.fcrStoreAtCall cfg ext v n) trace.afterObserved ≠ trace.afterObserved := by
           rw [← hselector.result_eq]
@@ -1877,7 +1877,7 @@ noncomputable def
           trace.afterObserved hinput hstrict
           (by simpa only [trace, ← hselector.result_eq] using hcurrent)
           (by simpa only [trace, ← hselector.result_eq] using hselectedKnown)
-          (by simpa only [trace, ← hselector.result_eq] using hIH)
+          (by simpa only [trace, ← hselector.result_eq, SelectedCanonicalBeforeEndpointAt] using hIH)
         have hafterEpoch : compute_start_slot_at_epoch cfg
             ((get_current_target cfg (E.fcrStoreAtCall cfg ext v n).store).epoch + 1) ≤
               E.slot_at cfg m := by

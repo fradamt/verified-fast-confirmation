@@ -120,7 +120,7 @@ theorem parent_known (t : E.SuccessfulScheduledBlockImport cfg ext)
     t.signedBlock.message.parent_root ∈
       (t.atPrefix.store cfg ext).block_roots := by
   have haccepted := t.accepted
-  simp only [on_block, if_neg hfresh] at haccepted
+  simp only [on_block, ite_eq_right hfresh] at haccepted
   split_ifs at haccepted with hparent <;> try cases haccepted
   all_goals simpa only [not_not] using hparent
 

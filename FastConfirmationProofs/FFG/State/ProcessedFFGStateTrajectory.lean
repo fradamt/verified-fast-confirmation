@@ -235,10 +235,10 @@ private theorem on_block_acceptedFFGStoreProjection_of_selectors
     (hh : on_block cfg ext store sb = some store') :
     AcceptedFFGStoreProjection S store' := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [on_block, if_pos hknown] at hh
+  · simp only [on_block, ite_eq_left hknown] at hh
     cases hh
     exact h
-  · simp only [on_block, if_neg hknown] at hh
+  · simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
     let added : Store Root :=
@@ -300,21 +300,43 @@ private theorem on_block_acceptedFFGStoreProjection_of_selectors
             simp only [added, List.mem_append, List.mem_singleton] at hr
             exact hr.resolve_right hrs
       · intro r hr hrs
-        simp only [update_checkpoints, update_proposer_boost_root,
-          record_block_timeliness] at hr ⊢
-        split_ifs at hr ⊢
-        all_goals
-          rw [hf.block_roots] at hr
-          rw [hf.unrealized_justifications]
-          apply h.unrealized_justification
-          simp only [added, List.mem_append, List.mem_singleton] at hr
-          exact hr.resolve_right hrs
-      · simp only [update_checkpoints, update_proposer_boost_root,
-          record_block_timeliness]
-        split_ifs
-        all_goals
-          rw [hf.block_roots]
-          exact List.mem_append_right _ (List.mem_singleton_self _)
+        have hroots : ∀ (s : Store Root) (jc fc : Checkpoint Root),
+            (update_checkpoints
+              (update_proposer_boost_root cfg
+                (record_block_timeliness cfg s sb.root)
+                (get_head cfg store).root sb.root) jc fc).block_roots =
+              s.block_roots := by
+          intro s jc fc
+          simp only [update_checkpoints]
+          split_ifs <;> simp only [update_proposer_boost_root]
+          all_goals split_ifs <;> rfl
+        have hmap : ∀ (s : Store Root) (jc fc : Checkpoint Root),
+            (update_checkpoints
+              (update_proposer_boost_root cfg
+                (record_block_timeliness cfg s sb.root)
+                (get_head cfg store).root sb.root) jc fc).unrealized_justifications =
+              s.unrealized_justifications := by
+          intro s jc fc
+          simp only [update_checkpoints]
+          split_ifs <;> simp only [update_proposer_boost_root]
+          all_goals split_ifs <;> rfl
+        rw [hroots, hf.block_roots] at hr
+        rw [hmap, hf.unrealized_justifications]
+        apply h.unrealized_justification
+        simp only [added, List.mem_append, List.mem_singleton] at hr
+        exact hr.resolve_right hrs
+      · have hroots : ∀ (s : Store Root) (jc fc : Checkpoint Root),
+            (update_checkpoints
+              (update_proposer_boost_root cfg
+                (record_block_timeliness cfg s sb.root)
+                (get_head cfg store).root sb.root) jc fc).block_roots =
+              s.block_roots := by
+          intro s jc fc
+          simp only [update_checkpoints]
+          split_ifs <;> simp only [update_proposer_boost_root]
+          all_goals split_ifs <;> rfl
+        rw [hroots, hf.block_roots]
+        exact List.mem_append_right _ (List.mem_singleton_self _)
 
 /-- A concrete accepted block transition preserves the exact projection.
 The coherence law is applied to this transition value itself, never to an

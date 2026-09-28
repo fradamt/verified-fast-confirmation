@@ -290,7 +290,7 @@ theorem honest_supportsDesc_at_slot_endpoint_minimal
     by
       have h := E.honest_head_known_at_later_slot_minimal cfg ext hA
         hi hv hnuH hqH hdue hnuq
-      simpa only [ha, honest_attestation_data_beacon_block_root] using h
+      simpa only [ha, honest_attestation, honest_attestation_data_beacon_block_root] using h
   have hancEnd := (E.pastDescendant_ancestry_at_slot_endpoint_minimal cfg ext hA
     v hv q b hqH hb w hw m hmH hslotTarget i hi nu hnuH
     a.data.beacon_block_root hnuq hdue
@@ -340,7 +340,7 @@ theorem honest_ancestorOrVoteless_at_slot_endpoint_minimal
       by
         have h := E.honest_head_known_at_later_slot_minimal cfg ext hA
           hi hv hnuH hqH hdue hnuq
-        simpa only [ha, honest_attestation_data_beacon_block_root] using h
+        simpa only [ha, honest_attestation, honest_attestation_data_beacon_block_root] using h
     have hancEnd := (E.pastDescendant_ancestorPair_at_slot_endpoint_minimal
       cfg ext hA v hv q b a.data.beacon_block_root hqH hb hrootQ hanc
       w hw m hmH hslotTarget u hu nu0 hnu0H d hnu0q hdeadline hhead hd hdQ hdb).2.2

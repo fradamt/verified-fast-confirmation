@@ -41,7 +41,8 @@ theorem trans {a b c : Store Root} (hab : StoreLE a b) (hbc : StoreLE b c) :
     StoreLE a c := by
   obtain ⟨h1, h2, h3, h4⟩ := hab
   obtain ⟨g1, g2, g3, g4⟩ := hbc
-  refine ⟨h1.trans g1, h2.trans g2, h3.trans g3, fun i m hm => ?_⟩
+  refine ⟨List.Subset.trans h1 g1, h2.trans g2,
+    Finset.Subset.trans h3 g3, fun i m hm => ?_⟩
   obtain ⟨m', hm', hle⟩ := h4 i m hm
   obtain ⟨m'', hm'', hle'⟩ := g4 i m' hm'
   exact ⟨m'', hm'', hle.trans hle'⟩
@@ -189,7 +190,6 @@ theorem update_latest_messages_storeLE (store : Store Root)
     StoreLE store (update_latest_messages store attesting_indices attestation) := by
   simp only [update_latest_messages]
   refine storeLE_foldl (fun s i => ?_) _ store
-  dsimp only
   rcases hmi : s.latest_messages i with _ | lm
   · split_ifs with h
     · refine ⟨List.Subset.refl _, rfl, Finset.Subset.refl _, fun j m hm => ?_⟩
@@ -278,7 +278,7 @@ theorem on_block_storeLE {store store' : Store Root}
   · simp [on_block, hknown] at h
     cases h
     exact StoreLE.refl _
-  · simp only [on_block, if_neg hknown] at h
+  · simp only [on_block, ite_eq_right hknown] at h
     split_ifs at h
     all_goals try contradiction
     cases hst : ext.state_transition

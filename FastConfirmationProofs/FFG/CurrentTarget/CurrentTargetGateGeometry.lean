@@ -295,7 +295,7 @@ theorem acceptedGJEqHonestSourceAt_of_target_walk_root
       rw [get_ancestor_stop hle] at hlands
       have hre : r = targetRoot := hlands
       subst targetRoot
-      simp only [phase0HonestSourceAt, hheadEpoch, if_pos]
+      simp only [phase0HonestSourceAt, hheadEpoch, ite_eq_left]
       exact ((Execution.ScheduledFFGInterpretation.causalStoreProjection B
         hstore).block_state_gj r hr).symm
   | @step r hr hgt hp ih =>
@@ -347,7 +347,7 @@ theorem acceptedGJEqHonestSourceAt_of_target_walk_root
         have hrEpoch : compute_epoch_at_slot cfg (store.blocks r).slot = e :=
           hheadEpoch
         rw [hparentEq, hrEpoch] at hedge
-        simp only [phase0HonestSourceAt, if_neg htargetOld]
+        simp only [phase0HonestSourceAt, ite_eq_right htargetOld]
         exact hedge
 
 
@@ -404,7 +404,7 @@ def fixedSource_of_acceptedTargetWalk_root
         hlands hcarrierEpoch
     have hvs : B.state.voting_source_at cfg ext store carrier
         (get_current_target cfg store).epoch = B.state.realized_justified carrier := by
-      simp only [AcceptedBlockFFGState.voting_source_at, hcarrierEpoch, if_pos]
+      simp only [AcceptedBlockFFGState.voting_source_at, hcarrierEpoch, ite_eq_left]
     change CheckpointReadsAs Q.source (B.state.voting_source_at cfg ext store carrier
       (get_current_target cfg store).epoch)
     rw [hvs]
@@ -506,14 +506,14 @@ theorem acceptedHonestAttestationDataSourceEqHonestSourceAtTarget
     change (if (store.block_states head).slot < slot then
         ext.process_slots (store.block_states head) slot
       else store.block_states head).current_justified_checkpoint = _
-    rw [if_pos hstateSlotLt]
+    rw [ite_eq_left hstateSlotLt]
     have htargetOld :
         get_block_epoch cfg store target.root ≠ target.epoch := by
       rw [← hheadEq]
       exact Nat.ne_of_lt hheadOld
     rw [hboundaryPhase.process_slots_eq_boundarySource hboundaryEpoch,
       hslotEpoch]
-    simp only [phase0HonestSourceAt, if_neg htargetOld, hheadEq]
+    simp only [phase0HonestSourceAt, ite_eq_right htargetOld, hheadEq]
 
 /-- Accepted carrier for one honest old-target vote.  An old head obtains
 its source through `process_slots`, and a current-epoch head obtains it
@@ -689,7 +689,7 @@ theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
       vote.slot vote.index).source
         (phase0BoundarySource cfg ext (voteStore.block_states target.root)
           target.epoch) := by
-    simpa only [phase0HonestSourceAt, if_neg
+    simpa only [phase0HonestSourceAt, ite_eq_right
       (Nat.ne_of_lt hvoteTargetOld)] using hsourceHonest
   exact ⟨{ target_known := htargetSpec.1, source_eq := hsource }⟩
 
@@ -726,7 +726,7 @@ theorem currentTargetFutureHonestSeat_vote_of_currentSlot
     have h := Nat.div_mul_le_self (get_current_slot cfg queryStore)
       cfg.slots_per_epoch
     simpa only [e, get_current_store_epoch, compute_start_slot_at_epoch,
-      Nat.mul_comm] using h
+      compute_epoch_at_slot, Nat.mul_comm] using h
   have hendLt : currentTargetEpochEnd cfg queryStore <
       compute_start_slot_at_epoch cfg (e + 1) := by
     simp only [currentTargetEpochEnd, currentTargetEpochStart,
@@ -1541,7 +1541,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_core
   change CheckpointReadsAs Q.source
     (phase0HonestSourceAt cfg ext store target.root target.epoch)
   apply CheckpointReadsAs.of_eq
-  simpa only [phase0HonestSourceAt, if_neg (Nat.ne_of_lt htargetOld)]
+  simpa only [phase0HonestSourceAt, ite_eq_right (Nat.ne_of_lt htargetOld)]
     using hQSource
 
 
@@ -1716,7 +1716,7 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
       hT.wellFormed hT.externals_coherence hcausalCore hphase hboundaryPhase
       hstore hparentSlots hcurrentNonGenesis hwalk hlands hcTargetEpoch
     have hsource : CheckpointReadsAs (B.state.realized_justified c) source := by
-      simpa only [phase0HonestSourceAt, if_neg (Nat.ne_of_lt htargetOld)]
+      simpa only [phase0HonestSourceAt, ite_eq_right (Nat.ne_of_lt htargetOld)]
         using hgj
     have hcCarrier : E.AcceptedCarrierIn
         (cfg := cfg) (ext := ext) store c :=

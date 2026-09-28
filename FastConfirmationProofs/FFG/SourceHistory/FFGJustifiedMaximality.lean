@@ -241,7 +241,7 @@ private theorem pulled_epoch_le_realized_of_old
       update_checkpoints pulled state.current_justified_checkpoint
         state.finalized_checkpoint
     else pulled).justified_checkpoint.epoch
-  rw [if_pos hpull]
+  rw [ite_eq_left hpull]
   exact candidate_epoch_le_update_checkpoints pulled
     state.current_justified_checkpoint state.finalized_checkpoint
 
@@ -392,10 +392,10 @@ private theorem on_block_of_selectors
     (hh : on_block cfg ext store sb = some store') :
     AcceptedFFGJustifiedLedger S store' := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [on_block, if_pos hknown] at hh
+  · simp only [on_block, ite_eq_left hknown] at hh
     cases hh
     exact h
-  · simp only [on_block, if_neg hknown] at hh
+  · simp only [on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
     let added : Store Root :=
@@ -627,7 +627,7 @@ theorem after_on_tick_per_slot_next
         rw [hcurrent]
         exact hstart
       simp only [FastConfirmation.Spec.on_tick_per_slot]
-      rw [if_pos hadvance, if_pos ⟨hadvance, hstart'⟩]
+      rw [ite_eq_left hadvance, ite_eq_left ⟨hadvance, hstart'⟩]
       exact AcceptedFFGJustifiedLedger.candidate_epoch_le_update_checkpoints _ _ _
     exact (hledger.gu_epoch_le_unrealized r hr').trans hpull
   · apply of_sameBlocks h
@@ -637,7 +637,7 @@ theorem after_on_tick_per_slot_next
         rw [hcurrent]
         exact hstart
       simp only [FastConfirmation.Spec.on_tick_per_slot]
-      rw [if_pos hadvance, if_neg (fun hpull => hstart' hpull.2)]
+      rw [ite_eq_left hadvance, ite_eq_right (fun hpull => hstart' hpull.2)]
     · simp only [get_current_store_epoch]
       rw [on_tick_per_slot_current_slot, hcurrent]
       exact epoch_succ_le_of_slots_since_ne_zero
@@ -696,7 +696,7 @@ theorem on_tick_aux_eq_of_not_lt
     FastConfirmation.Spec.on_tick_aux cfg tickSlot fuel store = store := by
   cases fuel with
   | zero => rfl
-  | succ fuel => simp only [FastConfirmation.Spec.on_tick_aux, if_neg h]
+  | succ fuel => simp only [FastConfirmation.Spec.on_tick_aux, ite_eq_right h]
 
 theorem on_tick_aux_one_slot
     (store : Store Root) (s : Slot)
@@ -707,7 +707,7 @@ theorem on_tick_aux_one_slot
         (store.genesis_time + (s + 1) * cfg.slot_duration_ms / 1000) := by
   have hfuel : s + 2 = (s + 1) + 1 := rfl
   rw [hfuel, FastConfirmation.Spec.on_tick_aux]
-  rw [if_pos (by rw [hslot]; exact Nat.lt_succ_self _)]
+  rw [ite_eq_left (by rw [hslot]; exact Nat.lt_succ_self _)]
   rw [hslot]
   let stepped := FastConfirmation.Spec.on_tick_per_slot cfg store
     (store.genesis_time + (s + 1) * cfg.slot_duration_ms / 1000)
@@ -716,7 +716,7 @@ theorem on_tick_aux_one_slot
     simpa only [hslot] using current_slot_at_next_boundary
       (cfg := cfg) hdiv store
   rw [FastConfirmation.Spec.on_tick_aux]
-  rw [if_neg (by rw [hstepped]; exact Nat.lt_irrefl _)]
+  rw [ite_eq_right (by rw [hstepped]; exact Nat.lt_irrefl _)]
 
 /-! ## Handler preservation of the old-GU invariant -/
 
@@ -731,10 +731,10 @@ private theorem on_block_of_selector
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedOldGURealized S store' := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_left hknown] at hh
     cases hh
     exact h
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
     let added : Store Root :=
@@ -816,7 +816,7 @@ private theorem on_block_of_selector
             (compute_pulled_up_tip cfg ext realized sb.root).blocks r =
               store.blocks r := by
           rw [← hsameFinal.2.1]
-          simp only [added, Function.update_apply, if_neg hrNe]
+          simp only [added, Function.update_apply, ite_eq_right hrNe]
         have hcurrent : get_current_store_epoch cfg
               (compute_pulled_up_tip cfg ext realized sb.root) =
             get_current_store_epoch cfg store :=

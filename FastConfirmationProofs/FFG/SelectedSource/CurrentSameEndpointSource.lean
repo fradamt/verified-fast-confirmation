@@ -670,7 +670,7 @@ theorem retainedAt_currentSameEndpoint
       have hsourceEq : (get_voting_source cfg past seed).epoch =
           (B.state.unrealized_justified seed).epoch := by
         rw [hpastCausal.getVotingSource_epoch_eq_acceptedSelector cfg ext B
-          hseedKnown, if_pos hseedOld]
+          hseedKnown, ite_eq_left hseedOld]
       refine ⟨seed, hseedKnown,
         Execution.RootDescends.trans E hseedJ hjSemantic, ?_⟩
       rw [← hjEpoch, hgu, hsourceEq]
@@ -776,7 +776,7 @@ theorem retainedAt_currentSameEndpoint
         ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ w m
   have hendpointNonfuture : BlocksSlotLe
       (get_current_slot cfg endpoint) endpoint := by
-    simpa only [endpoint] using
+    simpa only [endpoint, BlocksSlotLe] using
       E.store_blocks_slot_le_current cfg ext hT.whole_seconds
         hgenShort w m
   exact ⟨E.acceptedRetainedPhaseSourceCarrier_of_queryRecentSeed

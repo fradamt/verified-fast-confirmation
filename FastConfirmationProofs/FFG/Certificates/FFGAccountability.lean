@@ -63,7 +63,7 @@ private theorem anchor_epoch_within (hA : FFGAccountabilityAssumptions cfg ext E
   have hslot := E.anchor_state_slot_le cfg hA.whole_seconds hA.genesis_store
   have hepoch : get_current_epoch cfg E.anchor_state ≤
       compute_epoch_at_slot cfg (E.slot_at cfg 0) := by
-    simpa only [get_current_epoch] using Nat.div_le_div_right hslot
+    simpa only [get_current_epoch, compute_epoch_at_slot] using Nat.div_le_div_right hslot
   exact lt_of_le_of_lt hepoch
     hA.static_validator_set.genesis_within_horizon.2.2
 

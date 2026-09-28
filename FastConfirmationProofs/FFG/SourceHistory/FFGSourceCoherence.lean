@@ -70,7 +70,7 @@ theorem on_block_inserted_message
     (hfresh : sb.root ∉ store.block_roots)
     (hh : on_block cfg ext store sb = some store') :
     store'.blocks sb.root = sb.message := by
-  simp only [on_block, if_neg hfresh] at hh
+  simp only [on_block, ite_eq_right hfresh] at hh
   split_ifs at hh <;> try cases hh
   cases hst : ext.state_transition
       (store.block_states sb.message.parent_root) sb with

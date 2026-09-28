@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build every project module and reject Lean's hasSorry diagnostic explicitly.
-# Lean 4.30 exits successfully for warnings, including declarations discarded
+# Lean 4.34.1 exits successfully for warnings, including declarations discarded
 # from the environment (for example `example : False := by sorry`), so the
 # environment audit alone cannot cover this case.
 set -euo pipefail
@@ -21,7 +21,7 @@ set -e
 build_status=${pipeline_status[0]}
 tee_status=${pipeline_status[1]}
 
-# Pinned Lean 4.30 emits: "declaration uses `sorry`". Match quote-agnostically
+# Pinned Lean 4.34.1 emits: "declaration uses `sorry`". Match quote-agnostically
 # so a cosmetic quote change cannot silently weaken the gate.
 set +e
 grep -Eq 'declaration uses .sorry.' "$build_log"

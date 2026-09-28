@@ -94,7 +94,7 @@ theorem filter_block_tree_aux_child_true {store : Store Root} {fuel : ℕ} {r c 
         (fun child => filter_block_tree_aux cfg store fuel child)).map Prod.snd).flatten
           ++ [r]) := by
     simp only [filter_block_tree_aux]
-    rw [if_pos hne, if_pos hany]
+    rw [ite_eq_left hne, ite_eq_left hany]
   refine ⟨_, hval, ?_, ?_⟩
   · intro x hx
     refine List.mem_append.mpr (Or.inl ?_)
@@ -142,7 +142,7 @@ theorem filter_block_tree_aux_chain_lift {store : Store Root} {t : Root}
     have hcm : m ∈ store.block_roots.filter (fun x => (store.blocks x).parent_root = top) :=
       List.mem_filter.mpr ⟨hmmem, by simpa using hmpar⟩
     obtain ⟨lr, hlr, hsub, hmemtop⟩ := filter_block_tree_aux_child_true cfg hcm hL'
-    refine ⟨lr, ?_, hsub'.trans hsub, hmemtop, ?_⟩
+    refine ⟨lr, ?_, List.Subset.trans hsub' hsub, hmemtop, ?_⟩
     · have hfuel : fuelt + (m :: ms).length + 1 = fuelt + ms.length + 1 + 1 := by
         simp only [List.length_cons]; omega
       rw [hfuel]; exact hlr

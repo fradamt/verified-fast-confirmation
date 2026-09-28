@@ -203,19 +203,18 @@ def witnessExecution : Execution WitnessRoot where
   vote := witnessVote
 
 private lemma time_at_eq (n : ℕ) : witnessExecution.time_at n = n := by
-  norm_num [Execution.time_at, witnessExecution, anchorState, stateAt,
-    anchorSignedBlock, witnessConfig, get_forkchoice_store]
+  change 0 + n = n
+  exact Nat.zero_add n
 
 private lemma slot_at_eq (n : ℕ) :
     witnessExecution.slot_at witnessConfig n = n := by
-  norm_num [Execution.slot_at, Execution.time_at, witnessExecution,
-    anchorState, stateAt, anchorSignedBlock, witnessConfig,
-    get_forkchoice_store, GENESIS_SLOT]
+  change 0 + (0 + n - 0) * 1000 / 1000 = n
+  simp
 
 private lemma slot_start_eq (s : Slot) :
     witnessExecution.slot_start witnessConfig s = s := by
-  norm_num [Execution.slot_start, witnessExecution, anchorState, stateAt,
-    anchorSignedBlock, witnessConfig, get_forkchoice_store]
+  change 0 + s * 1000 / 1000 - 0 = s
+  simp
 
 private lemma within_of_lt_four {n : ℕ} (h : n < 4) :
     witnessExecution.WithinHorizon witnessConfig n := by
@@ -866,7 +865,7 @@ theorem direct_extra_query_is_legal_preUpdate :
   have hexists : ∃ after,
       step? witnessConfig witnessExternals directQueryRuntime
         (.query .extra) = some after := by
-    simp only [step?, hready, Bool.false_eq_true, if_false]
+    simp only [step?, hready, Bool.false_eq_true, ite_false]
     exact ⟨_, rfl⟩
   obtain ⟨after, hstep⟩ := hexists
   have hexact : ∃ observation,

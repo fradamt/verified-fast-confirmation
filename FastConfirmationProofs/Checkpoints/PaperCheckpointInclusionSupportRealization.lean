@@ -64,8 +64,8 @@ private theorem concreteVote_signer_in_registry
     simp [List.getD, Nat.le_of_not_gt hi]
   rw [hget] at hactive
   simp only [is_active_validator, decide_eq_true_eq] at hactive
-  have hbad : compute_epoch_at_slot cfg vote.slot < 0 := by
-    simpa only [Validator.exit_epoch, default] using hactive.2
+  have hbad := hactive.2
+  change compute_epoch_at_slot cfg vote.slot < 0 at hbad
   exact (Nat.not_lt_zero _ hbad)
 
 /-- Honest validators are absent from the generic paper view's concrete
@@ -165,7 +165,8 @@ theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
       · simpa only [a, honest_attestation_data_eq,
           honest_attestation_data_slot] using vote.assigned
       · exact ⟨vote.time, a,
-          by simpa only [a] using vote.vote, rfl⟩
+          by simpa only [a, honest_attestation_data_eq,
+            honest_attestation_data_slot] using vote.vote, rfl⟩
     · exact (Nat.le_succ vote.slot).trans hslot
     · exact (Q.source_agreement i hi vote).trans hQsource
     · simpa only [a] using vote.target_eq

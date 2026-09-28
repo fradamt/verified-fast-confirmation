@@ -150,11 +150,12 @@ theorem process_justification_and_finalization_eq_ok {cfg : Config} {preset : FF
   unfold process_justification_and_finalization at h
   by_cases hE : compute_epoch_at_slot cfg state.slot ≤ 1
   · left
-    simp only [hE, if_true] at h
+    simp only [hE, ite_true] at h
     exact ⟨hE, (except_pure_eq_ok.mp h).symm⟩
   · right
-    simp only [hE, if_false, except_bind_eq_ok] at h
-    obtain ⟨_, -, previous, hp, current, hc, hw⟩ := h
+    simp only [hE, ite_false] at h
+    obtain ⟨previous, hp, h⟩ := except_bind_eq_ok.mp h
+    obtain ⟨current, hc, hw⟩ := except_bind_eq_ok.mp h
     exact ⟨Nat.lt_of_not_le hE, previous, current, hp, hc, hw⟩
 
 /-- The outcome of `weigh_justification_and_finalization`: the previous
@@ -184,13 +185,12 @@ theorem weigh_justification_and_finalization_eq_ok {cfg : Config} {preset : FFGP
   rw [except_bind_eq_ok] at h
   obtain ⟨_, -, h⟩ := h
   dsimp only at h
-  simp only [pure_bind] at h
   by_cases c1 : previous * 3 ≥ total * 2
-  · rw [if_pos c1] at h
+  · rw [ite_eq_left c1] at h
     rw [except_bind_eq_ok] at h
     obtain ⟨root1, hr1, h⟩ := h
     by_cases c2 : current * 3 ≥ total * 2
-    · rw [if_pos c2] at h
+    · rw [ite_eq_left c2] at h
       rw [except_bind_eq_ok] at h
       obtain ⟨root2, hr2, h⟩ := h
       repeat' split at h
@@ -199,16 +199,16 @@ theorem weigh_justification_and_finalization_eq_ok {cfg : Config} {preset : FFGP
         subst h
         refine ⟨_, _, _, rfl, Or.inr (Or.inr ⟨c2, rfl, hr2⟩), ?_⟩
         first | exact Or.inl rfl | exact Or.inr (Or.inl rfl) | exact Or.inr (Or.inr rfl)
-    · rw [if_neg c2] at h
+    · rw [ite_eq_right c2] at h
       repeat' split at h
       all_goals
         simp only [except_pure_eq_ok] at h
         subst h
         refine ⟨_, _, _, rfl, Or.inr (Or.inl ⟨c1, rfl, hr1⟩), ?_⟩
         first | exact Or.inl rfl | exact Or.inr (Or.inl rfl) | exact Or.inr (Or.inr rfl)
-  · rw [if_neg c1] at h
+  · rw [ite_eq_right c1] at h
     by_cases c2 : current * 3 ≥ total * 2
-    · rw [if_pos c2] at h
+    · rw [ite_eq_left c2] at h
       rw [except_bind_eq_ok] at h
       obtain ⟨root2, hr2, h⟩ := h
       repeat' split at h
@@ -217,7 +217,7 @@ theorem weigh_justification_and_finalization_eq_ok {cfg : Config} {preset : FFGP
         subst h
         refine ⟨_, _, _, rfl, Or.inr (Or.inr ⟨c2, rfl, hr2⟩), ?_⟩
         first | exact Or.inl rfl | exact Or.inr (Or.inl rfl) | exact Or.inr (Or.inr rfl)
-    · rw [if_neg c2] at h
+    · rw [ite_eq_right c2] at h
       repeat' split at h
       all_goals
         simp only [except_pure_eq_ok] at h
@@ -393,13 +393,13 @@ theorem process_attestation_eq_ok [DecidableEq Root] {cfg : Config} {preset : FF
     exact this.2 i ((Finset.mem_sort _).mpr hi)
   · intro hcur
     have hl := guard_eq_ok.mp hlen
-    simp only [hcur, beq_self_eq_true, if_true, beq_iff_eq] at hl h
+    simp only [hcur, beq_self_eq_true, ite_true, beq_iff_eq] at hl h
     exact ⟨hl, (except_pure_eq_ok.mp h).symm⟩
   · intro hcur
     have hl := guard_eq_ok.mp hlen
     have hne : (vote.data.target.epoch == compute_epoch_at_slot cfg state.slot) = false := by
       simpa using hcur
-    simp only [hne, Bool.false_eq_true, if_false, beq_iff_eq] at hl h
+    simp only [hne, Bool.false_eq_true, ite_false, beq_iff_eq] at hl h
     exact ⟨hl, (except_pure_eq_ok.mp h).symm⟩
 
 /-! ### Block processing -/

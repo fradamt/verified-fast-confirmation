@@ -206,7 +206,7 @@ theorem strictSelectedResultMechanicalFacts
     · exact False.elim (hstrict (by simpa only [result] using heq))
     · simpa only [result] using hright
   have hge := find_latest_confirmed_descendant_ge cfg ext query
-    (by simpa only [hquery] using hwfQ)
+    (by simpa only [hquery, ParentSlotLt] using hwfQ)
     (by simpa only [hquery] using hwalkQ)
     hheadQ input hinput
   have hdesc : is_ancestor query.store
@@ -214,7 +214,7 @@ theorem strictSelectedResultMechanicalFacts
     simpa only [result] using hge.1
   have hresultKnown : result ∈ query.store.block_roots := hright.2.1
   have hwfQuery : ParentSlotLt query.store := by
-    simpa only [hquery] using hwfQ
+    simpa only [hquery, ParentSlotLt] using hwfQ
   have hwalkQuery : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by
@@ -273,7 +273,7 @@ theorem strictSelectedResultMechanicalFacts
           _ ≤ resultEpoch := Nat.succ_le_of_lt hinputLt
   have horiginRaw := selected_strict_result_origin_recency_classification
     cfg ext query
-    (by simpa only [hquery] using hwfQ)
+    (by simpa only [hquery, ParentSlotLt] using hwfQ)
     (by simpa only [hquery] using hwalkQ)
     hheadQ input hinput result rfl (by simpa only [result] using hstrict)
   have horigin :
@@ -370,7 +370,7 @@ theorem preQuerySelectedJustifiedCompatibilityAt_of_threeRegionBracket
   have hresultInputQ : is_ancestor (E.store cfg ext v q)
       (get_node_for_root result) (get_node_for_root input) = true := by
     have hge := find_latest_confirmed_descendant_ge cfg ext query
-      (by simpa only [hquery] using hwfQ)
+      (by simpa only [hquery, ParentSlotLt] using hwfQ)
       (by simpa only [hquery] using hwalkQ)
       hheadQ input hinput
     simpa only [result, hquery] using hge.1

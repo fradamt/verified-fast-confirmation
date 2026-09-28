@@ -224,7 +224,7 @@ theorem on_block_latest {store store' : Store Root} {sb : SignedBeaconBlock Root
   · simp [on_block, hknown] at h
     cases h
     rfl
-  · simp only [on_block, if_neg hknown] at h
+  · simp only [on_block, ite_eq_right hknown] at h
     split_ifs at h
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
@@ -347,11 +347,11 @@ theorem apply_event_LMP {E : Execution Root} {sl : Slot} (hwf : WellFormedExecut
       (on_attester_slashing_latest ext he)
   | execution_payload_envelope envelope observation =>
     have hf := on_execution_payload_envelope_frame ext he
-    exact h.of_transfer (by rw [hf.block_roots]; exact List.Subset.refl _)
+    exact h.of_transfer (by rw [hf.block_roots])
       (fun _ _ hh => hf.latest_messages ▸ hh) (fun r _ => by rw [hf.blocks])
   | payload_attestation_message message fromBlock =>
     have hf := on_payload_attestation_message_frame cfg ext he
-    exact h.of_transfer (by rw [hf.block_roots]; exact List.Subset.refl _)
+    exact h.of_transfer (by rw [hf.block_roots])
       (fun _ _ hh => hf.latest_messages ▸ hh) (fun r _ => by rw [hf.blocks])
 
 /-- Folding the second's scheduled events preserves provenance: every block

@@ -486,9 +486,9 @@ theorem mem_witnessCommittee_iff {i : ValidatorIndex} {s : Slot} :
       i = committeeIndex s ∨ (committeeIndex s = 3 ∧ i = byzantineIndex) := by
   unfold witnessCommittee
   by_cases h : committeeIndex s = 3
-  · rw [if_pos h, h]
+  · rw [ite_eq_left h, h]
     simp
-  · rw [if_neg h]
+  · rw [ite_eq_right h]
     simp [h]
 
 theorem registry_eq : witnessExecution.registry = witnessScope.validators := by
@@ -502,14 +502,14 @@ theorem witness_vote_some_iff {v : ValidatorIndex} {s : Slot} {n : ℕ}
       else if v = byzantineIndex ∧ s = 4 then some (4, byzantineVoteChild)
       else none) = some (n, a) ↔ _
   by_cases h : s < 16 ∧ v = committeeIndex s
-  · rw [if_pos h]
+  · rw [ite_eq_left h]
     constructor
     · intro heq
       have hp : (s, vote s) = (n, a) := Option.some.inj heq
       exact ⟨h.1, h.2, (congrArg Prod.fst hp).symm, (congrArg Prod.snd hp).symm⟩
     · rintro ⟨_, _, rfl, rfl⟩
       rfl
-  · rw [if_neg h, if_neg (fun hbyz => hvByz hbyz.1)]
+  · rw [ite_eq_right h, ite_eq_right (fun hbyz => hvByz hbyz.1)]
     constructor
     · intro himpossible
       contradiction
@@ -1104,7 +1104,8 @@ private theorem witness_payloads_empty (v n : ℕ) :
   induction n with
   | zero => rfl
   | succ n ih =>
-      simpa only [Execution.store] using
+      simpa only [Execution.store,
+        show witnessExecution.schedule = witnessSchedule from rfl] using
         (witness_fold_no_envelope (witnessSchedule v (n + 1))
           (on_tick witnessConfig
             (witnessExecution.store witnessConfig witnessExternals v n)

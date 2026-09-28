@@ -153,7 +153,7 @@ theorem completedPrefix_pulledUpHead_epoch
         get_current_store_epoch cfg store
   by_cases hpull : get_current_epoch cfg (store.block_states head) <
       get_current_store_epoch cfg store
-  · rw [if_pos hpull]
+  · rw [ite_eq_left hpull]
     have hslotLt : (store.block_states head).slot <
         compute_start_slot_at_epoch cfg
           (get_current_store_epoch cfg store) := by
@@ -179,7 +179,7 @@ theorem completedPrefix_pulledUpHead_epoch
     rw [hT.externals_coherence.process_slots_slot _ _ hslotLt]
     simp only [compute_start_slot_at_epoch]
     exact Nat.mul_div_cancel _ cfg.slots_per_epoch_pos
-  · rw [if_neg hpull]
+  · rw [ite_eq_right hpull]
     apply Nat.le_antisymm
     · simpa only [get_current_epoch, get_current_store_epoch,
         compute_epoch_at_slot] using Nat.div_le_div_right hheadSlot
@@ -274,7 +274,7 @@ theorem currentTargetEpochEnd_within_of_epochEndsFitUint64
     simpa only [Nat.succ_eq_add_one] using hlt
   constructor
   · simpa only [currentTargetEpochEnd, currentTargetEpochStart,
-      compute_start_slot_at_epoch, get_current_store_epoch,
+      compute_start_slot_at_epoch, get_current_store_epoch, compute_epoch_at_slot,
       E.store_current_slot cfg ext v q, s, k, Nat.mul_comm] using hendLe
   · have hepochEnd : compute_epoch_at_slot cfg
         (currentTargetEpochEnd cfg (E.store cfg ext v q)) =

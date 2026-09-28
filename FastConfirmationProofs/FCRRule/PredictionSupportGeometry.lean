@@ -165,7 +165,7 @@ theorem currentTargetSelectedEdge_geometry_of_accepted
   have hhead := E.head_root_known_of_selectedMarginDomain cfg ext hdomain hv (n + 1) hH
   obtain ⟨ast, ablk, hgen, hslot, _⟩ := hT.genesis_structure
   have hgeometry := hedge.geometry cfg ext
-    (by simpa only [E.fcrStep_store] using hwf)
+    (by simpa only [E.fcrStep_store, ParentSlotLt] using hwf)
     (by simpa only [E.fcrStep_store] using hwalk)
     (by simpa only [E.fcrStep_store] using hhead) hinput
     (by

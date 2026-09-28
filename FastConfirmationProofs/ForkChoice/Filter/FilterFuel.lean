@@ -46,7 +46,7 @@ theorem filter_block_tree_aux_internal (store : Store Root) (fuel : ℕ) (block_
       if res.any Prod.fst then (true, (res.map Prod.snd).flatten ++ [block_root])
       else (false, (res.map Prod.snd).flatten)) := by
   simp only [filter_block_tree_aux]
-  rw [if_pos hne]
+  rw [ite_eq_left hne]
 
 omit [Inhabited Root] in
 /-- Leaf unfold: with no children, `filter_block_tree_aux` runs the
@@ -66,7 +66,7 @@ theorem filter_block_tree_aux_leaf (store : Store Root) (fuel : ℕ) (block_root
             get_checkpoint_block cfg store block_root store.finalized_checkpoint.epoch)
       if correct_justified && correct_finalized then (true, [block_root]) else (false, [])) := by
   simp only [filter_block_tree_aux]
-  rw [if_neg (not_not.mpr hnil)]
+  rw [ite_eq_right (not_not.mpr hnil)]
 
 
 /-! ## `get_node_children` membership -/
@@ -93,7 +93,7 @@ theorem mem_get_node_children_resolved {store : Store Root} {blocks : List Root}
       child.payload_status = .pending ∧ child.root ∈ blocks ∧
         (store.blocks child.root).parent_root = node.root ∧
         node.payload_status = get_parent_payload_status store (store.blocks child.root) := by
-  rw [get_node_children, if_neg hresolved]
+  rw [get_node_children, ite_eq_right hresolved]
   constructor
   · rintro hchild
     obtain ⟨r, hr, rfl⟩ := List.mem_map.mp hchild

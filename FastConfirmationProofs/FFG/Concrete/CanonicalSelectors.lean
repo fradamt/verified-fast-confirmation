@@ -157,7 +157,7 @@ theorem genesis_unrealized_justification_reads {E : Execution Root}
   have hY : process_justification_and_finalization B.setup.cfg B.setup.preset B.setup.genesis =
       .ok B.setup.genesis := by
     unfold process_justification_and_finalization
-    rw [if_pos (by change compute_epoch_at_slot B.setup.cfg 0 ≤ 1; simp [compute_epoch_at_slot])]
+    rw [ite_eq_left (by change compute_epoch_at_slot B.setup.cfg 0 ≤ 1; simp [compute_epoch_at_slot])]
     rfl
   have he := B.unrealizedState_of anchor.root (hroot ▸ B.committedState_genesis) hY
   rw [B.unrealizedJustified_of _ he]
@@ -313,8 +313,8 @@ theorem ancestorWalk_eq {store : Store Root} (hs : B.BridgedStore store) (y : Sl
     simp only [get_ancestor_aux, ancestorWalk]
     by_cases hg : r = B.setup.genesisRoot
     · subst hg
-      rw [if_pos rfl, hs.genesis_slot, if_neg (Nat.not_lt_zero _)]
-    · rw [if_neg hg]
+      rw [ite_eq_left rfl, hs.genesis_slot, ite_eq_right (Nat.not_lt_zero _)]
+    · rw [ite_eq_right hg]
       obtain ⟨cs, -, -, -, -, -, hrest⟩ := hs.known r hr
       obtain ⟨wire, ho, -, hm, hp, -⟩ := hrest hg
       rw [ho]
@@ -446,7 +446,7 @@ theorem unrealized_justified_early (hB : B.Admissible) {E : Execution Root}
       B.setup.cfg B.interface E h)
   have hslot := B.blockKnown_slot hB hg h hcs
   unfold process_justification_and_finalization at hY
-  rw [if_pos (by rw [hslot]; simpa [GENESIS_EPOCH] using he)] at hY
+  rw [ite_eq_left (by rw [hslot]; simpa [GENESIS_EPOCH] using he)] at hY
   cases hY
   rw [hgu, hgj]
 

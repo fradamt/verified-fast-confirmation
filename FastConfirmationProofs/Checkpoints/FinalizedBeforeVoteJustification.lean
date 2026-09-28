@@ -55,7 +55,7 @@ theorem process_slots_block_state_total_active
     rfl
   · intro i
     rw [hval]
-    simpa only [get_current_epoch,
+    simpa only [get_current_epoch, Execution.registry,
       hT.externals_coherence.process_slots_slot _ _ hlt] using
       hsv.activity_constant_of_slot_le (cfg := cfg) hle hanchorN hHn.2.2 hHn.2.2
 
@@ -120,7 +120,7 @@ theorem honest_attestation_source_selector
       change (if (store.block_states head).slot < s then
         ext.process_slots (store.block_states head) s else store.block_states head
         ).current_justified_checkpoint = _
-      rw [if_pos hstateLt]
+      rw [ite_eq_left hstateLt]
     by_cases hone : compute_epoch_at_slot cfg s = get_block_epoch cfg store head + 1
     · refine Or.inr (Or.inl ⟨?_, hold⟩)
       rw [hsourceEq, hphaseBoundary.process_slots_one_boundary _ _ hstateLt
@@ -190,7 +190,7 @@ theorem honest_attestation_source_stale_reads_gu
     change (if (store.block_states head).slot < s then
       ext.process_slots (store.block_states head) s else store.block_states head
       ).current_justified_checkpoint = _
-    rw [if_pos hstateLt]
+    rw [ite_eq_left hstateLt]
   change CheckpointReadsAs (honest_attestation cfg ext store s index v).data.source
     (B.state.unrealized_justified head)
   rw [hsourceEq]
@@ -214,7 +214,7 @@ theorem honest_attestation_source_stale_reads_gu
         rfl
       · intro i
         rw [hrc]
-        simpa only [get_current_epoch] using
+        simpa only [get_current_epoch, Execution.registry, store] using
           hsv.activity_constant_of_slot_le (cfg := cfg) hslotLe hanchorN hHn.2.2 hHn.2.2
     have hguard : ∀ s' : Slot, (store.block_states head).slot < s' → s' ≤ s →
         (ext.process_slots (store.block_states head) s').validators =

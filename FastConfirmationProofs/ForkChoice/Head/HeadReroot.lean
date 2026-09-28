@@ -278,7 +278,7 @@ private theorem head_walk_budget_lt_of_child {store : Store Root} {blocks : List
       rcases hbeststatus with hempty | ⟨hfull, _⟩
       · simp [hempty]
       · simp [hfull]
-    simp only [head_walk_budget, hroot, if_pos hstatus, if_neg hresolved]
+    simp only [head_walk_budget, hroot, ite_eq_left hstatus, ite_eq_right hresolved]
     omega
   · obtain ⟨hstatus, hbeststatus, hbestblocks, hparent, _⟩ := hresolved
     have hbestknown := hsub _ hbestblocks
@@ -286,7 +286,7 @@ private theorem head_walk_budget_lt_of_child {store : Store Root} {blocks : List
       have h := hwf best.root hbestknown (by rw [hparent]; exact hstart)
       rwa [hparent] at h
     have hcount := budget_lt_of_child hbestblocks hlt
-    simp only [head_walk_budget, if_neg hstatus, if_pos hbeststatus]
+    simp only [head_walk_budget, ite_eq_right hstatus, ite_eq_left hbeststatus]
     omega
 
 /-- An arbitrary-status head walk reaches a childless node when its fuel

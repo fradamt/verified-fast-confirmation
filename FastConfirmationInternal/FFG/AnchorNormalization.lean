@@ -179,7 +179,7 @@ theorem normalize_eq_of_anchor_or_after {anchor : Checkpoint Root}
   rcases h with rfl | ⟨ha0, hb0⟩
   · rcases hb with rfl | hlt
     · exact normalizeAnchorCheckpoint.anchor a
-    · simp only [normalizeAnchorCheckpoint, if_neg (Nat.not_le.mpr hlt)]
+    · simp only [normalizeAnchorCheckpoint, ite_eq_right (Nat.not_le.mpr hlt)]
   · have ha0' : a.epoch = 0 := ha0
     have hb0' : b.epoch = 0 := hb0
     have hb' : b = anchor := by
@@ -191,7 +191,7 @@ theorem normalize_eq_of_anchor_or_after {anchor : Checkpoint Root}
       rw [ha0']
       exact Nat.zero_le _
     rw [hb']
-    simp only [normalizeAnchorCheckpoint, if_pos hle]
+    simp only [normalizeAnchorCheckpoint, ite_eq_left hle]
 
 /-- A raw read reads as its normalization when it reads as an anchor-or-newer
 checkpoint. -/
@@ -210,10 +210,10 @@ theorem strict_update (current : Checkpoint Root)
       (if current.epoch < b.epoch then b else current) := by
   by_cases hlt : current.epoch < a.epoch
   · have hb : current.epoch < b.epoch := h.epoch_eq ▸ hlt
-    rw [if_pos hlt, if_pos hb]
+    rw [ite_eq_left hlt, ite_eq_left hb]
     exact h.eq_of_epoch_pos (Nat.lt_of_le_of_lt (Nat.zero_le _) hb)
   · have hb : ¬ current.epoch < b.epoch := h.epoch_eq ▸ hlt
-    rw [if_neg hlt, if_neg hb]
+    rw [ite_eq_right hlt, ite_eq_right hb]
 
 /-- At a genesis anchor, the reading is equality after anchor
 normalization. -/
@@ -224,16 +224,16 @@ theorem iff_normalize {anchor : Checkpoint Root}
   constructor
   · rintro (rfl | ⟨ha, hb⟩)
     · rfl
-    · simp only [normalizeAnchorCheckpoint, ha, hb, hanchor, le_refl, if_true]
+    · simp only [normalizeAnchorCheckpoint, ha, hb, hanchor, le_refl, ite_true]
   · intro h
     by_cases ha : a.epoch ≤ anchor.epoch <;> by_cases hb : b.epoch ≤ anchor.epoch
     · rw [hanchor] at ha hb
       exact Or.inr ⟨Nat.le_zero.mp ha, Nat.le_zero.mp hb⟩
-    · simp only [normalizeAnchorCheckpoint, ha, hb, if_true, if_false] at h
+    · simp only [normalizeAnchorCheckpoint, ha, hb, ite_true, ite_false] at h
       exact absurd (le_of_eq (congrArg Checkpoint.epoch h.symm)) hb
-    · simp only [normalizeAnchorCheckpoint, ha, hb, if_true, if_false] at h
+    · simp only [normalizeAnchorCheckpoint, ha, hb, ite_true, ite_false] at h
       exact absurd (le_of_eq (congrArg Checkpoint.epoch h)) ha
-    · simp only [normalizeAnchorCheckpoint, ha, hb, if_false] at h
+    · simp only [normalizeAnchorCheckpoint, ha, hb, ite_false] at h
       exact Or.inl h
 
 end CheckpointReadsAs

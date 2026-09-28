@@ -264,9 +264,9 @@ elab "audit_project_trust" : command => do
   let projectModules := (origins.filter (· == .project)).size
   let packageModules := (origins.filter fun origin => origin matches .package _).size
 
-  let mut projectDeclarations := 0
-  let mut projectTheorems := 0
-  let mut generatedPartials := 0
+  let mut projectDeclarations : Nat := 0
+  let mut projectTheorems : Nat := 0
+  let mut generatedPartials : Nat := 0
   let mut modelProofs : Array Name := #[]
   for (name, info) in env.constants do
     if isProjectModule env origins name then

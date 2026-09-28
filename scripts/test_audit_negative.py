@@ -73,7 +73,7 @@ def model_proofs(folder: Path) -> None:
     link_tree(ROOT / ".lake/build/lib/lean", root / ".lake/build/lib/lean")
     probe = root / "FastConfirmationModel/AuditProbe.lean"
     probe.write_text("""module
-public import Mathlib.Logic.Basic
+public import Mathlib.Basic.Logic.Basic
 @[expose] public section
 namespace FastConfirmation.Spec.AuditProbe
 public theorem «cfAuditQuoted» : True := True.intro

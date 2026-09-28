@@ -107,7 +107,7 @@ theorem fcr_previous_greatest_succ_of_advance
       else
         (E.fcr cfg ext v n).previous_epoch_greatest_unrealized_checkpoint := by
   simp only [Execution.fcr]
-  rw [if_pos hadv]
+  rw [ite_eq_left hadv]
   change FastConfirmationStore.previous_epoch_greatest_unrealized_checkpoint
     (update_fast_confirmation_variables cfg
       { E.fcr cfg ext v n with store := E.store cfg ext v (n + 1) }) = _
@@ -131,7 +131,7 @@ theorem fcr_observed_succ_of_advance
       else
         (E.fcr cfg ext v n).current_epoch_observed_justified_checkpoint := by
   simp only [Execution.fcr]
-  rw [if_pos hadv]
+  rw [ite_eq_left hadv]
   change FastConfirmationStore.current_epoch_observed_justified_checkpoint
     (update_fast_confirmation_variables cfg
       { E.fcr cfg ext v n with store := E.store cfg ext v (n + 1) }) = _

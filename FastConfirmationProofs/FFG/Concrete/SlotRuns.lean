@@ -217,13 +217,12 @@ theorem weigh_current_justified {cfg : Config} {preset : FFGPreset}
   rw [except_bind_eq_ok] at h
   obtain ⟨_, -, h⟩ := h
   dsimp only at h
-  simp only [pure_bind] at h
   by_cases c1 : previous * 3 ≥ total * 2
-  · rw [if_pos c1] at h
+  · rw [ite_eq_left c1] at h
     rw [except_bind_eq_ok] at h
     obtain ⟨root1, hr1, h⟩ := h
     by_cases c2 : current * 3 ≥ total * 2
-    · rw [if_pos c2] at h
+    · rw [ite_eq_left c2] at h
       rw [except_bind_eq_ok] at h
       obtain ⟨root2, hr2, h⟩ := h
       repeat' split at h
@@ -231,15 +230,15 @@ theorem weigh_current_justified {cfg : Config} {preset : FFGPreset}
         simp only [except_pure_eq_ok] at h
         subst h
         exact ⟨fun _ => ⟨rfl, hr2⟩, fun h => absurd c2 h, fun h => absurd c2 h⟩
-    · rw [if_neg c2] at h
+    · rw [ite_eq_right c2] at h
       repeat' split at h
       all_goals
         simp only [except_pure_eq_ok] at h
         subst h
         exact ⟨fun h => absurd h c2, fun _ _ => ⟨rfl, hr1⟩, fun _ h => absurd c1 h⟩
-  · rw [if_neg c1] at h
+  · rw [ite_eq_right c1] at h
     by_cases c2 : current * 3 ≥ total * 2
-    · rw [if_pos c2] at h
+    · rw [ite_eq_left c2] at h
       rw [except_bind_eq_ok] at h
       obtain ⟨root2, hr2, h⟩ := h
       repeat' split at h
@@ -247,7 +246,7 @@ theorem weigh_current_justified {cfg : Config} {preset : FFGPreset}
         simp only [except_pure_eq_ok] at h
         subst h
         exact ⟨fun _ => ⟨rfl, hr2⟩, fun h => absurd c2 h, fun h => absurd c2 h⟩
-    · rw [if_neg c2] at h
+    · rw [ite_eq_right c2] at h
       repeat' split at h
       all_goals
         simp only [except_pure_eq_ok] at h
@@ -272,22 +271,22 @@ theorem weigh_ok {cfg : Config} {preset : FFGPreset} {state : FFGBeaconState Roo
   simp only [bind, Except.bind]
   by_cases c1 : previous * 3 ≥ total * 2
   · obtain ⟨root1, hr1⟩ := hprev c1
-    rw [if_pos c1, hr1]
+    rw [ite_eq_left c1, hr1]
     by_cases c2 : current * 3 ≥ total * 2
     · obtain ⟨root2, hr2⟩ := hcur c2
-      simp only [if_pos c2, hr2, pure, Except.pure]
+      simp only [ite_eq_left c2, hr2, pure, Except.pure]
       repeat' split
       all_goals exact ⟨_, rfl⟩
-    · simp only [if_neg c2, pure, Except.pure]
+    · simp only [ite_eq_right c2, pure, Except.pure]
       repeat' split
       all_goals exact ⟨_, rfl⟩
-  · rw [if_neg c1]
+  · rw [ite_eq_right c1]
     by_cases c2 : current * 3 ≥ total * 2
     · obtain ⟨root2, hr2⟩ := hcur c2
-      simp only [if_pos c2, hr2, pure, Except.pure]
+      simp only [ite_eq_left c2, hr2, pure, Except.pure]
       repeat' split
       all_goals exact ⟨_, rfl⟩
-    · simp only [if_neg c2, pure, Except.pure]
+    · simp only [ite_eq_right c2, pure, Except.pure]
       repeat' split
       all_goals exact ⟨_, rfl⟩
 
@@ -313,10 +312,10 @@ theorem participating_eq {S : FFGSetup Root} {blocks : List (FFGWireBlock Root)}
   unfold participants
   rw [Finset.mem_filter, Finset.mem_range]
   rcases hepoch with h | h
-  · rw [if_pos h, hinv.current_flags i, h]
+  · rw [ite_eq_left h, hinv.current_flags i, h]
     tauto
   · have hne : epoch ≠ compute_epoch_at_slot S.cfg X.slot := by beacon_omega
-    rw [if_neg hne, hinv.previous_flags i]
+    rw [ite_eq_right hne, hinv.previous_flags i]
     have hiff : ∀ r : IncludedVote Root, r.vote.data.target.epoch + 1 =
         compute_epoch_at_slot S.cfg X.slot ↔ r.vote.data.target.epoch = epoch := by
       intro r; constructor <;> intro h' <;> beacon_omega
@@ -392,7 +391,7 @@ theorem pjf_current_justified {S : FFGSetup Root} (hS : S.Admissible)
     ⟨hE, previous, current, hp, hc, hw⟩
   · rw [hEt] at hE
     unfold cjFormula
-    rw [if_pos hE, hcj]
+    rw [ite_eq_left hE, hcj]
   · rw [hEt] at hE
     have hprevE : get_previous_epoch S.cfg t = E - 1 := by
       unfold get_previous_epoch; rw [hEt]
@@ -403,17 +402,17 @@ theorem pjf_current_justified {S : FFGSetup Root} (hS : S.Admissible)
     obtain ⟨hw1, hw2, hw3⟩ := weigh_current_justified hw
     simp only [hEt, hprevE, test_iff hS hinv hH hslot hval] at hw1 hw2 hw3
     unfold cjFormula
-    rw [if_neg (by beacon_omega)]
+    rw [ite_eq_right (by beacon_omega)]
     by_cases t1 : EpochTest S votes E
-    · rw [if_pos t1]
+    · rw [ite_eq_left t1]
       obtain ⟨he, hr⟩ := hw1 t1
       exact checkpoint_eq_of he (hread _ _ (Or.inl rfl) hr)
-    · rw [if_neg t1]
+    · rw [ite_eq_right t1]
       by_cases t2 : EpochTest S votes (E - 1)
-      · rw [if_pos t2]
+      · rw [ite_eq_left t2]
         obtain ⟨he, hr⟩ := hw2 t1 t2
         exact checkpoint_eq_of he (hread _ _ (Or.inr (by beacon_omega)) hr)
-      · rw [if_neg t2, hw3 t1 t2, hcj]
+      · rw [ite_eq_right t2, hw3 t1 t2, hcj]
 
 omit [DecidableEq Root] in
 /-- The participating-set computation succeeds on the current or previous
@@ -474,9 +473,9 @@ theorem pjf_ok {S : FFGSetup Root} (hS : S.Admissible)
   have hEt : compute_epoch_at_slot S.cfg t.slot = E := by rw [hslot]
   unfold process_justification_and_finalization
   by_cases hE : compute_epoch_at_slot S.cfg t.slot ≤ 1
-  · rw [if_pos hE]
+  · rw [ite_eq_left hE]
     exact ⟨t, rfl⟩
-  rw [if_neg hE]
+  rw [ite_eq_right hE]
   rw [hEt] at hE
   have hprevE : get_previous_epoch S.cfg t = E - 1 := by
     unfold get_previous_epoch; rw [hEt]
@@ -630,10 +629,10 @@ theorem slotStep_ok {S : FFGSetup Root} (hS : S.Admissible)
       refine ⟨s1, hs1, ?_⟩
       have hc : ((s1.slot + 1) % S.cfg.slots_per_epoch == 0) = true := by
         simp [s1, hb]
-      simp only [hc, if_true]
+      simp only [hc, ite_true]
       rw [except_bind_eq_ok]
       exact ⟨_, process_epoch_eq_ok.mpr ⟨mid, hmid, rfl⟩, rfl⟩
-    · rw [if_pos hb]
+    · rw [ite_eq_left hb]
       exact hcj
   · refine ⟨{ s1 with slot := s1.slot + 1 }, ?_, ?_⟩
     · unfold slotStep
@@ -641,9 +640,9 @@ theorem slotStep_ok {S : FFGSetup Root} (hS : S.Admissible)
       refine ⟨s1, hs1, ?_⟩
       have hc : ((s1.slot + 1) % S.cfg.slots_per_epoch == 0) = false := by
         simp [s1, hb]
-      simp only [hc, Bool.false_eq_true, if_false]
+      simp only [hc, Bool.false_eq_true, ite_false]
       rfl
-    · rw [if_neg hb]
+    · rw [ite_eq_right hb]
 
 /-- The current justified checkpoint after `n` boundaries: `cjRun` unfolds one
 boundary. -/
@@ -699,7 +698,7 @@ theorem slotFold_ok {S : FFGSetup Root} (hS : S.Admissible)
       have hend : X.slot + 1 + steps.length = X.slot + (steps.length + 1) := by beacon_omega
       rw [hend]
       by_cases hb : (X.slot + 1) % S.cfg.slots_per_epoch = 0
-      · rw [if_pos hb, epoch_succ_of_boundary hb]
+      · rw [ite_eq_left hb, epoch_succ_of_boundary hb]
         have hlt : compute_epoch_at_slot S.cfg X.slot <
             compute_epoch_at_slot S.cfg (X.slot + (steps.length + 1)) := by
           have := compute_epoch_at_slot_mono (cfg := S.cfg)
@@ -707,7 +706,7 @@ theorem slotFold_ok {S : FFGSetup Root} (hS : S.Admissible)
           rw [epoch_succ_of_boundary hb] at this
           beacon_omega
         rw [cjRun_succ_of_lt _ hlt]
-      · rw [if_neg hb, epoch_succ_of_not_boundary hb]
+      · rw [ite_eq_right hb, epoch_succ_of_not_boundary hb]
 
 /-- **`process_slots`** from an invariant state to a later target in the
 fixed scope succeeds, and its current justified checkpoint is `cjRun`. -/
@@ -760,7 +759,7 @@ theorem cjFormula_late {S : FFGSetup Root} (hS : S.Admissible)
     cjFormula S blocks votes k c =
       if EpochTest S votes (k - 1) then chainCheckpoint S blocks (k - 1) else c := by
   unfold cjFormula
-  rw [if_neg (by beacon_omega), if_neg (not_test_of_late hS hlate)]
+  rw [ite_eq_right (by beacon_omega), ite_eq_right (not_test_of_late hS hlate)]
 
 /-- Later boundaries keep the checkpoint. -/
 theorem cjRun_very_late {S : FFGSetup Root} (hS : S.Admissible)
@@ -794,7 +793,7 @@ theorem cjRun_two_boundaries {S : FFGSetup Root} (hS : S.Admissible)
   rw [show E + 1 - 1 = E by beacon_omega]
   split_ifs with ht
   · unfold cjFormula
-    rw [if_neg (by beacon_omega), if_pos ht]
+    rw [ite_eq_right (by beacon_omega), ite_eq_left ht]
   · rfl
 
 /-- The checkpoint after any number of boundaries is the start checkpoint or has
@@ -827,7 +826,7 @@ theorem cjRun_epoch_le {S : FFGSetup Root} (hS : S.Admissible)
     · have hE0 : E = 0 := by beacon_omega
       subst hE0
       unfold cjFormula
-      rw [if_pos (by beacon_omega), if_pos (by beacon_omega)]
+      rw [ite_eq_left (by beacon_omega), ite_eq_left (by beacon_omega)]
       exact Or.inl rfl
 
 end FastConfirmation.Spec.ConcreteFFG

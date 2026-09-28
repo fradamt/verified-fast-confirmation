@@ -314,10 +314,10 @@ theorem on_block
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     FFGGlobalCheckpointOrigins cfg S store' := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_left hknown] at hh
     cases hh
     exact h
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
@@ -696,7 +696,7 @@ theorem on_tick_aux_eq_of_not_lt
     FastConfirmation.Spec.on_tick_aux cfg tickSlot fuel store = store := by
   cases fuel with
   | zero => rfl
-  | succ fuel => simp only [FastConfirmation.Spec.on_tick_aux, if_neg h]
+  | succ fuel => simp only [FastConfirmation.Spec.on_tick_aux, ite_eq_right h]
 
 theorem on_tick_aux_one_slot
     (store : Store Root) (s : Slot)
@@ -707,7 +707,7 @@ theorem on_tick_aux_one_slot
         (store.genesis_time + (s + 1) * cfg.slot_duration_ms / 1000) := by
   have hfuel : s + 2 = (s + 1) + 1 := rfl
   rw [hfuel, FastConfirmation.Spec.on_tick_aux]
-  rw [if_pos (by rw [hslot]; exact Nat.lt_succ_self _)]
+  rw [ite_eq_left (by rw [hslot]; exact Nat.lt_succ_self _)]
   rw [hslot]
   let stepped := FastConfirmation.Spec.on_tick_per_slot cfg store
     (store.genesis_time + (s + 1) * cfg.slot_duration_ms / 1000)
@@ -716,7 +716,7 @@ theorem on_tick_aux_one_slot
     simpa only [hslot] using current_slot_at_next_boundary
       (cfg := cfg) hdiv store
   rw [FastConfirmation.Spec.on_tick_aux]
-  rw [if_neg (by rw [hstepped]; exact Nat.lt_irrefl _)]
+  rw [ite_eq_right (by rw [hstepped]; exact Nat.lt_irrefl _)]
 
 
 
@@ -766,10 +766,10 @@ theorem on_block
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     FFGGlobalCheckpointLedger cfg S store' := by
   by_cases hknown : sb.root ∈ store.block_roots
-  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_left hknown] at hh
     cases hh
     exact h
-  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+  · simp only [FastConfirmation.Spec.on_block, ite_eq_right hknown] at hh
     split_ifs at hh <;> try cases hh
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
