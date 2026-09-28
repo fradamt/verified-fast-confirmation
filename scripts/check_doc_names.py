@@ -2,6 +2,7 @@
 """Check review document names and Lean source comment file references."""
 from __future__ import annotations
 import re
+import subprocess
 from pathlib import Path
 from check_imports import without_comments
 
@@ -14,6 +15,22 @@ LEAN = [p for lib in ('FastConfirmationModel', 'FastConfirmationStatements',
 DECL = re.compile(r'^\s*(?:(?:private|protected|noncomputable|partial|unsafe|public|scoped|local)\s+)*'
                   r'(?:def|theorem|lemma|structure|class|inductive|abbrev|instance|opaque|'
                   r'axiom|constant)\s+([\w.₀-₉]+)', re.M)
+# Paths resolve against tracked files only, so an untracked or ignored local
+# file cannot hide a reference that a clean checkout lacks.
+TRACKED = set(subprocess.run(['git', 'ls-files', '-z'], cwd=ROOT, check=True,
+                             capture_output=True, text=True).stdout.split('\0')) - {''}
+TRACKED_DIRS = {parent.as_posix() for name in TRACKED for parent in Path(name).parents} - {'.'}
+TRACKED_NAMES = {Path(name).name for name in TRACKED | TRACKED_DIRS}
+
+
+def tracked(path: Path) -> bool:
+    try:
+        rel = path.resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        return False
+    return rel in TRACKED or rel in TRACKED_DIRS
+
+
 CODE = re.compile(r'(?<!`)`([^`\n]+)`(?!`)')
 IDENT = re.compile(r'[A-Za-z_][\w.₀-₉]*\Z')
 for doc in DOCS:
@@ -81,7 +98,7 @@ for doc in DOCS:
                 if name.startswith(('--', 'http')) or '/path/' in name:
                     continue
                 path = (doc.parent / name).resolve()
-                if not path.exists() and not (ROOT / name).exists() and not any(p.name == name.rstrip('/') for p in ROOT.rglob('*')):
+                if not tracked(path) and not tracked(ROOT / name) and name.rstrip('/') not in TRACKED_NAMES:
                     missing.append((doc, n, name))
                 else:
                     checked += 1
@@ -92,7 +109,7 @@ for doc in DOCS:
                 continue
             checked += 1
             final = name.rsplit('.', 1)[-1]
-            if final not in known and name not in known and not (ROOT / (name + '.lean')).exists():
+            if final not in known and name not in known and not tracked(ROOT / (name + '.lean')):
                 missing.append((doc, n, name))
             elif '.' in name and not any(full == name or full.endswith('.' + name)
                                              for full in qualified):

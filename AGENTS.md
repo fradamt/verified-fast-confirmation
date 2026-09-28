@@ -44,6 +44,6 @@
 - `docs/MODELING_CHOICES.md` records choices and limits.
 - `docs/REVIEW_GUIDE.md` gives the cold review reading order, audit dimensions, and current limits.
 - `docs/conformance.md` describes the trace comparison.
-- Earlier notes (`docs/history/`) are in Git history at `097d18f`.
+- Earlier notes are in Git history at `097d18f`.
 
 The reachability and trust audit counts come from their scripts. Check the current output when they change.

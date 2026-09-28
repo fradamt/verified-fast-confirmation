@@ -40,8 +40,14 @@ def imported(path: Path, module: str, root: Path, script: str = "check_imports.p
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="fcr-trust-negative-") as folder:
         root = Path(folder) / "repo"
-        shutil.copytree(ROOT, root, ignore=shutil.ignore_patterns(
-            ".git", ".lake", ".source", "__pycache__"))
+        # Copy only the tracked files into a fresh index, as a clean checkout has them.
+        listed = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=True,
+                                capture_output=True, text=True).stdout.split("\0")
+        for name in filter(None, listed):
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / name, root / name)
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
         (root / ".lake").mkdir()
         (root / ".lake/packages").symlink_to(ROOT / ".lake/packages")
         helper = root / "AuTReexport.lean"
@@ -88,6 +94,13 @@ def main() -> None:
         altered(root / "docs/SPEC_MAP.md",
                 "\n```text\n│ `NoSuchRecord.synchrony` │\n```\n",
                 "check_doc_names.py", "NoSuchRecord.synchrony", root)
+        # An untracked local file must not resolve a documented path.
+        untracked = root / "docs/history/untracked-note.md"
+        untracked.parent.mkdir()
+        untracked.write_text("local note\n")
+        altered(root / "README.md", "\nAudit probe: `docs/history/untracked-note.md`.\n",
+                "check_doc_names.py", "unresolved `docs/history/untracked-note.md`", root)
+        shutil.rmtree(untracked.parent)
         config = root / "FastConfirmationModel/Spec/Config.lean"
         readme = root / "README.md"
         old_config, old_readme = config.read_text(), readme.read_text()
@@ -99,7 +112,7 @@ def main() -> None:
         finally:
             config.write_text(old_config)
             readme.write_text(old_readme)
-    print("negative trust source tests passed: 13 mutations rejected")
+    print("negative trust source tests passed: 14 mutations rejected")
 
 
 if __name__ == "__main__":
