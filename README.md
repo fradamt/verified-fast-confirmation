@@ -195,8 +195,14 @@ deliver each honest vote at the first second of the next slot. The delivery laws
 The executable model follows the `fradamt/consensus-specs` fork at tag `fcr-gloas-fix`
 (`13f391516`). Gloas is the fork that separates beacon blocks from execution payloads. The
 fork's empty-slot discount counts parent votes with a matching payload status or PENDING
-status. Unmodified upstream can also count votes for the opposite resolved status. See the
+status. The pinned upstream base (`6b9bd532`, 2026-09-22) can also count votes for the opposite resolved status. See the
 [source map](docs/SPEC_MAP.md) and [counterexample](https://github.com/fradamt/verified-fast-confirmation/blob/097d18f/docs/history/gloas-negative-result.md).
+Upstream merged a different repair on 2026-09-28 (ethereum/consensus-specs PR 5672, commit
+`221fb1aa7`): its get_node_support_between_slots counts only the votes whose supported node is
+the parent node with the payload status that the child builds on, so PENDING parent votes do
+not count. The model follows the fork, so it also counts PENDING parent votes; it does not model
+the PR 5672 rule. Upstream also added the optional get_restart_resilient_confirmed_root
+helper on 2026-10-05 (PR 5673); the model does not include it.
 The bridge runs the concrete Gloas FFG transition for slot processing, block
 transitions, and PJF. Cryptography, the other block-validity checks, payload
 envelopes, data availability, and execution validation are opaque, with stated

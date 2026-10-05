@@ -266,7 +266,12 @@ For `on_attestation`, the Lean handler returns no store after failed indexed val
 
 The public Gloas difference is in `compute_empty_slot_support_discount`. The helper
 `get_parent_payload_support_between_slots` counts only matching-status or PENDING parent
-votes. A vote on the opposite resolved payload branch stays in the competing weight. Other
+votes. A vote on the opposite resolved payload branch stays in the competing weight. After
+the pinned base, upstream merged a different repair (ethereum/consensus-specs PR 5672,
+commit `221fb1aa7`, 2026-09-28): the Phase 0 helper became get_node_support_between_slots,
+and the discount counts only the votes whose supported node is the parent node with the
+payload status that the child builds on. PENDING parent votes do not count there; they count
+in the fork and in this model. The model does not follow PR 5672. Other
 translations use natural-number arithmetic, totalized map reads, `List` iteration, and
 explicit loop fuel. See [modeling choices](MODELING_CHOICES.md). The conformance runner
 compares projected source states. It does not prove every external contract.

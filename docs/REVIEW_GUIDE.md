@@ -260,7 +260,7 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 ## Source and checks
 
-The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The `weak-synchrony` branch contains work in progress on weaker timing premises and is outside this review.
+The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream, including the different discount repair that upstream merged on 2026-09-28 (ethereum/consensus-specs PR 5672) after the pinned base. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The `weak-synchrony` branch contains work in progress on weaker timing premises and is outside this review.
 
 `scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries, replays all 307 modules through the kernel, and checks imports, reachability, surface shape, premise-field use, and the 40 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
 
