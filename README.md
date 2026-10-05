@@ -184,7 +184,10 @@ The delivery laws in `NextSlotSynchronyPremises` supply the network assumption.
 Each law states its timing directly: a source observation at or before the
 attestation deadline offset A of its slot, and a receiver fact from the next
 slot boundary on. The paper's positive delay Δ with `A + Δ < S` (S is the slot
-duration) motivates these times; no premise field states Δ. The finite runs
+duration) motivates these times; no premise field states Δ. The vote law is
+exact (`HorizonVoteDeliveryLookahead.attestation_delivery`, class I): each honest
+vote sent by the deadline is in the schedule of every honest node at the first
+second of the next slot, even if a node also received it earlier. The finite runs
 deliver each honest vote at the first second of the next slot. The delivery laws also require receipt and handler service. `DeadlineBlockRelay` requires a client to gossip each cutoff block, receive it at every honest node, accept it with known parents, and keep it by the next boundary unless the pre-boundary finalized guard rejects it permanently. The boundary prefix law requires block service before a boundary vote. The envelope prefix and the slashing relay require receipt, handler service, and the stated validation behavior. `scripts/PremiseFieldUse.lean` checks that the proof reads every premise field and every proof-valued input field. It finds these records from the binder types of the claim, so it also checks a new nested record. The one allowed exception is `FixedFFGScope.epoch_order`, which the proof does not read. The check finds references; it does not prove that a field is necessary.
 
 ## Trust and source
