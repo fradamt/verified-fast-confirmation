@@ -4,5 +4,3 @@ __pycache__/
 *.py[cod]
 /out/
 /.conformance.*/
-/out-g2b-export.log
-/.g3-port/
