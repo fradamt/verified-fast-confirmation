@@ -5,4 +5,4 @@ public import FastConfirmationInternal
 public import FastConfirmationProofs
 public import FastConfirmationWitnesses
 
-/-! Imports the executable FCR model, premises, proofs, witnesses, and the independent paper formalization. -/
+/-! Imports the executable FCR model, premises, internal proof vocabulary, proofs, and witnesses. -/
