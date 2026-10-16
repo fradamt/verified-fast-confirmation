@@ -2,11 +2,11 @@
 
 The weak execution uses the duty-fresh weak synchrony FCR and a Gloas
 parent-payload discount that counts votes for the required parent status or
-PENDING. The pinned source is the local `fcr-weak-synchrony` branch of
-`consensus-specs-weak-pending`. Run the full check with
-`scripts/validate.sh --consensus-repo /home/fradamt/lean/consensus-specs-weak-pending`.
-The conformance trace is
-`/home/fradamt/lean/orch/traces/w6-weak-altair-minimal.jsonl` (3,763 records).
+PENDING. The pinned source is the `fcr-weak-synchrony` branch of
+`fradamt/consensus-specs`. Run the full check with
+`scripts/validate.sh --consensus-repo /path/to/consensus-specs-weak-pending`.
+The conformance trace (3,763 records, file `w6-weak-altair-minimal.jsonl`) is not
+in this repository.
 
 ## Claims and premise surface
 

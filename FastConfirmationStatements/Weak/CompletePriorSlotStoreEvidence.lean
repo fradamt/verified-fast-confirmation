@@ -7,7 +7,7 @@ public import FastConfirmationModel.Weak.WeakSynchrony
 /-!
 # Complete prior-slot evidence
 
-The research note `orch/zk/full-rule-ideal-latency.md` reports 528 paired
+An unpublished research note reports 528 paired
 traces, with full participation, equal balances and prior-slot delivery.
 The generator scripts are unavailable. This record is a store-level contract,
 not a claim to reconstruct those traces or their Altair transitions.

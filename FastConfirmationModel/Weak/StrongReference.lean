@@ -7,7 +7,7 @@ public import FastConfirmationModel.Spec.FastConfirmation.LMD
 # Frozen strong rule reference
 
 Source: `main` commit `249dd96dfc838fc4b0a90d036a209dfd3bbac8f9` (249dd96),
-read from `/home/fradamt/lean/fast-confirmation`:
+in this repository:
 * `FastConfirmation/Spec/Model/ForkChoice.lean` (`get_attestation_score`)
 * `FastConfirmation/Spec/Model/LMDHelpers.lean`
 * `FastConfirmation/Spec/Model/FFGHelpers.lean`
